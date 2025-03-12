@@ -1,0 +1,65 @@
+[build-system]
+requires = [
+    "setuptools>=60",
+    "setuptools-scm>=8.0"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "daisypy-optim"
+authors = [
+  { name="Silas Nyboe Ørting", email="silas@di.ku.dk" },
+]
+description = "Optimization framework for Daisy"
+requires-python = ">=3.11"
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3"
+]
+dependencies = [
+    "numpy",
+    "cma",
+    "daisypy-io@git+https://github.com/daisy-model/daisypy-io"
+ ]
+
+dynamic = ["version"]   
+readme = "README.md"
+
+[project.scripts]
+
+[project.urls]
+Homepage = "https://daisy.ku.dk/"
+
+[project.optional-dependencies]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["daisypy.optim"]
+namespaces = true
+
+[tool.setuptools_scm]
+version_file = "daisypy/optim/_version.py"
+
+[tool.pylint.messages_control]
+disable = [
+    'trailing-whitespace',
+    'trailing-newlines',
+ ]
+ ignore = [
+     '_version.py'
+ ]
+
+[tool.pytest.ini_options]
+testpaths = [ "daisypy" ]
+addopts = [
+]
+filterwarnings = [
+    "error",
+]
+
+[tool.coverage.run]
+command_line = "-m pytest"
+source = ["."]
+
+[tool.coverage.report]
+show_missing = "true"
