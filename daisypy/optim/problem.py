@@ -1,4 +1,5 @@
 import tempfile
+import os
 import numpy as np
 
 class DaisyOptimizationProblem:
@@ -37,5 +38,5 @@ class DaisyOptimizationProblem:
             dai_file = self.dai_file_generator(output_directory, named_parameters)
             sim_result = self.runner(dai_file, output_directory)
             if sim_result.returncode != 0:
-                return np.inf
+                return np.nan
             return self.objective_fn(output_directory)
