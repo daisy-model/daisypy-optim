@@ -1,13 +1,25 @@
 """Example showing how to do parameter optimization in Daisy"""
 import pandas as pd
 from daisypy.optim import (
+    DaiFileGenerator,
     DaisyLoss,
     DaisyObjective,
+    DaisyOptimizationProblem,
+    DaisyParameter,
     DaisyRunner,
-    DaiFileGenerator
 )
 
 def main():
+    # Setup Daisy so we can run it
+    daisy_path = '/home/silas/Projects/daisy-model/daisy/build/portable/daisy' #<path-to-daisy-binary>
+    daisy_home = '/home/silas/Projects/daisy-model/daisy' #<path-to-daisy-home-directory>
+    runner = DaisyRunner(daisy_path, daisy_home)
+
+    # Test it
+    runner('', 'example-data/out')
+    with open('example-data/out/daisy.log', 'r', encoding='utf-8') as file:
+        print(''.join(file))
+
     # Define the parameters that we want to optimize
     # 1. Define the template dai file
     # 2. Setup the dai file generator
@@ -20,11 +32,20 @@ def main():
     dai_file_generator = DaiFileGenerator(dai_template)
 
     # Define the parameters we want to optimize
-    
-    dai_file = dai_file_generator('example-data/out', { 'K_aquitard' : 0.3 })
+    parameters = [
+        DaisyParameter(
+            name='K_aquitard',
+            initial_value=0.2,
+            valid_range=(0.1, 0.7)
+        )
+    ]
+
+    # Test that it works
+    sampled_parameters = { p.name : p.initial_value for p in parameters }
+    dai_file = dai_file_generator('example-data/out', sampled_parameters)
     with open(dai_file, encoding='utf-8') as file:
         print(''.join(file))
-    
+
     # Define the objective that we want to optimize
     # 1. Define the target
     # 2. Define the loss function
@@ -51,21 +72,13 @@ def main():
     # a directory containing a log file
     print(objective_fn("example-data"))
 
+    problem = DaisyOptimizationProblem(runner, dai_file_generator, objective_fn, parameters)
+
+    # Test it
+    # Use the center of the valid ranges
+    parameter_values = [sum(p.valid_range) / 2 for p in parameters]
+    result = problem(parameter_values)
+    print(result)
+
 if __name__ == '__main__':
     main()
-#     runner = DaisyRunner(
-#         '/home/silas/Projects/daisy-model/daisy/build/portable/daisy',
-#         '/home/silas/Projects/daisy-model/daisy'
-#     )
-#     runner('/home/silas/Projects/daisy-model/daisypy-optim/sample.dai',
-#            '/home/silas/Projects/daisy-model/daisypy-optim/tmp',
-
-# if __name__ == '__main__':
-#     objective = DaisyObjective("field_nitrogen.dlf", "NO3-Denitrification", 0, sum_squared_distance)
-#     objective("/home/silas/Projects/daisy-model/daisypy-optim/tmp")
-           
-
-            
-# myDai = DaiFileGenerator('template.txt')
- 
-# myDai('test',lai_folder= 'blabla', file_name='my_file', output_folder='outie', Pixel_nr='2')           

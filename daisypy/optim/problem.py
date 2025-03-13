@@ -1,29 +1,41 @@
 import tempfile
 import numpy as np
 
-from daisypy.optim.objective import DaisyObjective
-from daisypy.optim.runner import DaisyRunner
-
 class DaisyOptimizationProblem:
-    def __init__(self, daisy_bin, daisy_home, dai_template, log_name, parameter_name, target_value, loss_fn, data_dir=None):
-        self.dai_file_generator = DaiFileGenerator(dai_template)
-        self.runner = DaisyRunner(daisy_bin, daisy_home)
-        self.objective = DaisyObjective(log_name, parameter_name, target_value, loss_fn)
-        self.data_dir = data_dir
-
-    def __call__(self, params):
+    def __init__(self, runner, dai_file_generator, objective_fn, parameters, data_dir=None):
         """
         Parameters
         ----------
-        params : sequence
-          Parameter values
-        
+        runner : DaisyRunner
+
+        dai_file_generator : DaiFileGenerator
+
+        objective_fn : DaisyObjective
+
+        parameters : list of DaisyParameter
+
+        data_dir : str
+          If not None then temporary directories will be created in this directory. Otherwise, they
+          will be created in a default location depending on platform.
         """
+        self.runner = runner
+        self.dai_file_generator = dai_file_generator
+        self.objective_fn = objective_fn
+        self.parameters = parameters
+        self.data_dir = data_dir
+
+    def __call__(self, parameter_values):
+        """
+        Parameters
+        ----------
+        parameter_values : sequence
+          Parameter values. Lenght MUST match length of `self.parameters`
+
+        """
+        named_parameters = { p.name : value for p, value in zip(self.parameters, parameter_values) }
         with tempfile.TemporaryDirectory(dir=self.data_dir) as output_directory:
-            dai_file = self.dai_file_generator(output_directory, params)
+            dai_file = self.dai_file_generator(output_directory, named_parameters)
             sim_result = self.runner(dai_file, output_directory)
             if sim_result.returncode != 0:
                 return np.inf
-            return objective(output_directory)
-        
-    
+            return self.objective_fn(output_directory)
