@@ -1,7 +1,9 @@
 """Example showing how to do parameter optimization in Daisy"""
+import argparse
 import pandas as pd
 from daisypy.optim import (
     DaiFileGenerator,
+    DaisyCMAOptimizer,
     DaisyLoss,
     DaisyObjective,
     DaisyOptimizationProblem,
@@ -9,55 +11,47 @@ from daisypy.optim import (
     DaisyRunner,
 )
 
-def main():
-    # Setup Daisy so we can run it
-    daisy_path = '/home/silas/Projects/daisy-model/daisy/build/portable/daisy' #<path-to-daisy-binary>
-    daisy_home = '/home/silas/Projects/daisy-model/daisy' #<path-to-daisy-home-directory>
-    runner = DaisyRunner(daisy_path, daisy_home)
+# We will use sum of squared distance as the loss
+# We use the multiprocessing module, which uses pickle, so we cannot use local functions
+def ssd(actual, target):
+    return ((actual - target)**2).sum()
 
-    # Test it
-    runner('', 'example-data/out')
-    with open('example-data/out/daisy.log', 'r', encoding='utf-8') as file:
-        print(''.join(file))
-
-    # Define the parameters that we want to optimize
+def example(daisy_path, daisy_home):
+    # How to optimize parameters for Daisy    
+    # 0. Define a runner that can run Daisy
     # 1. Define the template dai file
     # 2. Setup the dai file generator
     # 3. Define the parameters that we will optimize
+    # 4. Define the target
+    # 5. Wrap a loss function
+    # 7. Define the objective
+    # 8. Wrap everything as an optimization problem
+    # 9. Choose an optimizer
+    # 10. Run the optimizer
+    # 11. Get the results
 
-    # Define the template dai file
+    # Setup Daisy so we can run it
+    runner = DaisyRunner(daisy_path, daisy_home)
+    
+    # Names of parameters should match the names in the template file
     dai_template = 'example-data/template.dai'
-
-    # Setup the dai file generator
     dai_file_generator = DaiFileGenerator(dai_template)
-
-    # Define the parameters we want to optimize
     parameters = [
         DaisyParameter(
             name='K_aquitard',
             initial_value=0.2,
             valid_range=(0.1, 0.7)
-        )
+        ),
+        DaisyParameter(
+            name='Z_aquitard',
+            initial_value=200,
+            valid_range=(150, 250)
+        ),
     ]
-
-    # Test that it works
-    sampled_parameters = { p.name : p.initial_value for p in parameters }
-    dai_file = dai_file_generator('example-data/out', sampled_parameters)
-    with open(dai_file, encoding='utf-8') as file:
-        print(''.join(file))
-
-    # Define the objective that we want to optimize
-    # 1. Define the target
-    # 2. Define the loss function
-    # 3. Define the objective
 
     # The target must be a dataframe with a "time" column
     target = pd.read_csv('example-data/measured-field-nitrogen.csv')
     target["time"] = pd.to_datetime(target[['year', 'month', 'day', 'hour']])
-
-    # We will use sum of squared distance as the loss
-    def ssd(actual, target):
-        return ((actual - target)**2).sum()
 
     # We need to wrap the loss function with the DaisyLoss class
     loss_fn = DaisyLoss(ssd)
@@ -68,17 +62,28 @@ def main():
     log_name = "field_nitrogen.dlf"
     objective_fn = DaisyObjective(log_name, variable_name, target, loss_fn)
 
-    # We can now compute the value of the objective by calling the objective function with a path to
-    # a directory containing a log file
-    print(objective_fn("example-data"))
-
+    # Setup the optimization problem
     problem = DaisyOptimizationProblem(runner, dai_file_generator, objective_fn, parameters)
 
-    # Test it
-    # Use the center of the valid ranges
-    parameter_values = [sum(p.valid_range) / 2 for p in parameters]
-    result = problem(parameter_values)
-    print(result)
+    # Choose an optimizer
+    # We choose cma (because we dont have anything else atm...)
+    # For cma we should always explicitly set the maximum number of function evaluations AKA the
+    # maximum number of times we will run Daisy.
+    cma_options = {
+        "maxfevals" : 20
+    }
+    optimizer = DaisyCMAOptimizer(problem, cma_options)
+
+    # Optimize and print the result
+    result = optimizer.optimize()
+    for name, res in result.items():
+        print(name)
+        for k,v in res.items():
+            print('    ', k, ' : ', v, sep='')
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('daisy_path', type=str, help='Path to daisy binary')
+    parser.add_argument('daisy_home', type=str, help='Path to daisy home directory containing lib/ and sample/')
+    args = parser.parse_args()
+    example(args.daisy_path, args.daisy_home)

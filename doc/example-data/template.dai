@@ -12,7 +12,7 @@
 (defcolumn "optimize_me" "JB1_init_Cosby"
   (Groundwater aquitard
                (K_aquitard {K_aquitard} [mm/d])
-               (Z_aquitard 200 [cm])
+               (Z_aquitard {Z_aquitard} [cm])
                (pressure_table const -2.5 [m])
                )
   )
