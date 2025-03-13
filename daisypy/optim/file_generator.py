@@ -5,16 +5,16 @@ class DaiFileGenerator:
         """Template based generation of dai files using string replacement
 
         Parameters in the template are specifed in curly braces {}. For example,
-        
+
           ...
           (Groundwater aquitard
             (K_aquitard {K_aquitard_param} [mm/d])
             ...
           )
-        
+
         Which specifies a parameter called `K_aquitard_param`
-        
-        
+
+
         Parameters
         ----------
         template_file_path : str
@@ -26,7 +26,7 @@ class DaiFileGenerator:
         self.out_file = generated_file_name
         with open(template_file_path, 'r', encoding='utf-8') as file:
             self.template_text = file.read()
-            
+
     def __call__(self, output_directory, params):
         """Generate a dai file from the template using the given params and write it to a directory
 
@@ -47,5 +47,4 @@ class DaiFileGenerator:
         out_path = os.path.join(output_directory, self.out_file)
         with open(out_path, "w", encoding='utf-8') as f:
             f.write(dai_string)
-            
-        return out_path
+        return os.path.abspath(out_path)
