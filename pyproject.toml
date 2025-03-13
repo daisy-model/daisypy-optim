@@ -18,6 +18,7 @@ classifiers = [
 ]
 dependencies = [
     "numpy",
+    "pandas",
     "cma",
     "daisypy-io@git+https://github.com/daisy-model/daisypy-io"
  ]
