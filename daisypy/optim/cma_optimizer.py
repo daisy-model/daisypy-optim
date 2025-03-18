@@ -1,5 +1,6 @@
 import multiprocessing
 import warnings
+import numpy as np
 import cma
 from cma.fitness_transformations import ScaleCoordinates
 from cma.optimization_tools import EvalParallel2
@@ -57,20 +58,37 @@ class DaisyCMAOptimizer:
         self.optimizer = cma.CMAEvolutionStrategy(x0, 1/3, cma_options)
 
     def optimize(self):
-        # TODO: Rewrite to an eplicit loop and implement logging + checkpointing every n'th iteration
+        max_attempts_to_get_feasible = 3
+        # TODO: Implement logging + checkpointing every n'th iteration
         with EvalParallel2(self.objective, self.number_of_processes) as eval_all:
             while not self.optimizer.stop():
-                X = self.optimizer.ask()
-                self.optimizer.tell(X, eval_all(X))
+                # Try a couple of times if we dont get at least one non nan value
+                for i in range(max_attempts_to_get_feasible):
+                    X = self.optimizer.ask()
+                    fvals = eval_all(X)
+                    if np.any(np.isfinite(fvals)):
+                        break
+                    else:
+                        print(f'All are infeasible at attempt {i}')
+                        print(fvals)
+                print(fvals)
+                failed = np.isnan(fvals)
+                if np.any(failed):
+                    # cma sets nans to the median.
+                    # We want them to have a bigger negative influence
+                    fvals[failed] = 2*np.max(fvals[~failed])
+                self.optimizer.tell(X, fvals)
                 
         status = self.optimizer.result[7]
         print('Termination conditions')
         for k, v in status.items():
             print(k, v)
+        best = self.objective.transform(self.optimizer.result[0])
         means, stds = self.optimizer.result[5], self.optimizer.result[6]
         transformed = self.objective.transform(means)
         result = {
             p.name : {
+                'best' : best[i],
                 'mean_transformed' : transformed[i],
                 'initial_value' : p.initial_value,
                 'valid_range' : p.valid_range,
