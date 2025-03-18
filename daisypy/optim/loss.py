@@ -35,6 +35,8 @@ class DaisyLoss:
         -------
         loss as computed by self.loss_fn
         """
+        # Only compute loss for time point with measurements
+        target = target.dropna()
         target_time = target['time']
         if target_time.nunique() != len(target_time):
             raise ValueError('Timestamps in target must be unique')
