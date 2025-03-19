@@ -1,7 +1,7 @@
 import os
 
 class DaiFileGenerator:
-    def __init__(self, template_file_path, generated_file_name='runfile.dai'):
+    def __init__(self, template_text='', template_file_path=None, out_file='runfile.dai'):
         """Template based generation of dai files using string replacement
 
         Parameters in the template are specifed in curly braces {}. For example,
@@ -17,15 +17,21 @@ class DaiFileGenerator:
 
         Parameters
         ----------
+        template_text : str
+          Template text.
+        
         template_file_path : str
-          Path to template
+          Path to template. Overrides template_text if no None
 
-        generated_file_name : str
+        out_file : str
           Name to use for generated file
         """
-        self.out_file = generated_file_name
-        with open(template_file_path, 'r', encoding='utf-8') as file:
-            self.template_text = file.read()
+        self.out_file = out_file
+        if template_file_path is not None:
+            with open(template_file_path, 'r', encoding='utf-8') as file:
+                self.template_text = file.read()
+        else:
+            self.template_text = template_text
 
     def __call__(self, output_directory, params):
         """Generate a dai file from the template using the given params and write it to a directory
@@ -48,3 +54,14 @@ class DaiFileGenerator:
         with open(out_path, "w", encoding='utf-8') as f:
             f.write(dai_string)
         return os.path.abspath(out_path)
+
+    def serialize(self):
+        return {
+            'template_text' : self.template_text,
+            'out_file' : self.out_file
+        }
+
+    @staticmehod
+    def unzerialize(dict_repr):
+        return DaiFileGenerator(template_text=dict_repr['template_text'],
+                                out_file=dict_repr['out_file'])

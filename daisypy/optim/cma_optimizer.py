@@ -133,7 +133,7 @@ class DaisyCMAOptimizer:
         return result
     #return self.objective.transform(means), self.objective.transform(stds)
         
-    def checkpoint(self):
+    def checkpoint(self, path):
         # TODO: Save the state to disk to we can resume
         # We need to store the original problem along with the current means and stds
         raise NotImplementedError("Checkpointing is not yet implemted")

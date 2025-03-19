@@ -37,3 +37,14 @@ class DaisyRunner:
             dai_file
         ]
         return subprocess.run(args, env={"DAISYHOME" : self.daisy_home})
+
+
+    def serialize(self):
+        return {
+            'daisy_bin' : self.daisy_bin,
+            'daisy_home' : self.daisy_home
+        }
+
+    @staticmehod
+    def unzerialize(dict_repr):
+        return DaisyRunner(dict_repr['daisy_bin'], dict_repr['daisy_home'])
