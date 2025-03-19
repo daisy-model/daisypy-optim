@@ -34,6 +34,7 @@ class DaisyOptimizationProblem:
 
         """
         named_parameters = { p.name : value for p, value in zip(self.parameters, parameter_values) }
+        #output_directory = f'tmp-{parameter_values[0]:.4f}'
         with tempfile.TemporaryDirectory(dir=self.data_dir) as output_directory:
             dai_file = self.dai_file_generator(output_directory, named_parameters)
             sim_result = self.runner(dai_file, output_directory)

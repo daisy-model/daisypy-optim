@@ -6,7 +6,7 @@ from cma.fitness_transformations import ScaleCoordinates
 from cma.optimization_tools import EvalParallel2
 
 class DaisyCMAOptimizer:
-    def __init__(self, problem, cma_options=None, number_of_processes=None):
+    def __init__(self, problem, logger, cma_options=None, number_of_processes=None):
         """Daisy optimizer using the CMA-ES method from https://github.com/CMA-ES/pycma
         
         There are many options for cma. The most important for new users is `maxfevals`, which
@@ -28,6 +28,7 @@ class DaisyCMAOptimizer:
           Options to pass on to cma. See cma.CMAOptions for details
         """
         self.problem = problem
+        self.logger = logger
         if number_of_processes is None:
             self.number_of_processes = multiprocessing.cpu_count()
         else:
@@ -61,23 +62,55 @@ class DaisyCMAOptimizer:
         max_attempts_to_get_feasible = 3
         # TODO: Implement logging + checkpointing every n'th iteration
         with EvalParallel2(self.objective, self.number_of_processes) as eval_all:
+            iteration = 0
             while not self.optimizer.stop():
+                iteration += 1
                 # Try a couple of times if we dont get at least one non nan value
                 for i in range(max_attempts_to_get_feasible):
                     X = self.optimizer.ask()
-                    fvals = eval_all(X)
+                    fvals = np.array(eval_all(X))
                     if np.any(np.isfinite(fvals)):
                         break
                     else:
                         print(f'All are infeasible at attempt {i}')
                         print(fvals)
-                print(fvals)
+                self.logger.log_samples('Sample standardized parameters',
+                                        self.problem.parameters,
+                                        X,
+                                        iteration)
+                # Not sure this works
+                self.logger.log_samples('Sample actual parameters',
+                                        self.problem.parameters,
+                                        self.objective.transform(X),
+                                        iteration,
+                                        False)
                 failed = np.isnan(fvals)
+                self.logger.log_scalar('Median loss', np.median(fvals[~failed]), iteration)
+                self.logger.log_scalar('Failed runs', failed.sum(), iteration)
                 if np.any(failed):
                     # cma sets nans to the median.
                     # We want them to have a bigger negative influence
                     fvals[failed] = 2*np.max(fvals[~failed])
                 self.optimizer.tell(X, fvals)
+
+                # Log parameter distributions in the standardized space
+                means = self.optimizer.result[5]
+                stds = self.optimizer.result[6]
+                self.logger.log_parameter_distributions("Parameter distribution standardized",
+                                                        self.problem.parameters,
+                                                        means,
+                                                        stds,
+                                                        iteration)
+                # Log parameter distributions in the standardized space
+                means = self.objective.transform(means)
+                stds = np.array(self.objective.multiplier) * stds
+                self.logger.log_parameter_distributions("Parameter distribution actual",
+                                                        self.problem.parameters,
+                                                        means,
+                                                        stds,
+                                                        iteration,
+                                                        single_figure=False)
+                
                 
         status = self.optimizer.result[7]
         print('Termination conditions')
@@ -109,4 +142,3 @@ class DaisyCMAOptimizer:
     def from_checkpoint(path):
         # TODO: Read the state from disk
         raise NotImplementedError("Resuming from checkpoint is not yet implemented")
-    
