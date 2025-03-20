@@ -22,12 +22,6 @@ dependencies = [
     "daisypy-io@git+https://github.com/daisy-model/daisypy-io"
 ]
 
-optional-dependencies = {
-   "cma" = ["cma"],
-   "skopt" = ["scikit-optimize", "joblib"],
-   "tensorboard-logging" = ["tensorboard", "torch"]
-}
-
 dynamic = ["version"]   
 readme = "README.md"
 
@@ -37,6 +31,10 @@ readme = "README.md"
 Homepage = "https://daisy.ku.dk/"
 
 [project.optional-dependencies]
+cma = ["cma"]
+skopt = ["scikit-optimize", "joblib"]
+tensorboard = ["tensorboard", "torch", "scipy"]
+
 
 [tool.setuptools.packages.find]
 where = ["."]
