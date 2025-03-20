@@ -19,9 +19,14 @@ classifiers = [
 dependencies = [
     "numpy",
     "pandas",
-    "cma",
     "daisypy-io@git+https://github.com/daisy-model/daisypy-io"
- ]
+]
+
+optional-dependencies = {
+   "cma" = ["cma"],
+   "skopt" = ["scikit-optimize", "joblib"],
+   "tensorboard-logging" = ["tensorboard", "torch"]
+}
 
 dynamic = ["version"]   
 readme = "README.md"
