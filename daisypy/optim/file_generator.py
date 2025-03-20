@@ -19,7 +19,7 @@ class DaiFileGenerator:
         ----------
         template_text : str
           Template text.
-        
+
         template_file_path : str
           Path to template. Overrides template_text if no None
 
@@ -61,7 +61,7 @@ class DaiFileGenerator:
             'out_file' : self.out_file
         }
 
-    @staticmehod
+    @staticmethod
     def unzerialize(dict_repr):
         return DaiFileGenerator(template_text=dict_repr['template_text'],
                                 out_file=dict_repr['out_file'])

@@ -45,6 +45,6 @@ class DaisyRunner:
             'daisy_home' : self.daisy_home
         }
 
-    @staticmehod
+    @staticmethod
     def unzerialize(dict_repr):
         return DaisyRunner(dict_repr['daisy_bin'], dict_repr['daisy_home'])
