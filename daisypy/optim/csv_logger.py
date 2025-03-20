@@ -63,7 +63,7 @@ class CsvLogger():
         write(rows, self.logs['distributions'])
 
     def close(self):
-        for log in self.logs:
+        for log in self.logs.values():
             log.close()
 
     def __enter__(self):
