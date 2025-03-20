@@ -61,6 +61,7 @@ class DaisyCMAOptimizer:
     def optimize(self):
         max_attempts_to_get_feasible = 3
         # TODO: Implement logging + checkpointing every n'th iteration
+        total_f_evals = 0
         with EvalParallel2(self.objective, self.number_of_processes) as eval_all:
             iteration = 0
             while not self.optimizer.stop():
@@ -69,6 +70,7 @@ class DaisyCMAOptimizer:
                 for i in range(max_attempts_to_get_feasible):
                     X = self.optimizer.ask()
                     fvals = np.array(eval_all(X))
+                    total_f_evals += len(fvals)
                     if np.any(np.isfinite(fvals)):
                         break
                     else:
@@ -78,13 +80,14 @@ class DaisyCMAOptimizer:
                                         self.problem.parameters,
                                         X,
                                         iteration)
-                # Not sure this works
-                self.logger.log_samples('Sample actual parameters',
-                                        self.problem.parameters,
-                                        self.objective.transform(X),
-                                        iteration,
-                                        False)
+                # This does not work because (n,) arrays are not promoted to (n,1) arrays
+                # self.logger.log_samples('Sample actual parameters',
+                #                         self.problem.parameters,
+                #                         self.objective.transform(X),
+                #                         iteration,
+                #                         False)
                 failed = np.isnan(fvals)
+                self.logger.log_scalar('Total function evaluations', total_f_evals, iteration)
                 self.logger.log_scalar('Median loss', np.median(fvals[~failed]), iteration)
                 self.logger.log_scalar('Failed runs', failed.sum(), iteration)
                 if np.any(failed):

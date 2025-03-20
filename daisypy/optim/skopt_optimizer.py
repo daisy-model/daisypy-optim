@@ -36,8 +36,8 @@ class DaisySkoptOptimizer:
     def optimize(self):
         max_attempts_to_get_feasible = 3
         iteration = 0
-        num_f_evals = 0
-        while num_f_evals < self.max_f_evals:
+        total_f_evals = 0
+        while total_f_evals < self.max_f_evals:
             iteration += 1
             # Try a couple of times if we dont get at least one non nan value
             for i in range(max_attempts_to_get_feasible):
@@ -45,7 +45,7 @@ class DaisySkoptOptimizer:
                 fvals = np.array(Parallel(n_jobs=self.number_of_processes)(
                     delayed(self.objective)(x) for x in X
                 ))
-                num_f_evals += self.number_of_processes
+                total_f_evals += self.number_of_processes
                 if np.any(np.isfinite(fvals)):
                     break
                 else:
@@ -57,6 +57,7 @@ class DaisySkoptOptimizer:
                                     iteration,
                                     False)
             failed = np.isnan(fvals)
+            self.logger.log_scalar('Total function evaluations', total_f_evals, iteration)
             self.logger.log_scalar('Median loss', np.median(fvals[~failed]), iteration)
             self.logger.log_scalar('Failed runs', failed.sum(), iteration)
             if np.any(failed):
@@ -77,7 +78,7 @@ class DaisySkoptOptimizer:
     def checkpoint(self, path):
         # TODO: Save the state to disk to we can resume
         # We need to store the original problem along with the current means and stds
-        raise NotImplementedError("Checkpointing is not yet implemted")
+        raise NotImplementedError("Checkpointing is not yet implemented")
 
     @staticmethod
     def from_checkpoint(path):
