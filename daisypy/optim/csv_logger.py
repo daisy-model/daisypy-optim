@@ -38,7 +38,7 @@ class CsvLogger():
         else:
             self.log_every_nth = log_every_nth
 
-    def log_samples(self, tag, parameters, samples, step, **kwargs):
+    def log_samples(self, tag, parameters, samples, step, *args, **kwargs):
         if step % self.log_every_nth['samples'] != 0:
             return
         samples = np.array(samples)
