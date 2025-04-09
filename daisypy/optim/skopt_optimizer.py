@@ -65,11 +65,11 @@ class DaisySkoptOptimizer:
             self.optimizer.tell(X, list(fvals))
 
                 
-        optim_result = self.optimizer.get_result
+        optim_result = self.optimizer.get_result()
         best = optim_result.x
         result = {
             p.name : {
-                'best' : best[i],
+                'best' : float(best[i]),
                 'valid_range' : p.valid_range,
             } for i, p in enumerate(self.problem.parameters)
         }
