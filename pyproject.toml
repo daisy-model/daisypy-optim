@@ -26,6 +26,7 @@ dynamic = ["version"]
 readme = "README.md"
 
 [project.scripts]
+daisypy_optim_create = "daisypy.optim.create:main"
 
 [project.urls]
 Homepage = "https://daisy.ku.dk/"
