@@ -1,0 +1,20 @@
+; This is a blank dai template for daisypy-optim
+; You should define a daisy program as usual
+; Parameters that are to be optimized should be replaced with {parameter-name},
+; where parameter-name is an identifier matching you parameter specificiation.
+;
+; For example, if you have a parameter specification like this
+;   {
+;      "type" : "continuous",
+;      "name" : "MyParameter1",
+;      "initial_value": 1,
+;      "valid": [0.1, 2]
+;   }
+; 
+; Then you should have a mathing identifier in this file. For example,
+;
+; (defcolumn "optimize_me" "JB1_init_Cosby"
+;   (Groundwater aquitard
+;     (K_aquitard {MyParameter1} [mm/d])
+;   )
+; )
