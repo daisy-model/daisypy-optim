@@ -36,6 +36,7 @@ def get_dummy_config():
 
 
 def get_config():
+    config = {}
     config["name"] = input_with_default("Name", "my-optimization", lambda x: not os.path.exists(x))
 
     daisy_candidates = []
