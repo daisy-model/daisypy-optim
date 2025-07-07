@@ -1,3 +1,4 @@
+import argparse
 import os
 import json
 import csv
@@ -13,13 +14,20 @@ from daisypy.optim import (
 )
 
 def main():
-    config = get_config()
+    parser = argparse.ArgumentParser(description="Setup input files and script for running a Daisy optimization")
+    parser.add_argument("--example", action="store_true")
+    args = parser.parse_args()
+    if args.example:
+        config = get_example_config()
+    else:
+        config = get_config()
     print(config)
     create_optim(config)
 
 def get_dummy_config():
+    
     return {
-        'name': 'my-optimization',
+        'name': 'example',
         'daisy_home': 'C:/Program Files/daisy 7.1.0',
         'daisy_path': 'C:/Program Files/daisy 7.1.0/bin/daisy.exe',
         'outdir': 'out',
@@ -27,7 +35,7 @@ def get_dummy_config():
         'logger': 'csv',
         'dai_template': 'input/template.dai',
         'parameter_file': 'input/parameters.json',
-        'num_continuous_parameters': 3,
+        'num_continuous_parameters': 0,
         'variable_name': 'table_low',
         'log_name': 'groundwater.csv',
         'target_file': 'input/target.csv',
@@ -36,6 +44,7 @@ def get_dummy_config():
 
 
 def get_config():
+    config = {}
     config["name"] = input_with_default("Name", "my-optimization", lambda x: not os.path.exists(x))
 
     daisy_candidates = []
@@ -90,13 +99,16 @@ def create_optim(config):
         except shutil.SameFileError:
             pass # This is not a problem
     else:
-        params = [{
-            "type" : "continuous", 
-            "name" : f"p{i}",
-            "initial_value" : 0,
-            "valid_range" : (0, 1)
-            } for i in range(config["num_continuous_parameters"])
-        ]
+        if config["num_continuous_parameters"] == 0:
+            params = get_example_params()
+        else:
+            params = [{
+                "type" : "continuous", 
+                "name" : f"p{i}",
+                "initial_value" : 0,
+                "valid_range" : (0, 1)
+                } for i in range(config["num_continuous_parameters"])
+            ]
         with open(param_path, 'w', encoding='utf-8') as outfile:
             json.dump(params, outfile, indent="  ")
     config["parameter_file"] = param_path
@@ -186,6 +198,22 @@ def is_int(s):
 
 def sanitize_path(path):
     return path.replace("\\", "/")
+
+def get_example_params():
+    return [
+        {
+            "type" : "continuous",
+            "name" : "K_aquitard",
+            "initial_value": 1.0,
+            "valid_range" : [0.1, 2]
+        },
+        {
+            "type" : "continuous",
+            "name" : "Z_aquitard",
+            "inital_value" : -100,
+            "valid_range" : [-200, -50]
+        }
+    ]
 
 if __name__ == '__main__':
     main()

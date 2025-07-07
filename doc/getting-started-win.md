@@ -8,7 +8,7 @@
 2. Install the python package manager `uv` from [https://docs.astral.sh/uv/getting-started/installation/](https://docs.astral.sh/uv/getting-started/installation/)
     - We recommend you use the standalone installer
 
-## Create an optimization project
+## Create an example optimization project
 1. Open a PowerShell and navigate to a directory where you want to store your project
 2. Run `uv init daisypy-optim-example`
     - This will create a new project with some scaffolding and initialize a git repository for version control.
@@ -16,4 +16,16 @@
 4. Verify that things work with `uv run main.py`
     - This should display "Hello from daisypy-optim-example!"
 5. Add `daisypy-optim` as a dependency with `uv add "daisypy-optim @ git+https://github.com/daisy-model/daisypy-optim"`
-6. Run `uvx daispy_optim_create` from the project directory and follow the pormpts
+6. Run `uvx --from git+https://github.com/daisy-model/daisypy-optim daisypy_optim_create --example` from the project directory.
+
+TODO: Make it runable by including a target file
+
+## Create your own optimization project
+Replace `<project-name>` with the name of your project.
+```{bash}
+uv init <project-name>
+cd <project-name>
+uv add "daisypy-optim @ git+https://github.com/daisy-model/daisypy-optim"
+uvx --from git+https://github.com/daisy-model/daisypy-optim daisypy_optim_create
+```
+The last step will prompt for a bunch of input. Fill this out as best you can. Existing files will be copied to the project directory and can be edited as necesary afterwards.
