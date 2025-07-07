@@ -24,8 +24,7 @@ def main():
     print(config)
     create_optim(config)
 
-def get_dummy_config():
-    
+def get_example_config():
     return {
         'name': 'example',
         'daisy_home': 'C:/Program Files/daisy 7.1.0',
@@ -36,8 +35,8 @@ def get_dummy_config():
         'dai_template': 'input/template.dai',
         'parameter_file': 'input/parameters.json',
         'num_continuous_parameters': 0,
-        'variable_name': 'table_low',
-        'log_name': 'groundwater.csv',
+        'variable_name': 'N2O-Nitrification',
+        'log_name': 'field_nitrogen.dlf',
         'target_file': 'input/target.csv',
         'loss_fn': 'mse',
     }
@@ -86,10 +85,13 @@ def get_config():
     return config
 
 def create_optim(config):
-    basedir = config["name"]
+    basedir = os.path.abspath(config["name"])
     os.makedirs(basedir, exist_ok=False)
     # This is two calls because we want to fail if the basedir already exists
     os.makedirs(os.path.join(basedir, "input"))
+
+    if not os.path.isabs(config["outdir"]):
+        config["outdir"] = os.path.join(basedir, config["outdir"])
 
     # Copy or create parameter file
     param_path = os.path.join(basedir, "input", "parameters.json")
@@ -123,7 +125,8 @@ def create_optim(config):
     else:
         with open(target_path, 'w', encoding='utf-8') as outfile:
             writer = csv.writer(outfile)
-            writer.writerow(["time", config["variable_name"]])
+            for row in get_example_target():
+                writer.writerow(row)
     config["target_file"] = target_path
 
     # Copy or create template file
@@ -210,9 +213,15 @@ def get_example_params():
         {
             "type" : "continuous",
             "name" : "Z_aquitard",
-            "inital_value" : -100,
-            "valid_range" : [-200, -50]
+            "initial_value" : 150,
+            "valid_range" : [50, 250]
         }
+    ]
+
+def get_example_target():
+    return [
+        ["time", "N2O-Nitrification"],
+        ["2000-12-13", "3.0"]
     ]
 
 if __name__ == '__main__':

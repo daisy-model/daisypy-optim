@@ -13,7 +13,7 @@ with warnings.catch_warnings():
     # We dont want the Pyarrow depedency warning
     warnings.simplefilter("ignore", category=DeprecationWarning)
     import pandas as pd
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 from daisypy.io.dlf import read_dlf
 from daisypy.optim import (
     DaiFileGenerator,
@@ -35,8 +35,8 @@ def main():
     os.makedirs(outdir, exist_ok=True)
 
     loss_fn = available_loss_fns["{loss_fn}"]
-    optimizer = available_optimizers["{optimizer}"]
-    logger = available_loggers["{logger}"]
+    optimizer_name = "{optimizer}"
+    logger_name = "{logger}"
     dai_template = "{dai_template}"
     parameters = read_parameters("{parameter_file}")
     target = pd.read_csv("{target_file}")
@@ -46,7 +46,7 @@ def main():
     
     
     problem = setup(daisy_path, daisy_home, outdir, dai_template, parameters, variable_name, log_name, target, loss_fn, run_id)
-    result = optimize(problem, optimizer, logger, outdir, run_id)
+    result = optimize(problem, optimizer_name, logger_name, outdir, run_id)
     eval_dir = evaluate(result, problem, outdir, run_id)
     analyze(eval_dir, problem, outdir, run_id)
 

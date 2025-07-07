@@ -28,8 +28,9 @@ class DaiFileGenerator:
         """
         self.out_file = out_file
         if template_file_path is not None:
-            with open(template_file_path, 'r', encoding='utf-8') as file:
-                self.template_text = file.read()
+            with open(template_file_path, 'r', encoding='utf-8') as infile:
+                # Skip dai line comments
+                self.template_text = ''.join((line for line in infile if not line.lstrip().startswith(';')))
         else:
             self.template_text = template_text
 
