@@ -69,6 +69,8 @@ def get_config():
     return config
 
 def create_optim(config):
+    config["daisy_home"] = sanitize_path(os.path.abspath(config["daisy_home"]))
+    config["daisy_path"] = sanitize_path(os.path.abspath(config["daisy_path"]))
     basedir = os.path.abspath(config["name"])
     os.makedirs(basedir, exist_ok=False)
     # This is two calls because we want to fail if the basedir already exists
