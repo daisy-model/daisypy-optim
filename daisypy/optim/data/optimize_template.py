@@ -13,7 +13,7 @@ with warnings.catch_warnings():
     # We dont want the Pyarrow depedency warning
     warnings.simplefilter("ignore", category=DeprecationWarning)
     import pandas as pd
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from daisypy.io.dlf import read_dlf
 from daisypy.optim import (
     DaiFileGenerator,
