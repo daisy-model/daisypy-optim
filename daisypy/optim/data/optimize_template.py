@@ -110,10 +110,10 @@ def optimize(problem, optimizer_name, logger_name, base_outdir, run_id):
             "num_samples" : 20, # Number of samples from each continuous parameter
         }},
         "cma" : {{
-            "maxfevals" : 1000, # Maximum number of function evaluations
+            "maxfevals" : 100, # Maximum number of function evaluations
         }},
         "skopt" : {{
-            "maxfevals" : 200,
+            "maxfevals" : 50,
         }} 
     }}
 
