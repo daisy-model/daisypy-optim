@@ -3,6 +3,8 @@ import numpy as np
 
 def write(rows, log):
     log.writelines((row + '\n' for row in rows))
+    log.flush()
+    os.fsync(log.fileno())
 
 class CsvLogger():
     """A simple csv logger. Use as context manager OR call close method explicityle OR ensure the
