@@ -3,6 +3,7 @@ import os
 import json
 import csv
 import importlib.resources
+import subprocess
 import shutil
 
 import daisypy.optim as daisypy_optim
