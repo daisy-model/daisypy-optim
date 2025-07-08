@@ -160,7 +160,7 @@ def finalize():
     cmd = [
         "uv", 
         "add",
-        '"daisypy-optim @ git+https://github.com/daisy-model/daisypy-optim"',
+        "daisypy-optim@git+https://github.com/daisy-model/daisypy-optim",
         "pandas",
         "matplotlib"
     ]
