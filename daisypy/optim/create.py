@@ -60,7 +60,6 @@ def get_config():
             config["daisy_home"] = input_with_choices("Path to daisy directory", daisy_candidates, os.path.isdir) 
     
     config["daisy_path"] = input_with_default("Path to daisy.exe", os.path.join(config["daisy_home"], "bin", "daisy.exe"), os.path.exists)
-    )
     config["outdir"] = input_with_default("Output directory", "out")
 
     config["optimizer"] = input_with_choices("Optimization method", list(available_optimizers.keys()), None, False)
