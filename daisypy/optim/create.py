@@ -157,8 +157,9 @@ def create_optim(config):
 
 def finalize():
     # Try to add dependencies with uv
-    cmd = ["uv", "add"]
     cmd = [
+        "uv", 
+        "add",
         '"daisypy-optim @ git+https://github.com/daisy-model/daisypy-optim"',
         "pandas",
         "matplotlib"
@@ -170,7 +171,7 @@ def finalize():
     if "tensorboard" in available_loggers:
         cmd += ["scipy", "tensorboard", "torch"]
     try:
-        result = subprocess.run(cmd, shell=True, check=True)
+        result = subprocess.run(cmd, check=True)
     except Exception as e:
         print("Error while adding dependencies:", e)
         print("Please verify/add manually")
