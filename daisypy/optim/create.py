@@ -157,18 +157,18 @@ def create_optim(config):
 
 def finalize():
     # Try to add dependencies with uv
-    depends = [
-        "daisypy-optim @ git+https://github.com/daisy-model/daisypy-optim",
+    cmd = ["uv", "add"]
+    cmd = [
+        '"daisypy-optim @ git+https://github.com/daisy-model/daisypy-optim"',
         "pandas",
         "matplotlib"
     ]
     if 'cma' in available_optimizers:
-        depends.append("cma")
+        cmd.append("cma")
     if 'skopt' in available_optimizers:
-        depends += ["scikit-optimize", "joblib"]
+        cmd += ["scikit-optimize", "joblib"]
     if "tensorboard" in available_loggers:
-        depends += ["scipy", "tensorboard", "torch"]
-    cmd = ["uv", "add", " ".join(depends)]
+        cmd += ["scipy", "tensorboard", "torch"]
     result = subprocess.run(cmd)
     if result.returncode != 0:
         print("Error while adding dependencies. Please verify/add manually")
