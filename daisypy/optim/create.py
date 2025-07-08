@@ -165,7 +165,7 @@ def finalize():
         depends.append("cma")
     if 'skopt' in available_optimizers:
         depends += ["scikit-optimize", "joblib"]
-    if "tensorboard" in available_logger:
+    if "tensorboard" in available_loggers:
         depends += ["scipy", "tensorboard", "torch"]
     cmd = ["uv", "add", " ".join(depends)]
     result = subprocess.run(cmd)
