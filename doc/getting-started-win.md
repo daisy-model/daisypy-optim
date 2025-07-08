@@ -68,7 +68,24 @@ uv init <project-name>
 cd <project-name>
 daisypy_optim_create
 ```
-The last step will prompt for a bunch of input. Fill this out as best you can. Existing files will be copied to the project directory and can be edited as necesary afterwards. Once you have edited them you can run the optimization with
+The last step will prompt for a bunch of input. Fill this out as best you can. Existing files will be copied to the project directory and can be edited as necesary afterwards.
+
+You might want to change the optimization parameters in `optimize.py`, specifically the following that controls the maximum number of Daisy executions.
+```{python}
+    # Define some default parameters for each of the optimizers
+    optimizer_options = {
+        "sequential" : {
+            "num_samples" : 20, # Number of samples from each continuous parameter
+        },
+        "cma" : {
+            "maxfevals" : 100, # Maximum number of function evaluations
+        },
+        "skopt" : {
+            "maxfevals" : 50,
+        } 
+    }
+```
+Once you have edited them you can run the optimization with
 ```
 uv run <name>/optimize.py
 ```
