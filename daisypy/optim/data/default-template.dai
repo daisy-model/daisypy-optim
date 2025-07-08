@@ -1,4 +1,4 @@
-; This is a blank dai template for daisypy-optim
+; This is an example dai template for daisypy-optim
 ; You should define a daisy program as usual
 ; Parameters that are to be optimized should be replaced with {parameter-name},
 ; where parameter-name is an identifier matching you parameter specificiation.
@@ -18,3 +18,41 @@
 ;     (K_aquitard {MyParameter1} [mm/d])
 ;   )
 ; )
+(input file "fertilizer.dai")
+(input file "tillage.dai")
+(input file "crop.dai")
+(input file "dk-management.dai")
+(input file "irrigation.dai")
+(input file "init-soil.dai")
+(input file "log-std.dai")
+
+(defcolumn "optimize_me" "JB1_init_Cosby"
+    (Groundwater aquitard
+        (K_aquitard {K_aquitard} [mm/d])
+        (Z_aquitard {Z_aquitard} [cm])
+        (pressure_table const -2.5 [m])
+    )
+)
+
+;; Use them.
+(defprogram Base Daisy
+  "Base program for all tests."
+  (time 1999 12 31)
+  (stop 2000 12 31)
+  (activate_output (after 1999 12 31))
+  (weather default "dk-taastrup.dwf")
+  (column optimize_me)
+  (manager activity
+  ;; A spring barley with mineral fertilizer and unlimited irrigation.
+  (while "SBarley w. MF"
+    (repeat irrigate_30_tensiometer_overhead))
+  ;; A winter barley with organic fertilizer and no irrigation.
+  "WBarley w. OF"
+  ;; A winter rape with mineral fertilizer and some irrigation.
+  (while "WRape w. MF"
+    (activity irrigate_30_content_overhead irrigate_30_content_overhead))
+  ;; A spring barley and pea mixture.
+  "SBarley & Pea")
+  (output ("Field nitrogen" (when finished) (print_initial false))))
+
+(run Base)
