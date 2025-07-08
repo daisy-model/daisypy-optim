@@ -23,6 +23,7 @@ def main():
         config = get_config()
     print(config)
     create_optim(config)
+    finalize()
 
 def get_example_config():
     return {
@@ -154,6 +155,24 @@ def create_optim(config):
     with open(optimize_path, "w", encoding='utf-8') as outfile:
          outfile.write(optimize_program)
 
+def finalize():
+    # Try to add dependencies with uv
+    depends = [
+        "daisypy-optim @ git+https://github.com/daisy-model/daisypy-optim",
+        "pandas",
+        "matplotlib"
+    ]
+    if 'cma' in available_optimizers:
+        depends.append("cma")
+    if 'skopt' in available_optimizers:
+        depends += ["scikit-optimize", "joblib"]
+    if "tensorboard" in available_logger:
+        depends += ["scipy", "tensorboard", "torch"]
+    cmd = ["uv", "add", " ".join(depends)]
+    result = subprocess.run(cmd)
+    if result.returncode != 0:
+        print("Error while adding dependencies. Please verify/add manually")
+        print(*cmd)
 
 def input_with_default(prompt, default, check=None):
     while True:
