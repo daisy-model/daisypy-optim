@@ -169,9 +169,11 @@ def finalize():
         cmd += ["scikit-optimize", "joblib"]
     if "tensorboard" in available_loggers:
         cmd += ["scipy", "tensorboard", "torch"]
-    result = subprocess.run(cmd)
-    if result.returncode != 0:
-        print("Error while adding dependencies. Please verify/add manually")
+    try:
+        result = subprocess.run(cmd, shell=True, check=True)
+    except Exception as e:
+        print("Error while adding dependencies:", e)
+        print("Please verify/add manually")
         print(*cmd)
 
 def input_with_default(prompt, default, check=None):
