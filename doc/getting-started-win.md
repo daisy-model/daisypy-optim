@@ -19,7 +19,7 @@
 ## Install the tool `daisypy_optim_create`
 The behaviour of `daisypy_optim_create` depends on the availability of a number of other packages. We recommend you include the CMA-ES method. To do so, open PowerShell and run 
 ```
-uv tool install --from git+https://github.com/daisy-model/daisypy-optim@getting-started daisypy_optim --with cma
+uv tool install --from git+https://github.com/daisy-model/daisypy-optim daisypy_optim --with cma
 ```
 
 ### Detailed installation instructions
@@ -37,19 +37,13 @@ uv tool  install --from git+https://github.com/daisy-model/daisypy-optim daisypy
 2. Initialize the project with `uv init daisypy-optim-example`
     - This will create some scaffolding and initialize a git repository for version control.
 3. Navigate to the newly created project with `cd daisypy-optim-example`
-4. Add `daisypy-optim` as a dependency with `uv add "daisypy-optim @ git+https://github.com/daisy-model/daisypy-optim"`
-5. Add optional dependencies
-   - CMA-ES : `uv add cma`
-   - tensorboard : `uv add scipy tensorboard torch`
-   - scikit-optimize : `uv add scikit-optimize joblib`
-6. Generate files for the optimization with `daisypy_optim_create --example`
-7. Run the optimization with `uvx run example/optimize.py`
+4. Generate files for the optimization with `daisypy_optim_create --example`
+   - This should add dependencies to the project as needed, if not you will have to it manually using the command that is printed
+5. Run the optimization with `uvx run example/optimize.py`
 
 ```{PowerShell}
 uv init daisypy-optim-example
 cd daisypy-optim-example
-uv add "daisypy-optim @ git+https://github.com/daisy-model/daisypy-optim"
-uv add cma
 daisypy_optim_create --example
 uv run example/optimize.py
 ```
@@ -59,8 +53,6 @@ Replace `<project-name>` with the name of your project.
 ```{bash}
 uv init <project-name>
 cd <project-name>
-uv add "daisypy-optim @ git+https://github.com/daisy-model/daisypy-optim"
-uv add cma
 daisypy_optim_create
 ```
 The last step will prompt for a bunch of input. Fill this out as best you can. Existing files will be copied to the project directory and can be edited as necesary afterwards. Once you have edited them you can run the optimization with
