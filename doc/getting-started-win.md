@@ -39,7 +39,7 @@ uv tool  install --from git+https://github.com/daisy-model/daisypy-optim daisypy
 3. Navigate to the newly created project with `cd daisypy-optim-example`
 4. Generate files for the optimization with `daisypy_optim_create --example`
    - This should add dependencies to the project as needed, if not you will have to it manually using the command that is printed
-5. Run the optimization with `uvx run example/optimize.py`
+5. Run the optimization with `uv run example/optimize.py`
 
 ```{PowerShell}
 uv init daisypy-optim-example
@@ -48,15 +48,28 @@ daisypy_optim_create --example
 uv run example/optimize.py
 ```
 
+While running this should produce log files in `example/out/logs/0-sequential`. The only one of interest is `scalars.csv` that logs things like the loss, number of parameters sets and total function evaluations.
+
+Once the optimization is done it should produce a couple of plots summarizing the optimization. These can also be found in `example/out/0/analyze`.
+
+The numbering in `example/out` and `example/out/logs` is just consecutive integers starting from 0. Every time you rerun the optimization the number is incremented and a new directory created to store the output.
+
+### Switch to CMA
+1. Open `example/optimize.py` in your favorite editor
+2. Replace `optimizer_name = "sequential"` with `optimizer_name = "cma"`
+3. Rerun the optimization with `uv run example/optimize.py`
+
+This will use CMA-ES to optimize and produce out in `example/out/1` and `example/out/log/1-cma`, assuming this is the second time you run the the optimization.
+
 ## Create a skeleton for your own optimization project
 Replace `<project-name>` with the name of your project.
-```{bash}
+```{PowerShell}
 uv init <project-name>
 cd <project-name>
 daisypy_optim_create
 ```
 The last step will prompt for a bunch of input. Fill this out as best you can. Existing files will be copied to the project directory and can be edited as necesary afterwards. Once you have edited them you can run the optimization with
 ```
-uv run <name>
+uv run <name>/optimize.py
 ```
 Where `<name>` is the name you provided when running daisypy_optim_create
