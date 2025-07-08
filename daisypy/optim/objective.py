@@ -22,6 +22,7 @@ class DaisyObjective:
         self.log_name = log_name
         self.variable_name = variable_name
         self.target = target[["time", variable_name]].rename(columns={variable_name : 'value'})
+        self.target["time"] = pd.to_datetime(self.target["time"])
         self.loss_fn = loss_fn
 
     def __call__(self, daisy_output_directory):

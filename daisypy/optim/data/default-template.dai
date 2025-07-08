@@ -53,6 +53,6 @@
     (activity irrigate_30_content_overhead irrigate_30_content_overhead))
   ;; A spring barley and pea mixture.
   "SBarley & Pea")
-  (output ("Field nitrogen" (when finished) (print_initial false))))
+  (output ("Field nitrogen" (when monthly) (print_initial false))))
 
 (run Base)
