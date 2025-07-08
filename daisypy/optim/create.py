@@ -22,15 +22,12 @@ def main():
         config = get_example_config()
     else:
         config = get_config()
-    print(config)
     create_optim(config)
     finalize()
 
 def get_example_config():
-    return {
+    config = {
         'name': 'example',
-        'daisy_home': 'C:/Program Files/daisy 7.1.0',
-        'daisy_path': 'C:/Program Files/daisy 7.1.0/bin/daisy.exe',
         'outdir': 'out',
         'optimizer': 'sequential',
         'logger': 'csv',
@@ -42,24 +39,14 @@ def get_example_config():
         'target_file': 'input/target.csv',
         'loss_fn': 'mse',
     }
-
+    config["daisy_home"] = get_daisy_home()
+    config["daisy_path"] = input_with_default("Path to daisy.exe", os.path.join(config["daisy_home"], "bin", "daisy.exe"), os.path.exists)
+    return config
 
 def get_config():
     config = {}
     config["name"] = input_with_default("Name", "my-optimization", lambda x: not os.path.exists(x))
-
-    daisy_candidates = []
-    for entry in os.scandir("C:/Program Files"):
-        if entry.name.startswith("daisy"):
-            daisy_candidates.append(entry.path)
-    match len(daisy_candidates):
-        case 0:
-            config["daisy_home"] = input_no_default("Path to daisy directory", os.path.isdir) 
-        case 1:
-            config["daisy_home"] = input_with_default("Path to daisy directory", daisy_candidates[0], os.path.isdir) 
-        case _:
-            config["daisy_home"] = input_with_choices("Path to daisy directory", daisy_candidates, os.path.isdir) 
-    
+    config["daisy_home"] = get_daisy_home()
     config["daisy_path"] = input_with_default("Path to daisy.exe", os.path.join(config["daisy_home"], "bin", "daisy.exe"), os.path.exists)
     config["outdir"] = input_with_default("Output directory", "out")
 
@@ -182,6 +169,19 @@ def finalize():
         print("Error while adding dependencies:", e)
         print("Please verify/add manually")
         print(*cmd)
+
+def get_daisy_home():
+    daisy_candidates = []
+    for entry in os.scandir("C:/Program Files"):
+        if entry.name.startswith("daisy"):
+            daisy_candidates.append(entry.path)
+    match len(daisy_candidates):
+        case 0:
+            return input_no_default("Path to daisy directory", os.path.isdir)
+        case 1:
+            return input_with_default("Path to daisy directory", daisy_candidates[0], os.path.isdir) 
+        case _:
+            return input_with_choices("Path to daisy directory", daisy_candidates, os.path.isdir) 
 
 def input_with_default(prompt, default, check=None):
     while True:
