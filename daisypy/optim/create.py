@@ -57,28 +57,24 @@ def get_config():
             config["daisy_home"] = input_with_default("Path to daisy directory", daisy_candidates[0], os.path.isdir) 
         case _:
             config["daisy_home"] = input_with_choices("Path to daisy directory", daisy_candidates, os.path.isdir) 
-    config["daisy_home"] = sanitize_path(config["daisy_home"])
     
-    config["daisy_path"] = sanitize_path(
-        input_with_default("Path to daisy.exe", 
-        os.path.join(config["daisy_home"], "bin", "daisy.exe"),
-        os.path.exists)
+    config["daisy_path"] = input_with_default("Path to daisy.exe", os.path.join(config["daisy_home"], "bin", "daisy.exe"), os.path.exists)
     )
-    config["outdir"] = sanitize_path(input_with_default("Output directory", "out"))
+    config["outdir"] = input_with_default("Output directory", "out")
 
     config["optimizer"] = input_with_choices("Optimization method", list(available_optimizers.keys()), None, False)
     ##  TODO: Get optimizer specific parameters
 
     config["logger"] = input_with_choices("Logger", list(available_loggers.keys()), None, False)
-    config["dai_template"] = sanitize_path(input_with_default("Dai template file", "input/template.dai"))
-    config["parameter_file"] = sanitize_path(input_with_default("Parameter file", "input/parameters.json"))
+    config["dai_template"] = input_with_default("Dai template file", "input/template.dai")
+    config["parameter_file"] = input_with_default("Parameter file", "input/parameters.json")
     if not os.path.exists(config["parameter_file"]):
         config["num_continuous_parameters"] = int(input_with_default("Number of continuous parameters", 0, is_int))
         #config["num_categorical_parameters"] = input_with_default("Number of categorical parameters", 0, is_int)
 
     config["variable_name"] = input_no_default("Name of variable to optimize for")
     config["log_name"] = input_no_default("Name of log file where the variable is logged")
-    config["target_file"] = sanitize_path(input_with_default("Path to target file", "input/target.csv"))
+    config["target_file"] = input_with_default("Path to target file", "input/target.csv")
 
     config["loss_fn"] = input_with_choices("Loss function", list(available_loss_fns.keys()))
 
@@ -92,6 +88,7 @@ def create_optim(config):
 
     if not os.path.isabs(config["outdir"]):
         config["outdir"] = os.path.join(basedir, config["outdir"])
+    config["outdir"] = sanitize_path(config["outdir"])
 
     # Copy or create parameter file
     param_path = os.path.join(basedir, "input", "parameters.json")
@@ -113,7 +110,7 @@ def create_optim(config):
             ]
         with open(param_path, 'w', encoding='utf-8') as outfile:
             json.dump(params, outfile, indent="  ")
-    config["parameter_file"] = param_path
+    config["parameter_file"] = sanitize_path(param_path)
 
     # Copy or create target file
     target_path = os.path.join(basedir, "input", "target.csv")
@@ -127,7 +124,7 @@ def create_optim(config):
             writer = csv.writer(outfile)
             for row in get_example_target():
                 writer.writerow(row)
-    config["target_file"] = target_path
+    config["target_file"] = sanitize_path(target_path)
 
     # Copy or create template file
     template_path = os.path.join(basedir, "input", "template.dai")
@@ -143,7 +140,7 @@ def create_optim(config):
         with importlib.resources.path("daisypy.optim", "data") as datadir:
             default_path = datadir / "default-template.dai"
             shutil.copyfile(default_path, template_path)
-    config["dai_template"] = template_path
+    config["dai_template"] = sanitize_path(template_path)
 
     # Instantiate an optimize.py file
     # From python 3.13 we can do
