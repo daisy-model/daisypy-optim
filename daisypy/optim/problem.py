@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 class DaisyOptimizationProblem:
-    def __init__(self, runner, dai_file_generator, objective_fn, parameters, data_dir=None):
+    def __init__(self, runner, dai_file_generator, objective_fn, parameters, data_dir=None, debug=False):
         """
         Parameters
         ----------
@@ -24,6 +24,9 @@ class DaisyOptimizationProblem:
         self.objective_fn = objective_fn
         self.parameters = parameters
         self.data_dir = data_dir
+        if self.data_dir is not None:
+            os.makedirs(self.data_dir, exist_ok=True)
+        self.debug = debug
 
     def __call__(self, parameter_values):
         """
@@ -34,10 +37,19 @@ class DaisyOptimizationProblem:
 
         """
         named_parameters = { p.name : value for p, value in zip(self.parameters, parameter_values) }
-        #output_directory = f'tmp-{parameter_values[0]:.4f}'
-        with tempfile.TemporaryDirectory(dir=self.data_dir) as output_directory:
-            dai_file = self.dai_file_generator(output_directory, named_parameters)
-            sim_result = self.runner(dai_file, output_directory)
-            if sim_result.returncode != 0:
-                return np.nan
-            return self.objective_fn(output_directory)
+        # If we debug then we dont want the directory to be deleted after use
+        # From python 3.12 we can pass delete=False to TemporaryDirectory, but prior to that we need
+        # to use mkdtemp.
+        if self.debug:
+            output_directory = tempfile.mkdtemp(dir=self.data_dir)
+            return self._run(output_directory, named_parameters)
+        else:
+            with tempfile.TemporaryDirectory(dir=self.data_dir) as output_directory:
+                return self._run(output_directory, named_parameters)
+
+    def _run(self, output_directory, named_parameters):
+        dai_file = self.dai_file_generator(output_directory, named_parameters)
+        sim_result = self.runner(dai_file, output_directory)
+        if sim_result.returncode != 0:
+            return np.nan
+        return self.objective_fn(output_directory)

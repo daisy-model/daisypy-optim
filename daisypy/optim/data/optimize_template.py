@@ -6,6 +6,7 @@ The optimization consists of four steps
   4. Analyze
 """
 # pylint: disable=missing-function-docstring
+import argparse
 import os
 import json
 import warnings
@@ -27,7 +28,7 @@ from daisypy.optim import (
     DaisyRunner,
 )
 
-def main():
+def main(debug=False):
     daisy_path = "{daisy_path}"
     daisy_home = "{daisy_home}"
     
@@ -45,7 +46,7 @@ def main():
     run_id = get_run_id("{outdir}")
     
     
-    problem = setup(daisy_path, daisy_home, outdir, dai_template, parameters, variable_name, log_name, target, loss_fn, run_id)
+    problem = setup(daisy_path, daisy_home, outdir, dai_template, parameters, variable_name, log_name, target, loss_fn, run_id, debug)
     result = optimize(problem, optimizer_name, logger_name, outdir, run_id)
     eval_dir = evaluate(result, problem, outdir, run_id)
     analyze(eval_dir, problem, outdir, run_id)
@@ -73,7 +74,7 @@ def read_parameters(path):
 
 
 
-def setup(daisy_path, daisy_home, base_outdir, dai_template, parameters, variable_name, log_name, target, loss_fn, run_id):
+def setup(daisy_path, daisy_home, base_outdir, dai_template, parameters, variable_name, log_name, target, loss_fn, run_id, debug):
     # Setup a runner that knows how to execute daisy
     runner = DaisyRunner(daisy_path, daisy_home)
 
@@ -96,7 +97,8 @@ def setup(daisy_path, daisy_home, base_outdir, dai_template, parameters, variabl
     # Now we can create the objective and wrap it as a DaisyOptimizationProblem that knows how to
     # run daisy, get the output data and measure the loss
     objective_fn = DaisyObjective(log_name, variable_name, target, wrapped_loss_fn)
-    problem = DaisyOptimizationProblem(runner, dai_file_generator, objective_fn, parameters)
+    data_dir = os.path.join(base_outdir, run_id, "debug") if debug else None
+    problem = DaisyOptimizationProblem(runner, dai_file_generator, objective_fn, parameters, data_dir, debug)
     return problem
 
 
@@ -214,4 +216,7 @@ def get_run_id(base_outdir):
         return str(runid)
                     
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--debug", action="store_true")
+    args = parser.parse_args()
+    main(debug=args.debug)
