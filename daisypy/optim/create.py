@@ -17,6 +17,8 @@ from daisypy.optim import (
 )
 
 def main():
+    '''Entry point for create'''
+    # We need argument parsing in the entry point function
     parser = argparse.ArgumentParser(
         description=__doc__
     )
@@ -109,7 +111,8 @@ def get_config():
         objectives[len(objectives)] = objective
     config["objectives"] = objectives
     if len(objectives) > 1:
-        config["aggregate_fn"] = input_with_choices("Aggregate function", list(available_aggregate_fns.keys()))
+        config["aggregate_fn"] = input_with_choices("Aggregate function",
+                                                    list(available_aggregate_fns.keys()))
     else:
         config["aggregate_fn"] = "sum"
 
@@ -121,7 +124,8 @@ def _prompt_for_objective():
     objective["log_name"] = input_no_default("Name of log file where the variable is logged")
     objective["target_file"] = input_with_default("Path to target file", "input/target.csv")
     objective["loss_fn"] = input_with_choices("Loss function", list(available_loss_fns.keys()))
-    add_more = 'y' == input_no_default("Add more objectives? (y/n)", check=lambda s: s == 'y' or s == 'n')
+    add_more = 'y' == input_no_default("Add more objectives? (y/n)",
+                                       check=lambda s: s in ('y', 'n'))
     return objective, add_more
 
 def create_optim(config):

@@ -8,6 +8,7 @@ def mse(actual, target):
 
 def mae(actual, target):
     """Mean absolute error"""
+    return abs(actual - target).mean()
 
 available_loss_fns = {
     "mse" : mse,
