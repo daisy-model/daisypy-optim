@@ -15,11 +15,8 @@ from daisypy.optim import (
     available_optimizers,
 )
 
-def main():
-    parser = argparse.ArgumentParser(description="Setup input files and script for running a Daisy optimization")
-    parser.add_argument("--example", action="store_true")
-    args = parser.parse_args()
-    if args.example:
+def main(example=False):
+    if example:
         config = get_example_config()
     else:
         config = get_config()
@@ -175,12 +172,22 @@ def finalize():
 
 def get_daisy_home():
     daisy_candidates = []
-    try:
-        for entry in os.scandir("C:/Program Files"):
-            if entry.name.startswith("daisy"):
-                daisy_candidates.append(entry.path)
-    except FileNotFoundError:
-        pass
+    match platform.system():
+        case "Windows":
+            try:
+                for entry in os.scandir("C:/Program Files"):
+                    if entry.name.startswith("daisy"):
+                        daisy_candidates.append(entry.path)
+            except FileNotFoundError:
+                pass
+        case "Linux":
+            # Try to get Daisy home from flatpak install
+            path = os.path.expanduser('~/.var/app/dk.ku.daisy/data')
+            if os.path.exists(path):
+                daisy_candidates.append(path)
+        case _:
+            pass
+
     match len(daisy_candidates):
         case 0:
             return input_no_default("Path to daisy directory", os.path.isdir)
@@ -192,9 +199,22 @@ def get_daisy_home():
 def get_daisy_path(daisy_home):
     match platform.system():
         case "Windows":
-            return input_with_default("Path to daisy.exe", os.path.join(daisy_home, "bin", "daisy.exe"), os.path.exists)
+            default = os.path.join(daisy_home, "bin", "daisy.exe")
+            if os.path.exists(default):
+                return input_with_default("Path to daisy.exe", default, os.path.exists)
+            return input_no_default("Path to daisy.exe", os.path.exists)
+
+        case "Linux":
+            default = os.path.expanduser("~/.local/bin/daisy")
+            if os.path.exists(default):
+                return input_with_default("Path to daisy binary", default, os.path.exists)
+            return input_no_default("Path to daisy binary", os.path.exists)
+
         case _:
-            return input_with_default("Path to daisy binary", os.path.join(daisy_home, "bin", "daisy"), os.path.exists)
+            default = os.path.join(daisy_home, "bin", "daisy")
+            if os.path.exists(default):
+                return input_with_default("Path to daisy binary", default, os.path.exists)
+            return input_no_default("Path to daisy binary", os.path.exists)
 
 
 def input_with_default(prompt, default, check=None):
@@ -276,4 +296,12 @@ def get_example_target():
     ]
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description="Setup input files and script for running a Daisy optimization")
+    parser.add_argument("--example", action="store_true")
+    args = parser.parse_args()
+    try:
+        main(args.example)
+        sys.exit(0)
+    except Exception as e:
+        print("Error creating project", e)
+        sys.exit(1)
