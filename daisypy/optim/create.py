@@ -10,12 +10,29 @@ import subprocess
 import shutil
 
 from daisypy.optim import (
+    available_aggregate_fns,
     available_loggers,
     available_loss_fns,
     available_optimizers,
 )
 
-def main(example=False):
+def main():
+    parser = argparse.ArgumentParser(
+        description=__doc__
+    )
+    parser.add_argument("--example", action="store_true")
+    args = parser.parse_args()
+    # pylint: disable=broad-exception-caught
+    # Regardless of what happens we want to try and inform the user
+    try:
+        run(args.example)
+        sys.exit(0)
+    except Exception as e:
+        print("Error creating project", e)
+        sys.exit(1)
+
+
+def run(example=False):
     '''
     Parameters
     ----------
@@ -39,10 +56,21 @@ def get_example_config():
         'dai_template': 'input/template.dai',
         'parameter_file': 'input/parameters.json',
         'num_continuous_parameters': 0,
-        'variable_name': 'N2O-Nitrification',
-        'log_name': 'field_nitrogen.dlf',
-        'target_file': 'input/target.csv',
-        'loss_fn': 'mse',
+        'objectives' : {
+            0 : {
+                'variable_name': 'N2O-Nitrification',
+                'log_name': 'field_nitrogen.dlf',
+                'target_file': 'input/target.csv',
+                'loss_fn': 'mse',
+            },
+            1 : {
+                'variable_name': 'N2O-Nitrification',
+                'log_name': 'field_nitrogen.dlf',
+                'target_file': 'input/target.csv',
+                'loss_fn': 'mae'
+            }
+        },
+        'aggregate_fn' : 'sum'
     }
     config["daisy_home"] = get_daisy_home()
     config["daisy_path"] = get_daisy_path(config['daisy_home'])
@@ -74,14 +102,27 @@ def get_config():
         # config["num_categorical_parameters"] = int(
         #     input_with_default("Number of categorical parameters", 0, is_int)
         # )
-
-    config["variable_name"] = input_no_default("Name of variable to optimize for")
-    config["log_name"] = input_no_default("Name of log file where the variable is logged")
-    config["target_file"] = input_with_default("Path to target file", "input/target.csv")
-
-    config["loss_fn"] = input_with_choices("Loss function", list(available_loss_fns.keys()))
+    objectives = {}
+    add_more = True
+    while add_more:
+        objective, add_more = _prompt_for_objective()
+        objectives[len(objectives)] = objective
+    config["objectives"] = objectives
+    if len(objectives) > 1:
+        config["aggregate_fn"] = input_with_choices("Aggregate function", list(available_aggregate_fns.keys()))
+    else:
+        config["aggregate_fn"] = "sum"
 
     return config
+
+def _prompt_for_objective():
+    objective = {}
+    objective["variable_name"] = input_no_default("Name of variable to optimize for")
+    objective["log_name"] = input_no_default("Name of log file where the variable is logged")
+    objective["target_file"] = input_with_default("Path to target file", "input/target.csv")
+    objective["loss_fn"] = input_with_choices("Loss function", list(available_loss_fns.keys()))
+    add_more = 'y' == input_no_default("Add more objectives? (y/n)", check=lambda s: s == 'y' or s == 'n')
+    return objective, add_more
 
 def create_optim(config):
     '''Create an optimization project from a configuration'''
@@ -99,8 +140,17 @@ def create_optim(config):
     # Copy or create parameter file
     config["parameter_file"] = _copy_or_create_param(config, basedir)
 
-    # Copy or create target file
-    config["target_file"] = _copy_or_create_target(config, basedir)
+    # Copy or create target files fot objectives
+    # And transform from dict of objectives to lists
+    objectives = config.pop("objectives")
+    for objective_id, objective in objectives.items():
+        # Copy or create target file
+        objective["target_file"] = _copy_or_create_target(objective_id, objective, basedir)
+
+    config['variable_names'] = [ obj["variable_name"] for obj in objectives.values() ]
+    config['log_names'] = [ obj["log_name"] for obj in objectives.values() ]
+    config['target_files'] = [ obj["target_file"] for obj in objectives.values() ]
+    config['loss_fns'] = [ obj["loss_fn"] for obj in objectives.values() ]
 
     # Copy or create template file
     config["dai_template"] = _copy_or_create_template(config, basedir)
@@ -134,11 +184,11 @@ def _copy_or_create_param(config, basedir):
             json.dump(params, outfile, indent="  ")
     return sanitize_path(param_path)
 
-def _copy_or_create_target(config, basedir):
-    target_path = os.path.join(basedir, "input", "target.csv")
-    if os.path.exists(config["target_file"]):
+def _copy_or_create_target(objective_id, objective, basedir):
+    target_path = os.path.join(basedir, "input", f"target-{objective_id}.csv")
+    if os.path.exists(objective["target_file"]):
         try:
-            shutil.copyfile(config["target_file"], target_path)
+            shutil.copyfile(objective["target_file"], target_path)
         except shutil.SameFileError:
             pass # This is not a problem
     else:
@@ -339,17 +389,6 @@ def get_example_target():
         ["2000-12-01", "0.204323"],
     ]
 
+
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description=__doc__
-    )
-    parser.add_argument("--example", action="store_true")
-    args = parser.parse_args()
-    # pylint: disable=broad-exception-caught
-    # Regardless of what happens we want to try and inform the user
-    try:
-        main(args.example)
-        sys.exit(0)
-    except Exception as e:
-        print("Error creating project", e)
-        sys.exit(1)
+    main()
