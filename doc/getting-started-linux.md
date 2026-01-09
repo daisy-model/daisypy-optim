@@ -1,4 +1,4 @@
-# Getting started with daisypy-optim on Windows
+# Getting started with daisypy-optim on Linux
 
 0. Prerequisites
 1. Install the package manager `uv`
@@ -7,8 +7,7 @@
 4. Create a skeleton for your own optimization project
 
 ## Prerequisites
-1. Install Daisy by following the instructions from [https://github.com/daisy-model/daisy/blob/main/doc/getting-started-windows.md](https://github.com/daisy-model/daisy/blob/main/doc/getting-started-windows.md).
-2. Install `git` from [https://git-scm.com/downloads/win](https://git-scm.com/downloads/win)
+1. Install Daisy by following the instructions from [https://github.com/daisy-model/daisy/blob/main/doc/getting-started-linux.md](https://github.com/daisy-model/daisy/blob/main/doc/getting-started-linux.md).
 
 ## Install the python package manager `uv`
 1. Install `uv` by following the instructions from [https://docs.astral.sh/uv/getting-started/installation/](https://docs.astral.sh/uv/getting-started/installation/).
@@ -17,15 +16,15 @@
 4. If necesary, install python by following the instructions from [https://docs.astral.sh/uv/guides/install-python/](https://docs.astral.sh/uv/guides/install-python/).
 
 ## Install the tool `daisypy_optim_create`
-The behaviour of `daisypy_optim_create` depends on the availability of a number of other packages. We recommend you include the CMA-ES method. To do so, open PowerShell and run 
+The behaviour of `daisypy_optim_create` depends on the availability of a number of other packages. We recommend you include the CMA-ES method. To do so, open a terminal and run 
 ```
 uv tool install --from git+https://github.com/daisy-model/daisypy-optim daisypy_optim --with cma
 ```
 
 ### Detailed installation instructions
-For a minimal install open PowerShell and run
+For a minimal install open a terminal and run
 ```
-uv tool  install --from git+https://github.com/daisy-model/daisypy-optim daisypy_optim
+uv tool install --from git+https://github.com/daisy-model/daisypy-optim daisypy_optim
 ```
 
 * To include the CMA-ES method add the flag `--with cma`
@@ -33,7 +32,7 @@ uv tool  install --from git+https://github.com/daisy-model/daisypy-optim daisypy
 * To include the `scikit-optimize` method add the flag `--with scikit-optimize,joblib`
 
 ## Create and run an example optimization project
-1. Open a PowerShell and navigate to a directory where you want to store your project
+1. Open a terminal and navigate to a directory where you want to store your project
 2. Initialize the project with `uv init daisypy-optim-example`
     - This will create some scaffolding and initialize a git repository for version control.
 3. Navigate to the newly created project with `cd daisypy-optim-example`
@@ -41,7 +40,7 @@ uv tool  install --from git+https://github.com/daisy-model/daisypy-optim daisypy
    - This should add dependencies to the project as needed, if not you will have to it manually using the command that is printed
 5. Run the optimization with `uv run example/optimize.py`
 
-```{PowerShell}
+```{bash}
 uv init daisypy-optim-example
 cd daisypy-optim-example
 daisypy_optim_create --example
@@ -63,7 +62,7 @@ This will use CMA-ES to optimize and produce out in `example/out/1` and `example
 
 ## Create a skeleton for your own optimization project
 Replace `<project-name>` with the name of your project.
-```{PowerShell}
+```{bash}
 uv init <project-name>
 cd <project-name>
 daisypy_optim_create

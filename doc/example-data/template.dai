@@ -1,6 +1,8 @@
-;;; sample.dai --- This is a small setup using the sample files.
+;; If you need to add locations to the daisy path, it must be with absolute paths
+;; For example,
+;; (path "C:/Users/YourUserName/OneDrive" &old)
 
-;; Get out sample management, irrigation, and soil.
+;; Files in Daisy's lib/ and sample/ directories are availble
 (input file "fertilizer.dai")
 (input file "tillage.dai")
 (input file "crop.dai")
@@ -17,25 +19,26 @@
                )
   )
 
-;; Use them.
-(defprogram Base Daisy
-  "Base program for all tests."
+(defprogram Example Daisy
+  "Example"
+  ;; The duration of the simulation and the output duration must cover the period in the target file
   (time 1999 12 31)
   (stop 2000 12 31)
   (activate_output (after 1999 12 31))
+
+  ;; The weather file must be in an accessible location. For example in a directory added to the path
   (weather default "dk-taastrup.dwf")
   (column optimize_me)
-  (manager activity 
-  ;; A spring barley with mineral fertilizer and unlimited irrigation.
+  (manager activity
   (while "SBarley w. MF"
     (repeat irrigate_30_tensiometer_overhead))
-  ;; A winter barley with organic fertilizer and no irrigation.
   "WBarley w. OF"
-  ;; A winter rape with mineral fertilizer and some irrigation.
   (while "WRape w. MF"
     (activity irrigate_30_content_overhead irrigate_30_content_overhead))
-  ;; A spring barley and pea mixture.
-  "SBarley & Pea")     
-  (output ("Field nitrogen" (when finished) (print_initial false))))
+  "SBarley & Pea")
 
-(run Base)
+  ;; Output timestamps must cover the expected target timestamps.
+  ;; Outputting more than what is necesary is wasteful, since it will be ignored and deleted
+  (output ("Field nitrogen" (when monthly) (print_initial false))))
+
+(run Example)
