@@ -3,6 +3,7 @@ import os
 import json
 import csv
 import importlib.resources
+import platform
 import subprocess
 import shutil
 
@@ -40,7 +41,7 @@ def get_example_config():
         'loss_fn': 'mse',
     }
     config["daisy_home"] = get_daisy_home()
-    config["daisy_path"] = input_with_default("Path to daisy.exe", os.path.join(config["daisy_home"], "bin", "daisy.exe"), os.path.exists)
+    config["daisy_path"] = get_daisy_path(config['daisy_home'])
     return config
 
 def get_config():
@@ -92,7 +93,7 @@ def create_optim(config):
             params = get_example_params()
         else:
             params = [{
-                "type" : "continuous", 
+                "type" : "continuous",
                 "name" : f"p{i}",
                 "initial_value" : 0,
                 "valid_range" : (0, 1)
@@ -147,7 +148,7 @@ def create_optim(config):
 def finalize():
     # Try to add dependencies with uv
     cmd = [
-        "uv", 
+        "uv",
         "add",
         "daisypy-optim@git+https://github.com/daisy-model/daisypy-optim",
         "pandas",
@@ -174,16 +175,27 @@ def finalize():
 
 def get_daisy_home():
     daisy_candidates = []
-    for entry in os.scandir("C:/Program Files"):
-        if entry.name.startswith("daisy"):
-            daisy_candidates.append(entry.path)
+    try:
+        for entry in os.scandir("C:/Program Files"):
+            if entry.name.startswith("daisy"):
+                daisy_candidates.append(entry.path)
+    except FileNotFoundError:
+        pass
     match len(daisy_candidates):
         case 0:
             return input_no_default("Path to daisy directory", os.path.isdir)
         case 1:
-            return input_with_default("Path to daisy directory", daisy_candidates[0], os.path.isdir) 
+            return input_with_default("Path to daisy directory", daisy_candidates[0], os.path.isdir)
         case _:
-            return input_with_choices("Path to daisy directory", daisy_candidates, os.path.isdir) 
+            return input_with_choices("Path to daisy directory", daisy_candidates, os.path.isdir)
+
+def get_daisy_path(daisy_home):
+    match platform.system():
+        case "Windows":
+            return input_with_default("Path to daisy.exe", os.path.join(daisy_home, "bin", "daisy.exe"), os.path.exists)
+        case _:
+            return input_with_default("Path to daisy binary", os.path.join(daisy_home, "bin", "daisy"), os.path.exists)
+
 
 def input_with_default(prompt, default, check=None):
     while True:
@@ -201,7 +213,7 @@ def input_no_default(prompt, check=None):
         if check is None or check(response):
             print_selected(response)
             return response
-        
+
 def input_with_choices(prompt, choices, check=None, user_supplied_ok=True):
     while True:
         print(prompt, *[f"  {i} {choice}" for i, choice in enumerate(choices)], sep='\n')
@@ -244,7 +256,7 @@ def get_example_params():
             "valid_range" : [50, 250]
         }
     ]
-    
+
 def get_example_target():
     # The output from running with K_aquitard = 0.456 and Z_aquitard = 236
     return [
