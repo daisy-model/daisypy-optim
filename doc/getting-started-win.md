@@ -89,4 +89,4 @@ Once you have edited them you can run the optimization with
 ```
 uv run <name>/optimize.py
 ```
-Where `<name>` is the name you provided when running daisypy_optim_create
+Where `<name>` is the name you provided when running `daisypy_optim_create`
