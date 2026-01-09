@@ -2,7 +2,9 @@ import os
 import pandas as pd
 from daisypy.io.dlf import read_dlf
 
-class DaisyScalarObjective:
+class ScalarObjective:
+    """Scalar objective that extracts data from a daisy output file and computes a loss"""
+
     def __init__(self, log_name, variable_name, target, loss_fn):
         """
         Parameters
@@ -35,7 +37,7 @@ class DaisyScalarObjective:
 
         Returns
         -------
-        loss : The computed loss value
+        objective : The computed objective value
         """
         dlf = read_dlf(os.path.join(daisy_output_directory, self.log_name))
         actual_value = dlf.body[self.variable_name]

@@ -22,7 +22,7 @@ from daisypy.optim import (
     available_loss_fns,
     available_optimizers,
     DaisyLoss,
-    DaisyScalarObjective,
+    ScalarObjective,
     DaisyOptimizationProblem,
     ContinuousParameter,
     DaisyRunner,
@@ -96,7 +96,7 @@ def setup(daisy_path, daisy_home, base_outdir, dai_template, parameters, variabl
 
     # Now we can create the objective and wrap it as a DaisyOptimizationProblem that knows how to
     # run daisy, get the output data and measure the loss
-    objective_fn = DaisyScalarObjective(log_name, variable_name, target, wrapped_loss_fn)
+    objective_fn = ScalarObjective(log_name, variable_name, target, wrapped_loss_fn)
     data_dir = os.path.join(base_outdir, run_id, "debug") if debug else None
     problem = DaisyOptimizationProblem(runner, dai_file_generator, objective_fn, parameters, data_dir, debug)
     return problem
