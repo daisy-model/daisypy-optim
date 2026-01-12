@@ -34,8 +34,8 @@ def main(debug=False):
     daisy_path = "{daisy_path}"
     daisy_home = "{daisy_home}"
 
-    outdir = "{outdir}"
-    os.makedirs(outdir, exist_ok=True)
+    out_dir = "{out_dir}"
+    os.makedirs(out_dir, exist_ok=True)
 
     optimizer_name = "{optimizer}"
     logger_name = "{logger}"
@@ -51,14 +51,14 @@ def main(debug=False):
 
     objective = setup_objective(log_names, variable_names, target_files, loss_fns, aggregate_fn)
 
-    run_id = get_run_id("{outdir}")
+    run_id = get_run_id("{out_dir}")
 
     problem = setup(
-        daisy_path, daisy_home, outdir, dai_template, parameters, objective, run_id, debug
+        daisy_path, daisy_home, out_dir, dai_template, parameters, objective, run_id, debug
     )
-    result = optimize(problem, optimizer_name, logger_name, outdir, run_id)
-    eval_dir = evaluate(result, problem, outdir, run_id)
-    analyze(eval_dir, problem, outdir, run_id)
+    result = optimize(problem, optimizer_name, logger_name, out_dir, run_id)
+    eval_dir = evaluate(result, problem, out_dir, run_id)
+    analyze(eval_dir, problem, out_dir, run_id)
 
 def read_parameters(path):
     with open(path, 'r', encoding='utf-8') as infile:
@@ -101,7 +101,7 @@ def setup_objective(log_names, variable_names, target_files, loss_fns, aggregate
         return objective_fns[0]
     return AggregateObjective(objective_fns, aggregate_fn)
 
-def setup(daisy_path, daisy_home, base_outdir, dai_template, parameters, objective, run_id, debug):
+def setup(daisy_path, daisy_home, base_out_dir, dai_template, parameters, objective, run_id, debug):
     # Setup a runner that knows how to execute daisy
     runner = DaisyRunner(daisy_path, daisy_home)
 
@@ -109,23 +109,22 @@ def setup(daisy_path, daisy_home, base_outdir, dai_template, parameters, objecti
     dai_file_generator = DaiFileGenerator(template_file_path=dai_template)
 
     # Create a dirctory for storing setup files for debug/inspection
-    outdir = os.path.join(base_outdir, run_id, 'setup')
-    os.makedirs(outdir, exist_ok=True)
+    out_dir = os.path.join(base_out_dir, run_id, 'setup')
+    os.makedirs(out_dir, exist_ok=True)
 
     # Generate a dai file for debug runs
     params = {{ p.name : p.initial_value  for p in parameters }}
-    dai_file_generator(outdir, params)
+    dai_file_generator(out_dir, params)
 
     # Now we can wrap everything as a DaisyOptimizationProblem that knows how to
     # run daisy, get the output data and compute the objetive
-    data_dir = os.path.join(base_outdir, run_id, "debug") if debug else None
+    data_dir = os.path.join(base_out_dir, run_id, "debug") if debug else None
     problem = DaisyOptimizationProblem(runner, dai_file_generator, objective, parameters, data_dir, debug)
     return problem
 
-
-def optimize(problem, optimizer_name, logger_name, base_outdir, run_id):
-    outdir = os.path.join(base_outdir, run_id, "optimize")
-    os.makedirs(outdir, exist_ok=True)
+def optimize(problem, optimizer_name, logger_name, base_out_dir, run_id):
+    out_dir = os.path.join(base_out_dir, run_id, "optimize")
+    os.makedirs(out_dir, exist_ok=True)
 
     # Define some default parameters for each of the optimizers
     optimizer_options = {{
@@ -141,7 +140,7 @@ def optimize(problem, optimizer_name, logger_name, base_outdir, run_id):
     }}
 
     options = optimizer_options[optimizer_name]
-    logdir = os.path.join(base_outdir, 'logs')
+    logdir = os.path.join(base_out_dir, 'logs')
     logger = available_loggers[logger_name](logdir, f'{{run_id}}-{{optimizer_name}}')
     optimizer = available_optimizers[optimizer_name](problem, logger, options)
 
@@ -155,36 +154,53 @@ def optimize(problem, optimizer_name, logger_name, base_outdir, run_id):
             print('    ', k, ' : ', v, sep='')
 
     # Save the result
-    with open(os.path.join(outdir, 'result.json'), 'w', encoding='utf-8') as out:
+    with open(os.path.join(out_dir, 'result.json'), 'w', encoding='utf-8') as out:
         json.dump(result, out)
 
     return result
 
-
-def evaluate(result, problem, base_outdir, run_id):
+def evaluate(result, problem, base_out_dir, run_id):
     # Create a directory for outputs
-    outdir = os.path.join(base_outdir, run_id, "evaluate")
-    os.makedirs(outdir, exist_ok=True)
+    out_dir = os.path.join(base_out_dir, run_id, "evaluate")
+    os.makedirs(out_dir, exist_ok=True)
 
     # Generate a dai file with the best parameters
     dai_file_generator = problem.dai_file_generator
     parameters = {{ k : v['best'] for k,v in result.items() }}
-    dai_path = dai_file_generator(outdir, parameters)
+    dai_path = dai_file_generator(out_dir, parameters)
 
     # Run daisy with the newly generated dai file
-    problem.runner(dai_path, outdir)
-    return outdir
+    problem.runner(dai_path, out_dir)
+    return out_dir
 
+def analyze(eval_dir, problem, base_out_dir, run_id):
+    out_dir = os.path.join(base_out_dir, run_id, 'analyze')
+    os.makedirs(out_dir, exist_ok=True)
 
-def analyze(eval_dir, problem, base_outdir, run_id):
-    outdir = os.path.join(base_outdir, run_id, 'analyze')
-    os.makedirs(outdir, exist_ok=True)
+    # Extract variables, log names and targets from the problem
+    variables = problem.objective_fn.variable_name
+    targets = problem.objective_fn.target
+    log_names = problem.objective_fn.log_name
 
-    # Extract variable, log name and target from the problem
-    var = problem.objective_fn.variable_name
-    target = problem.objective_fn.target
-    log_name = problem.objective_fn.log_name
+    # Check if we only have one triple to process
+    if isinstance(variables, str) and \
+       isinstance(targets, pd.DataFrame) and \
+       isinstance(log_names, str):
+        variables = [variables]
+        targets = [targets]
+        log_names = [log_names]
 
+    # Plot all variables we optimized for.
+    # We can have multiple objectives defined for the same (variable, log) pair, in which case we
+    # only plot it once.
+    processed = set()
+    for i, (var, target, log_name) in enumerate(zip(variables, targets, log_names)):
+        if (var, log_name) in processed:
+            continue
+        processed.add((var, log_name))
+        plot_single_variable(var, target, log_name, eval_dir, out_dir)
+
+def plot_single_variable(var, target, log_name, eval_dir, out_dir):
     # Get the simulated results
     sim_dlf = read_dlf(os.path.join(eval_dir, log_name))
     sim_value = sim_dlf.body[var]
@@ -193,14 +209,19 @@ def analyze(eval_dir, problem, base_outdir, run_id):
     )
     sim = pd.DataFrame({{'time' : sim_time, 'value' : sim_value}})
 
+    log_display_name = os.path.splitext(log_name)[0]
+    title = f"{{var}} @ {{log_display_name}}"
+    prefix = f"{{var}}-{{log_display_name}}"
+
     # Make a time series plot of the target and simulated values
     fig, ax = plt.subplots()
     ax.plot(target["time"], target['value'])
-    ax.plot(sim["time"], sim['value'])
+    ax.plot(sim["time"], sim['value'], linestyle='dashed')
     ax.legend(["target", "simulation"])
     ax.set_ylabel(var)
+    ax.set_title(title)
     fig.tight_layout()
-    fig.savefig(os.path.join(outdir, 'time-series.pdf'))
+    fig.savefig(os.path.join(out_dir, f'{{prefix}}-time-series.pdf'))
 
     # Make a scatter plot of the tarvet vs simulated value
     fig, ax = plt.subplots()
@@ -215,15 +236,15 @@ def analyze(eval_dir, problem, base_outdir, run_id):
     ax.axline((merged['value_target'][0],)*2, slope=1, color='red')
     ax.set_xlabel('Target')
     ax.set_ylabel('Simulated')
-    ax.set_title(var)
+    ax.set_title(title)
     fig.tight_layout()
-    fig.savefig(os.path.join(outdir, 'scatter.pdf'))
+    fig.savefig(os.path.join(out_dir, f'{{prefix}}-scatter.pdf'))
 
     plt.show()
 
-def get_run_id(base_outdir):
+def get_run_id(base_out_dir):
     used = set()
-    for entry in os.scandir(base_outdir):
+    for entry in os.scandir(base_out_dir):
         try:
             used.add(int(entry.name))
         except ValueError:

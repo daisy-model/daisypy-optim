@@ -52,7 +52,7 @@ def get_example_config():
     '''Generate example configuration. User is prompted for Daisy home and Daisy executable paths'''
     config = {
         'name': 'example',
-        'outdir': 'out',
+        'out_dir': 'out',
         'optimizer': 'sequential',
         'logger': 'csv',
         'dai_template': 'input/template.dai',
@@ -88,7 +88,7 @@ def get_config():
         os.path.join(config["daisy_home"], "bin", "daisy.exe"),
         os.path.exists
     )
-    config["outdir"] = input_with_default("Output directory", "out")
+    config["out_dir"] = input_with_default("Output directory", "out")
 
     config["optimizer"] = input_with_choices("Optimization method",
                                              list(available_optimizers.keys()), None, False)
@@ -137,9 +137,9 @@ def create_optim(config):
     # This is two calls because we want to fail if the basedir already exists
     os.makedirs(os.path.join(basedir, "input"))
 
-    if not os.path.isabs(config["outdir"]):
-        config["outdir"] = os.path.join(basedir, config["outdir"])
-    config["outdir"] = sanitize_path(config["outdir"])
+    if not os.path.isabs(config["out_dir"]):
+        config["out_dir"] = os.path.join(basedir, config["out_dir"])
+    config["out_dir"] = sanitize_path(config["out_dir"])
 
     # Copy or create parameter file
     config["parameter_file"] = _copy_or_create_param(config, basedir)

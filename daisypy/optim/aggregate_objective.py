@@ -1,4 +1,7 @@
-class AggregateObjective:
+from collections.abc import Sequence
+from .util import flatten
+
+class AggregateObjective(Sequence):
     '''Objective that computes several objectives and then aggregates them.'''
 
     def __init__(self, objective_fns, aggregate_fn):
@@ -27,3 +30,23 @@ class AggregateObjective:
         objective : The aggregated objective value
         '''
         return self.aggregate_fn([f(daisy_output_directory) for f in self.objective_fns])
+
+    def __getitem__(self, index):
+        # We could consider flattering objective_fns, but not sure that there is a user case
+        # If we do, we also need to update __len__
+        return self.objective_fns[index]
+
+    def __len__(self):
+        return len(self.objective_fns)
+
+    @property
+    def variable_name(self):
+        return flatten(self.objective_fns, lambda x : x.variable_name)
+
+    @property
+    def target(self):
+        return flatten(self.objective_fns, lambda x : x.target)
+
+    @property
+    def log_name(self):
+        return flatten(self.objective_fns, lambda x : x.log_name)
