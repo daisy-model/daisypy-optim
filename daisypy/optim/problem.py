@@ -1,5 +1,6 @@
 import tempfile
 import os
+import platform
 import numpy as np
 
 class DaisyOptimizationProblem:
@@ -24,6 +25,10 @@ class DaisyOptimizationProblem:
         self.objective_fn = objective_fn
         self.parameters = parameters
         self.data_dir = data_dir
+        if data_dir is None and platform.system().lower() == 'linux':
+            # There is a good chance that we are using flatpak, in which case we need to use a tmp
+            # location that flatpak Daisy can read and write. Anything inside the user home is good.
+            self.data_dir = os.path.expanduser('~/.tmp/daisy')
         if self.data_dir is not None:
             os.makedirs(self.data_dir, exist_ok=True)
         self.debug = debug
@@ -51,5 +56,6 @@ class DaisyOptimizationProblem:
         dai_file = self.dai_file_generator(output_directory, named_parameters)
         sim_result = self.runner(dai_file, output_directory)
         if sim_result.returncode != 0:
+            print(sim_result)
             return np.nan
         return self.objective_fn(output_directory)
