@@ -22,7 +22,7 @@ dependencies = [
     "daisypy-io@git+https://github.com/daisy-model/daisypy-io"
 ]
 
-dynamic = ["version"]   
+dynamic = ["version"]
 readme = "README.md"
 
 [project.scripts]
@@ -68,8 +68,8 @@ disable = [
  ]
 
 [tool.pytest.ini_options]
-testpaths = [ "daisypy" ]
 addopts = [
+    "--import-mode=importlib"
 ]
 filterwarnings = [
     "error",
