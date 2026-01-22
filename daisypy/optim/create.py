@@ -11,7 +11,6 @@ import shutil
 
 from daisypy.optim import (
     available_aggregate_fns,
-    available_loggers,
     available_loss_fns,
     available_optimizers,
 )
@@ -33,7 +32,6 @@ def main():
         print("Error creating project", e)
         sys.exit(1)
 
-
 def run(example=False):
     '''
     Parameters
@@ -54,7 +52,6 @@ def get_example_config():
         'name': 'example',
         'out_dir': 'out',
         'optimizer': 'sequential',
-        'logger': 'csv',
         'dai_template': 'input/template.dai',
         'parameter_file': 'input/parameters.json',
         'num_continuous_parameters': 0,
@@ -83,18 +80,14 @@ def get_config():
     config = {}
     config["name"] = input_with_default("Name", "my-optimization", lambda x: not os.path.exists(x))
     config["daisy_home"] = get_daisy_home()
-    config["daisy_path"] = input_with_default(
-        "Path to daisy.exe",
-        os.path.join(config["daisy_home"], "bin", "daisy.exe"),
-        os.path.exists
-    )
+    config["daisy_path"] = get_daisy_path(config["daisy_home"])
     config["out_dir"] = input_with_default("Output directory", "out")
 
     config["optimizer"] = input_with_choices("Optimization method",
-                                             list(available_optimizers.keys()), None, False)
+                                             list(available_optimizers.keys()),
+                                             None,
+                                             False)
     ##  TODO: Get optimizer specific parameters
-
-    config["logger"] = input_with_choices("Logger", list(available_loggers.keys()), None, False)
     config["dai_template"] = input_with_default("Dai template file", "input/template.dai")
     config["parameter_file"] = input_with_default("Parameter file", "input/parameters.json")
     if not os.path.exists(config["parameter_file"]):
@@ -244,14 +237,16 @@ def finalize():
         cmd.append("cma")
     if 'skopt' in available_optimizers:
         cmd += ["scikit-optimize", "joblib"]
-    if "tensorboard" in available_loggers:
-        cmd += ["scipy", "tensorboard", "torch"]
-
-    result = subprocess.run(cmd, text=True, check=False)
-    if result.returncode != 0:
-        print("Error adding dependencies. Returncode", result.returncode)
-        print("stdout:", result.stdout)
-        print("stderr:", result.stderr)
+    try:
+        result = subprocess.run(cmd, text=True)
+        if result.returncode != 0:
+            print("Error adding dependencies. Returncode", result.returncode)
+            print("stdout:", result.stdout)
+            print("stderr:", result.stderr)
+            print("Please verify/add manually")
+            print(*cmd)
+    except Exception as e:
+        print("Error while adding dependencies:", e)
         print("Please verify/add manually")
         print(*cmd)
 

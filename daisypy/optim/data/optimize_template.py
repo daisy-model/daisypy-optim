@@ -19,7 +19,7 @@ from daisypy.io.dlf import read_dlf
 from daisypy.optim import (
     DaiFileGenerator,
     available_aggregate_fns,
-    available_loggers,
+    DefaultLogger,
     available_loss_fns,
     available_optimizers,
     DaisyLoss,
@@ -38,7 +38,6 @@ def main(debug=False):
     os.makedirs(out_dir, exist_ok=True)
 
     optimizer_name = "{optimizer}"
-    logger_name = "{logger}"
     dai_template = "{dai_template}"
     parameters = read_parameters("{parameter_file}")
 
@@ -52,11 +51,13 @@ def main(debug=False):
     objective = setup_objective(log_names, variable_names, target_files, loss_fns, aggregate_fn)
 
     run_id = get_run_id("{out_dir}")
+    log_dir = os.path.join(out_dir, 'logs', f'{{run_id}}-{{optimizer_name}}')
+    logger = DefaultLogger(log_dir)
 
     problem = setup(
         daisy_path, daisy_home, out_dir, dai_template, parameters, objective, run_id, debug
     )
-    result = optimize(problem, optimizer_name, logger_name, out_dir, run_id)
+    result = optimize(problem, optimizer_name, logger, out_dir, run_id)
     eval_dir = evaluate(result, problem, out_dir, run_id)
     analyze(eval_dir, problem, out_dir, run_id)
 
@@ -116,13 +117,14 @@ def setup(daisy_path, daisy_home, base_out_dir, dai_template, parameters, object
     params = {{ p.name : p.initial_value  for p in parameters }}
     dai_file_generator(out_dir, params)
 
+
     # Now we can wrap everything as a DaisyOptimizationProblem that knows how to
     # run daisy, get the output data and compute the objetive
     data_dir = os.path.join(base_out_dir, run_id, "debug") if debug else None
     problem = DaisyOptimizationProblem(runner, dai_file_generator, objective, parameters, data_dir, debug)
     return problem
 
-def optimize(problem, optimizer_name, logger_name, base_out_dir, run_id):
+def optimize(problem, optimizer_name, logger, base_out_dir, run_id):
     out_dir = os.path.join(base_out_dir, run_id, "optimize")
     os.makedirs(out_dir, exist_ok=True)
 
@@ -140,8 +142,6 @@ def optimize(problem, optimizer_name, logger_name, base_out_dir, run_id):
     }}
 
     options = optimizer_options[optimizer_name]
-    logdir = os.path.join(base_out_dir, 'logs')
-    logger = available_loggers[logger_name](logdir, f'{{run_id}}-{{optimizer_name}}')
     optimizer = available_optimizers[optimizer_name](problem, logger, options)
 
     # Optimize
@@ -239,7 +239,6 @@ def plot_single_variable(var, target, log_name, eval_dir, out_dir):
     ax.set_title(title)
     fig.tight_layout()
     fig.savefig(os.path.join(out_dir, f'{{prefix}}-scatter.pdf'))
-
     plt.show()
 
 def get_run_id(base_out_dir):

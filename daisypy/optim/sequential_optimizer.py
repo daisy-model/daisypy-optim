@@ -98,6 +98,10 @@ class DaisySequentialOptimizer:
 
         self.logger.info('Evaluating initial parameters')
         current_fval = self.problem(param_set)
+        if np.isnan(current_fval):
+            self.logger.error('Initial parameters failed, aborting')
+            raise RuntimeError('Initial parameters failed')
+
         self.logger.info(f'Initial objective = {current_fval}')
         total_f_evals = 1
         self.logger.info('Optimizing')
@@ -129,27 +133,30 @@ class DaisySequentialOptimizer:
                         param_sets.append(param_set)
                         param_sets_ids.append((name, i))
 
-                #self.logger.log_scalar('Number of parameter sets', len(param_sets), step)
+                self.logger.info(step=step, n_param_sets=len(param_sets))
                 best = np.inf
                 best_idx = None
                 num_failures = 0
                 # executor.map runs the problems in parallel and yields results in order matching
                 # param_sets.
                 for i, fval in enumerate(executor.map(self.problem, param_sets)):
-                    self.logger.result(step=step, value=fval, **dict(zip(order, param_sets[i])))
+                    self.logger.result(step=step, objective_value=fval, **dict(zip(order, param_sets[i])))
                     if np.isnan(fval):
                         num_failures += 1
                     elif fval < best:
                         best = fval
                         best_idx = i # Index into param_sets
                 if best_idx is None:
-                    self.logger.error('All simulations failed')
+                    # Maybe not raise an exception if we have had at least one successful run in a
+                    # previous step?
+                    self.logger.error('All simulations failed. Aborting')
                     raise RuntimeError('All simulations failed')
 
                 total_f_evals += len(param_sets)
-                # self.logger.log_scalar('Total function evaluations', total_f_evals, step)
-                # self.logger.log_scalar('Failed runs', num_failures, step)
-                # self.logger.log_scalar('Best', best, step)
+                self.logger.info(step=step, total_function_evaluations=total_f_evals)
+                if num_failures > 0:
+                    self.logger.warning(step=step, n_failed_runs=num_failures)
+                self.logger.info(step=step, best_objective=best)
                 if best > current_fval:
                     # Nothing is better than using current values of all parameters, so we stop.
                     # We cold consider setting a random parameter to a random value, or something
@@ -162,7 +169,7 @@ class DaisySequentialOptimizer:
                     value = floating.pop(name)[idx]
                     current[name] = value
                 fixed.add(name)
-                self.logger.info(f'Fixing {name} to {value}')
+                self.logger.info(f'step={step},Fixing {name} to {value}')
 
         result = {}
         for k,v in current.items():

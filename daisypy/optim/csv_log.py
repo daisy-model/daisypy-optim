@@ -19,6 +19,8 @@ class CsvLog(Log):
         default_formatter : callable [Object -> str]
           Default function for formatting column values. If None use self.quote_if_string
         '''
+        _dir = os.path.dirname(path)
+        os.makedirs(_dir, exist_ok=True)
         self._log = open(path, 'w', encoding='utf-8')
         if columns is None:
             # Deferred setting of columns such that they can be set on first write
