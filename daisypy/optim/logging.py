@@ -13,6 +13,7 @@ def DefaultLogger(outdir):
         'default' : TerminalLog(),
         'warning' : TerminalLog(error=True),
         'error' : TerminalLog(error=True),
+        'parameters' : CsvLog(os.path.join(outdir, 'parameters.csv')),
         'result' : CsvLog(os.path.join(outdir, 'result.csv')),
     }
     return Logger(**logs)
