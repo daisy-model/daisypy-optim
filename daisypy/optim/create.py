@@ -1,5 +1,7 @@
+"Setup input files and script for running a Daisy optimization"
 import argparse
 import os
+import sys
 import json
 import csv
 import importlib.resources
@@ -7,15 +9,38 @@ import platform
 import subprocess
 import shutil
 
-import daisypy.optim as daisypy_optim
-
 from daisypy.optim import (
+    available_aggregate_fns,
     available_loggers,
     available_loss_fns,
     available_optimizers,
 )
 
-def main(example=False):
+def main():
+    '''Entry point for create'''
+    # We need argument parsing in the entry point function
+    parser = argparse.ArgumentParser(
+        description=__doc__
+    )
+    parser.add_argument("--example", action="store_true")
+    args = parser.parse_args()
+    # pylint: disable=broad-exception-caught
+    # Regardless of what happens we want to try and inform the user
+    try:
+        run(args.example)
+        sys.exit(0)
+    except Exception as e:
+        print("Error creating project", e)
+        sys.exit(1)
+
+
+def run(example=False):
+    '''
+    Parameters
+    ----------
+    example : bool
+      If True generate example optimization, otherwise prompt user for inputs
+    '''
     if example:
         config = get_example_config()
     else:
@@ -24,49 +49,87 @@ def main(example=False):
     finalize()
 
 def get_example_config():
+    '''Generate example configuration. User is prompted for Daisy home and Daisy executable paths'''
     config = {
         'name': 'example',
-        'outdir': 'out',
+        'out_dir': 'out',
         'optimizer': 'sequential',
         'logger': 'csv',
         'dai_template': 'input/template.dai',
         'parameter_file': 'input/parameters.json',
         'num_continuous_parameters': 0,
-        'variable_name': 'N2O-Nitrification',
-        'log_name': 'field_nitrogen.dlf',
-        'target_file': 'input/target.csv',
-        'loss_fn': 'mse',
+        'objectives' : {
+            0 : {
+                'variable_name': 'N2O-Nitrification',
+                'log_name': 'field_nitrogen.dlf',
+                'target_file': 'input/target.csv',
+                'loss_fn': 'mse',
+            },
+            1 : {
+                'variable_name': 'N2O-Nitrification',
+                'log_name': 'field_nitrogen.dlf',
+                'target_file': 'input/target.csv',
+                'loss_fn': 'mae'
+            }
+        },
+        'aggregate_fn' : 'sum'
     }
     config["daisy_home"] = get_daisy_home()
     config["daisy_path"] = get_daisy_path(config['daisy_home'])
     return config
 
 def get_config():
+    '''Prompt user for full configuration'''
     config = {}
     config["name"] = input_with_default("Name", "my-optimization", lambda x: not os.path.exists(x))
     config["daisy_home"] = get_daisy_home()
-    config["daisy_path"] = input_with_default("Path to daisy.exe", os.path.join(config["daisy_home"], "bin", "daisy.exe"), os.path.exists)
-    config["outdir"] = input_with_default("Output directory", "out")
+    config["daisy_path"] = input_with_default(
+        "Path to daisy.exe",
+        os.path.join(config["daisy_home"], "bin", "daisy.exe"),
+        os.path.exists
+    )
+    config["out_dir"] = input_with_default("Output directory", "out")
 
-    config["optimizer"] = input_with_choices("Optimization method", list(available_optimizers.keys()), None, False)
+    config["optimizer"] = input_with_choices("Optimization method",
+                                             list(available_optimizers.keys()), None, False)
     ##  TODO: Get optimizer specific parameters
 
     config["logger"] = input_with_choices("Logger", list(available_loggers.keys()), None, False)
     config["dai_template"] = input_with_default("Dai template file", "input/template.dai")
     config["parameter_file"] = input_with_default("Parameter file", "input/parameters.json")
     if not os.path.exists(config["parameter_file"]):
-        config["num_continuous_parameters"] = int(input_with_default("Number of continuous parameters", 0, is_int))
-        #config["num_categorical_parameters"] = input_with_default("Number of categorical parameters", 0, is_int)
-
-    config["variable_name"] = input_no_default("Name of variable to optimize for")
-    config["log_name"] = input_no_default("Name of log file where the variable is logged")
-    config["target_file"] = input_with_default("Path to target file", "input/target.csv")
-
-    config["loss_fn"] = input_with_choices("Loss function", list(available_loss_fns.keys()))
+        config["num_continuous_parameters"] = int(
+            input_with_default("Number of continuous parameters", 0, is_int)
+        )
+        # config["num_categorical_parameters"] = int(
+        #     input_with_default("Number of categorical parameters", 0, is_int)
+        # )
+    objectives = {}
+    add_more = True
+    while add_more:
+        objective, add_more = _prompt_for_objective()
+        objectives[len(objectives)] = objective
+    config["objectives"] = objectives
+    if len(objectives) > 1:
+        config["aggregate_fn"] = input_with_choices("Aggregate function",
+                                                    list(available_aggregate_fns.keys()))
+    else:
+        config["aggregate_fn"] = "sum"
 
     return config
 
+def _prompt_for_objective():
+    objective = {}
+    objective["variable_name"] = input_no_default("Name of variable to optimize for")
+    objective["log_name"] = input_no_default("Name of log file where the variable is logged")
+    objective["target_file"] = input_with_default("Path to target file", "input/target.csv")
+    objective["loss_fn"] = input_with_choices("Loss function", list(available_loss_fns.keys()))
+    add_more = 'y' == input_no_default("Add more objectives? (y/n)",
+                                       check=lambda s: s in ('y', 'n'))
+    return objective, add_more
+
 def create_optim(config):
+    '''Create an optimization project from a configuration'''
     config["daisy_home"] = sanitize_path(os.path.abspath(config["daisy_home"]))
     config["daisy_path"] = sanitize_path(os.path.abspath(config["daisy_path"]))
     basedir = os.path.abspath(config["name"])
@@ -74,11 +137,36 @@ def create_optim(config):
     # This is two calls because we want to fail if the basedir already exists
     os.makedirs(os.path.join(basedir, "input"))
 
-    if not os.path.isabs(config["outdir"]):
-        config["outdir"] = os.path.join(basedir, config["outdir"])
-    config["outdir"] = sanitize_path(config["outdir"])
+    if not os.path.isabs(config["out_dir"]):
+        config["out_dir"] = os.path.join(basedir, config["out_dir"])
+    config["out_dir"] = sanitize_path(config["out_dir"])
 
     # Copy or create parameter file
+    config["parameter_file"] = _copy_or_create_param(config, basedir)
+
+    # Copy or create target files fot objectives
+    # And transform from dict of objectives to lists
+    objectives = config.pop("objectives")
+    for objective_id, objective in objectives.items():
+        # Copy or create target file
+        objective["target_file"] = _copy_or_create_target(objective_id, objective, basedir)
+
+    config['variable_names'] = [ obj["variable_name"] for obj in objectives.values() ]
+    config['log_names'] = [ obj["log_name"] for obj in objectives.values() ]
+    config['target_files'] = [ obj["target_file"] for obj in objectives.values() ]
+    config['loss_fns'] = [ obj["loss_fn"] for obj in objectives.values() ]
+
+    # Copy or create template file
+    config["dai_template"] = _copy_or_create_template(config, basedir)
+
+    # Instantiate an optimize.py file
+    optimize_template = _read_optimize_template()
+    optimize_program = optimize_template.format(**config)
+    optimize_path = os.path.join(basedir, "optimize.py")
+    with open(optimize_path, "w", encoding='utf-8') as outfile:
+        outfile.write(optimize_program)
+
+def _copy_or_create_param(config, basedir):
     param_path = os.path.join(basedir, "input", "parameters.json")
     if os.path.exists(config["parameter_file"]):
         try:
@@ -98,13 +186,13 @@ def create_optim(config):
             ]
         with open(param_path, 'w', encoding='utf-8') as outfile:
             json.dump(params, outfile, indent="  ")
-    config["parameter_file"] = sanitize_path(param_path)
+    return sanitize_path(param_path)
 
-    # Copy or create target file
-    target_path = os.path.join(basedir, "input", "target.csv")
-    if os.path.exists(config["target_file"]):
+def _copy_or_create_target(objective_id, objective, basedir):
+    target_path = os.path.join(basedir, "input", f"target-{objective_id}.csv")
+    if os.path.exists(objective["target_file"]):
         try:
-            shutil.copyfile(config["target_file"], target_path)
+            shutil.copyfile(objective["target_file"], target_path)
         except shutil.SameFileError:
             pass # This is not a problem
     else:
@@ -112,9 +200,9 @@ def create_optim(config):
             writer = csv.writer(outfile)
             for row in get_example_target():
                 writer.writerow(row)
-    config["target_file"] = sanitize_path(target_path)
+    return sanitize_path(target_path)
 
-    # Copy or create template file
+def _copy_or_create_template(config, basedir):
     template_path = os.path.join(basedir, "input", "template.dai")
     if os.path.exists(config["dai_template"]):
         try:
@@ -124,26 +212,27 @@ def create_optim(config):
     else:
         # We have a default with some instructions
         # From python 3.13 we can do
-        # with importlib.resources.path("daisypy.optim", "data", "default-template.dai") as default_path:
+        # with importlib.resources.path("daisypy.optim",
+        #                               "data",
+        #                               "default-template.dai") as default_path:
         with importlib.resources.path("daisypy.optim", "data") as datadir:
-            default_path = datadir / "default-template.dai"
-            shutil.copyfile(default_path, template_path)
-    config["dai_template"] = sanitize_path(template_path)
+            shutil.copyfile(datadir / "default-template.dai", template_path)
+    return sanitize_path(template_path)
 
-    # Instantiate an optimize.py file
+def _read_optimize_template():
     # From python 3.13 we can do
-    # optimize_template = importlib.resources.read_text("daisypy.optim", "data", "optimize_template.py", encoding="utf-8")
+    # optimize_template = importlib.resources.read_text("daisypy.optim",
+    #                                                   "data",
+    #                                                   "optimize_template.py",
+    #                                                   encoding="utf-8")
     with importlib.resources.path("daisypy.optim", "data") as datadir:
         optimize_inpath = os.path.join(datadir, "optimize_template.py")
     with open(optimize_inpath, 'r', encoding='utf-8') as infile:
         optimize_template = infile.read()
-    optimize_program = optimize_template.format(**config)
-    optimize_path = os.path.join(basedir, "optimize.py")
-    with open(optimize_path, "w", encoding='utf-8') as outfile:
-         outfile.write(optimize_program)
+    return optimize_template
 
 def finalize():
-    # Try to add dependencies with uv
+    '''Try to add dependencies with uv. Inform user if it fails'''
     cmd = [
         "uv",
         "add",
@@ -157,20 +246,17 @@ def finalize():
         cmd += ["scikit-optimize", "joblib"]
     if "tensorboard" in available_loggers:
         cmd += ["scipy", "tensorboard", "torch"]
-    try:
-        result = subprocess.run(cmd, text=True)
-        if result.returncode != 0:
-            print("Error adding dependencies. Returncode", result.returncode)
-            print("stdout:", result.stdout)
-            print("stderr:", result.stderr)
-            print("Please verify/add manually")
-            print(*cmd)
-    except Exception as e:
-        print("Error while adding dependencies:", e)
+
+    result = subprocess.run(cmd, text=True, check=False)
+    if result.returncode != 0:
+        print("Error adding dependencies. Returncode", result.returncode)
+        print("stdout:", result.stdout)
+        print("stderr:", result.stderr)
         print("Please verify/add manually")
         print(*cmd)
 
 def get_daisy_home():
+    '''Prompt user for Daisy home location. Try to guess based on platform'''
     daisy_candidates = []
     match platform.system():
         case "Windows":
@@ -197,6 +283,7 @@ def get_daisy_home():
             return input_with_choices("Path to daisy directory", daisy_candidates, os.path.isdir)
 
 def get_daisy_path(daisy_home):
+    '''Prompt user for Daisy executable path. Try to guess based on daisy_home/platform'''
     match platform.system():
         case "Windows":
             default = os.path.join(daisy_home, "bin", "daisy.exe")
@@ -218,16 +305,20 @@ def get_daisy_path(daisy_home):
 
 
 def input_with_default(prompt, default, check=None):
+    '''Prompt for user input with a default.
+    Optionally validate input.'''
     while True:
         response = input(f"{prompt} [{default}]: ")
         if len(response) == 0:
             print_selected(default)
             return default
-        elif check is None or check(response):
+        if check is None or check(response):
             print_selected(response)
             return response
 
 def input_no_default(prompt, check=None):
+    '''Prompt for user input without a default.
+    Optionally validate input.'''
     while True:
         response = input(f"{prompt}: ")
         if check is None or check(response):
@@ -235,6 +326,9 @@ def input_no_default(prompt, check=None):
             return response
 
 def input_with_choices(prompt, choices, check=None, user_supplied_ok=True):
+    '''Prompt for user input with a list of choices.
+    Optionally validate input.
+    Optinally allow user supply their own choice'''
     while True:
         print(prompt, *[f"  {i} {choice}" for i, choice in enumerate(choices)], sep='\n')
         response = input("Choice: ")
@@ -249,9 +343,11 @@ def input_with_choices(prompt, choices, check=None, user_supplied_ok=True):
                 return response
 
 def print_selected(selected):
+    '''Print user selection'''
     print(f'  "{selected}"')
 
 def is_int(s):
+    '''Check if s can be converted to an integer'''
     try:
         int(s)
         return True
@@ -259,9 +355,11 @@ def is_int(s):
         return False
 
 def sanitize_path(path):
+    '''Get rid of backslashes in paths'''
     return path.replace("\\", "/")
 
 def get_example_params():
+    '''Parameters to optimize in example'''
     return [
         {
             "type" : "continuous",
@@ -278,7 +376,7 @@ def get_example_params():
     ]
 
 def get_example_target():
-    # The output from running with K_aquitard = 0.456 and Z_aquitard = 236
+    '''The output from running with K_aquitard = 0.456 and Z_aquitard = 236'''
     return [
         ["time", "N2O-Nitrification"],
         ["2000-01-01", "0.000011"],
@@ -295,13 +393,6 @@ def get_example_target():
         ["2000-12-01", "0.204323"],
     ]
 
+
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Setup input files and script for running a Daisy optimization")
-    parser.add_argument("--example", action="store_true")
-    args = parser.parse_args()
-    try:
-        main(args.example)
-        sys.exit(0)
-    except Exception as e:
-        print("Error creating project", e)
-        sys.exit(1)
+    main()

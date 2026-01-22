@@ -1,6 +1,6 @@
 """Example showing how to do parameter optimization in Daisy.
 The optimization consists of four steps
-  1. Setup 
+  1. Setup
   2. Optimize
   3. Evaluate
   4. Analyze
@@ -18,11 +18,13 @@ import matplotlib.pyplot as plt
 from daisypy.io.dlf import read_dlf
 from daisypy.optim import (
     DaiFileGenerator,
+    available_aggregate_fns,
     available_loggers,
     available_loss_fns,
     available_optimizers,
     DaisyLoss,
-    DaisyObjective,
+    AggregateObjective,
+    ScalarObjective,
     DaisyOptimizationProblem,
     ContinuousParameter,
     DaisyRunner,
@@ -31,25 +33,32 @@ from daisypy.optim import (
 def main(debug=False):
     daisy_path = "{daisy_path}"
     daisy_home = "{daisy_home}"
-    
-    outdir = "{outdir}"
-    os.makedirs(outdir, exist_ok=True)
 
-    loss_fn = available_loss_fns["{loss_fn}"]
+    out_dir = "{out_dir}"
+    os.makedirs(out_dir, exist_ok=True)
+
     optimizer_name = "{optimizer}"
     logger_name = "{logger}"
     dai_template = "{dai_template}"
     parameters = read_parameters("{parameter_file}")
-    target = pd.read_csv("{target_file}")
-    variable_name = "{variable_name}"
-    log_name = "{log_name}"
-    run_id = get_run_id("{outdir}")
-    
-    
-    problem = setup(daisy_path, daisy_home, outdir, dai_template, parameters, variable_name, log_name, target, loss_fn, run_id, debug)
-    result = optimize(problem, optimizer_name, logger_name, outdir, run_id)
-    eval_dir = evaluate(result, problem, outdir, run_id)
-    analyze(eval_dir, problem, outdir, run_id)
+
+    # Objectives
+    log_names = {log_names}
+    variable_names = {variable_names}
+    target_files = [pd.read_csv(target_file) for target_file in {target_files}]
+    loss_fns = [available_loss_fns[loss_fn] for loss_fn in {loss_fns}]
+    aggregate_fn = available_aggregate_fns["{aggregate_fn}"]
+
+    objective = setup_objective(log_names, variable_names, target_files, loss_fns, aggregate_fn)
+
+    run_id = get_run_id("{out_dir}")
+
+    problem = setup(
+        daisy_path, daisy_home, out_dir, dai_template, parameters, objective, run_id, debug
+    )
+    result = optimize(problem, optimizer_name, logger_name, out_dir, run_id)
+    eval_dir = evaluate(result, problem, out_dir, run_id)
+    analyze(eval_dir, problem, out_dir, run_id)
 
 def read_parameters(path):
     with open(path, 'r', encoding='utf-8') as infile:
@@ -72,9 +81,27 @@ def read_parameters(path):
             raise ValueError(f'Parameter type: "{{spec["type"]}}" not supported.')
     return parameters
 
+def setup_objective(log_names, variable_names, target_files, loss_fns, aggregate_fn):
+    if not len(variable_names) == len(log_names) == len(target_files) == len(loss_fns):
+        raise ValueError("Objective specification mismatch")
 
+    # We need to wrap the loss functions with the DaisyLoss class
+    # You can substitute any loss function with the following signature
+    # (actual : numpy.ndarray, target : numpy.ndarray) -> float
+    loss_fns = [DaisyLoss(loss_fn) for loss_fn in loss_fns]
 
-def setup(daisy_path, daisy_home, base_outdir, dai_template, parameters, variable_name, log_name, target, loss_fn, run_id, debug):
+    # Now we can create the objective functions
+    objective_fns = [
+        ScalarObjective(log, var, target, loss) for log, var, target, loss in
+        zip(log_names, variable_names, target_files, loss_fns)
+    ]
+
+    # If we have more than one objective, we wrap in an AggregatorObjective
+    if len(objective_fns) == 1:
+        return objective_fns[0]
+    return AggregateObjective(objective_fns, aggregate_fn)
+
+def setup(daisy_path, daisy_home, base_out_dir, dai_template, parameters, objective, run_id, debug):
     # Setup a runner that knows how to execute daisy
     runner = DaisyRunner(daisy_path, daisy_home)
 
@@ -82,29 +109,22 @@ def setup(daisy_path, daisy_home, base_outdir, dai_template, parameters, variabl
     dai_file_generator = DaiFileGenerator(template_file_path=dai_template)
 
     # Create a dirctory for storing setup files for debug/inspection
-    outdir = os.path.join(base_outdir, run_id, 'setup')
-    os.makedirs(outdir, exist_ok=True)
-    
+    out_dir = os.path.join(base_out_dir, run_id, 'setup')
+    os.makedirs(out_dir, exist_ok=True)
+
     # Generate a dai file for debug runs
     params = {{ p.name : p.initial_value  for p in parameters }}
-    dai_file_generator(outdir, params)    
+    dai_file_generator(out_dir, params)
 
-    # We need to wrap the loss function with the DaisyLoss class
-    # You can substitute any loss function with the following signature
-    # (actual : numpy.ndarray, target : numpy.ndarray) -> float
-    wrapped_loss_fn = DaisyLoss(loss_fn)
-
-    # Now we can create the objective and wrap it as a DaisyOptimizationProblem that knows how to
-    # run daisy, get the output data and measure the loss
-    objective_fn = DaisyObjective(log_name, variable_name, target, wrapped_loss_fn)
-    data_dir = os.path.join(base_outdir, run_id, "debug") if debug else None
-    problem = DaisyOptimizationProblem(runner, dai_file_generator, objective_fn, parameters, data_dir, debug)
+    # Now we can wrap everything as a DaisyOptimizationProblem that knows how to
+    # run daisy, get the output data and compute the objetive
+    data_dir = os.path.join(base_out_dir, run_id, "debug") if debug else None
+    problem = DaisyOptimizationProblem(runner, dai_file_generator, objective, parameters, data_dir, debug)
     return problem
 
-
-def optimize(problem, optimizer_name, logger_name, base_outdir, run_id):
-    outdir = os.path.join(base_outdir, run_id, "optimize")
-    os.makedirs(outdir, exist_ok=True)
+def optimize(problem, optimizer_name, logger_name, base_out_dir, run_id):
+    out_dir = os.path.join(base_out_dir, run_id, "optimize")
+    os.makedirs(out_dir, exist_ok=True)
 
     # Define some default parameters for each of the optimizers
     optimizer_options = {{
@@ -116,11 +136,11 @@ def optimize(problem, optimizer_name, logger_name, base_outdir, run_id):
         }},
         "skopt" : {{
             "maxfevals" : 50,
-        }} 
+        }}
     }}
 
     options = optimizer_options[optimizer_name]
-    logdir = os.path.join(base_outdir, 'logs')
+    logdir = os.path.join(base_out_dir, 'logs')
     logger = available_loggers[logger_name](logdir, f'{{run_id}}-{{optimizer_name}}')
     optimizer = available_optimizers[optimizer_name](problem, logger, options)
 
@@ -134,36 +154,53 @@ def optimize(problem, optimizer_name, logger_name, base_outdir, run_id):
             print('    ', k, ' : ', v, sep='')
 
     # Save the result
-    with open(os.path.join(outdir, 'result.json'), 'w', encoding='utf-8') as out:
+    with open(os.path.join(out_dir, 'result.json'), 'w', encoding='utf-8') as out:
         json.dump(result, out)
-            
-    return result 
 
+    return result
 
-def evaluate(result, problem, base_outdir, run_id):
+def evaluate(result, problem, base_out_dir, run_id):
     # Create a directory for outputs
-    outdir = os.path.join(base_outdir, run_id, "evaluate")
-    os.makedirs(outdir, exist_ok=True)
+    out_dir = os.path.join(base_out_dir, run_id, "evaluate")
+    os.makedirs(out_dir, exist_ok=True)
 
     # Generate a dai file with the best parameters
     dai_file_generator = problem.dai_file_generator
     parameters = {{ k : v['best'] for k,v in result.items() }}
-    dai_path = dai_file_generator(outdir, parameters)
+    dai_path = dai_file_generator(out_dir, parameters)
 
     # Run daisy with the newly generated dai file
-    problem.runner(dai_path, outdir)
-    return outdir
+    problem.runner(dai_path, out_dir)
+    return out_dir
 
-    
-def analyze(eval_dir, problem, base_outdir, run_id):
-    outdir = os.path.join(base_outdir, run_id, 'analyze')
-    os.makedirs(outdir, exist_ok=True)
+def analyze(eval_dir, problem, base_out_dir, run_id):
+    out_dir = os.path.join(base_out_dir, run_id, 'analyze')
+    os.makedirs(out_dir, exist_ok=True)
 
-    # Extract variable, log name and target from the problem
-    var = problem.objective_fn.variable_name    
-    target = problem.objective_fn.target
-    log_name = problem.objective_fn.log_name
+    # Extract variables, log names and targets from the problem
+    variables = problem.objective_fn.variable_name
+    targets = problem.objective_fn.target
+    log_names = problem.objective_fn.log_name
 
+    # Check if we only have one triple to process
+    if isinstance(variables, str) and \
+       isinstance(targets, pd.DataFrame) and \
+       isinstance(log_names, str):
+        variables = [variables]
+        targets = [targets]
+        log_names = [log_names]
+
+    # Plot all variables we optimized for.
+    # We can have multiple objectives defined for the same (variable, log) pair, in which case we
+    # only plot it once.
+    processed = set()
+    for i, (var, target, log_name) in enumerate(zip(variables, targets, log_names)):
+        if (var, log_name) in processed:
+            continue
+        processed.add((var, log_name))
+        plot_single_variable(var, target, log_name, eval_dir, out_dir)
+
+def plot_single_variable(var, target, log_name, eval_dir, out_dir):
     # Get the simulated results
     sim_dlf = read_dlf(os.path.join(eval_dir, log_name))
     sim_value = sim_dlf.body[var]
@@ -172,14 +209,19 @@ def analyze(eval_dir, problem, base_outdir, run_id):
     )
     sim = pd.DataFrame({{'time' : sim_time, 'value' : sim_value}})
 
+    log_display_name = os.path.splitext(log_name)[0]
+    title = f"{{var}} @ {{log_display_name}}"
+    prefix = f"{{var}}-{{log_display_name}}"
+
     # Make a time series plot of the target and simulated values
     fig, ax = plt.subplots()
     ax.plot(target["time"], target['value'])
-    ax.plot(sim["time"], sim['value']) 
+    ax.plot(sim["time"], sim['value'], linestyle='dashed')
     ax.legend(["target", "simulation"])
     ax.set_ylabel(var)
+    ax.set_title(title)
     fig.tight_layout()
-    fig.savefig(os.path.join(outdir, 'time-series.pdf'))
+    fig.savefig(os.path.join(out_dir, f'{{prefix}}-time-series.pdf'))
 
     # Make a scatter plot of the tarvet vs simulated value
     fig, ax = plt.subplots()
@@ -194,15 +236,15 @@ def analyze(eval_dir, problem, base_outdir, run_id):
     ax.axline((merged['value_target'][0],)*2, slope=1, color='red')
     ax.set_xlabel('Target')
     ax.set_ylabel('Simulated')
-    ax.set_title(var)
+    ax.set_title(title)
     fig.tight_layout()
-    fig.savefig(os.path.join(outdir, 'scatter.pdf'))
-    
+    fig.savefig(os.path.join(out_dir, f'{{prefix}}-scatter.pdf'))
+
     plt.show()
 
-def get_run_id(base_outdir):
+def get_run_id(base_out_dir):
     used = set()
-    for entry in os.scandir(base_outdir):
+    for entry in os.scandir(base_out_dir):
         try:
             used.add(int(entry.name))
         except ValueError:
@@ -214,7 +256,7 @@ def get_run_id(base_outdir):
             runid += 1
     except KeyError:
         return str(runid)
-                    
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--debug", action="store_true")

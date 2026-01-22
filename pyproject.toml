@@ -51,10 +51,17 @@ namespaces = true
 [tool.setuptools_scm]
 version_file = "daisypy/optim/_version.py"
 
+[tool.pylint.main]
+init-hook = 'import sys; sys.path.append(".")'
+ignored-modules = [ "numpy", "skopt", "joblib", "cma", "pandas", "scipy", "torch", "matplotlib", "daisypy.io" ]
+
 [tool.pylint.messages_control]
 disable = [
     'trailing-whitespace',
     'trailing-newlines',
+    'too-few-public-methods',
+    'missing-module-docstring',
+    'missing-class-docstring'
  ]
  ignore = [
      '_version.py'
