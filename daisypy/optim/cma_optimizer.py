@@ -75,17 +75,17 @@ class DaisyCMAOptimizer:
                         break
                     else:
                         self.logger.warning(step=step,msg=f'All are infeasible at attempt {i}', fvals=fvals)
-                failed = np.isnan(fvals)
-                if np.all(failed):
-                    self.logger.error('All attempts failed. Aborting')
-                    break
-
                 for x, fval in zip(X, fvals):
                     params = {
                         p.name : value  for p, value in
                         zip(self.problem.parameters, self.objective.transform(x))
                     }
                     self.logger.result(step=step, objective_value=fval, **params)
+
+                failed = np.isnan(fvals)
+                if np.all(failed):
+                    self.logger.error('All attempts failed. Aborting')
+                    break
 
                 self.logger.info(step=step, total_function_evaluations=total_f_evals)
                 self.logger.info(step=step, median_objective=np.median(fvals[~failed]))
