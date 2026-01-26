@@ -1,3 +1,4 @@
+# pylint: disable=wrong-import-position
 available_optimizers = {}
 try:
     from daisypy.optim.cma_optimizer import DaisyCMAOptimizer

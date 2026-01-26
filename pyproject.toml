@@ -61,15 +61,20 @@ disable = [
     'trailing-newlines',
     'too-few-public-methods',
     'missing-module-docstring',
-    'missing-class-docstring'
+    'missing-class-docstring',
+    'R0801', # Similar lines in two files
  ]
  ignore = [
-     '_version.py'
+     '_version.py',
+     'data',
  ]
 
 [tool.pytest.ini_options]
 addopts = [
     "--import-mode=importlib"
+]
+markers = [
+    "slow: marks test as slow (deselect with '-m \"not slow\"')"
 ]
 filterwarnings = [
     "error",

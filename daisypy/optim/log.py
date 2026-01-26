@@ -1,13 +1,14 @@
+'''Log interface'''
 from abc import ABC, abstractmethod
 
 class Log(ABC):
     @abstractmethod
     def log(self, *args, **kwargs):
-        pass
+        '''Handle any kind of log mesage'''
 
     @abstractmethod
     def close(self):
-        pass
+        '''Explicitly close the log'''
 
     @abstractmethod
     def __del__(self):

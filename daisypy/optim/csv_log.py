@@ -21,7 +21,7 @@ class CsvLog(Log):
         '''
         _dir = os.path.dirname(path)
         os.makedirs(_dir, exist_ok=True)
-        self._log = open(path, 'w', encoding='utf-8')
+        self._log = open(path, 'w', encoding='utf-8') # pylint: disable=consider-using-with
         if columns is None:
             # Deferred setting of columns such that they can be set on first write
             self.columns = None
@@ -29,7 +29,7 @@ class CsvLog(Log):
         else:
             self._setup_columns(columns, default_formatter)
 
-    def log(self, flush=True, **kwargs):
+    def log(self, *args, flush=True, **kwargs):
         '''Log a row.
 
         Parameters
@@ -43,6 +43,8 @@ class CsvLog(Log):
         '''
         if self._log.closed:
             raise RuntimeError('Writing to closed CsvLog')
+        if len(args) > 0:
+            raise RuntimeError('CsvLog requires all log arguments to be passed as keywords')
         if self.columns is None:
             self._setup_columns(list(kwargs.keys()))
         row = []

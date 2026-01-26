@@ -16,7 +16,7 @@ class DaisyCMAOptimizer:
           cma_options = { "maxfevals" : np.inf }
           cma_options = { "maxfevals" : 2000 }
 
-        A simple estimate of the time it will take to compute N evaluations can be found in this way.
+        A simple estimate of the time it will take to compute N evaluations can be found in this way
           time_to_run_once = <time to run one simulation with Daisy>
           total_run_time = time_to_run_once * maxfevals / number_of_compute_cores
 
@@ -40,7 +40,9 @@ class DaisyCMAOptimizer:
             lower.append(param.valid_range[0])
             upper.append(param.valid_range[1])
             x0.append(param.initial_value)
-        self.objective = ScaleCoordinates(problem, lower=lower, upper=upper, from_lower_upper=(-1,1))
+        self.objective = ScaleCoordinates(
+            problem, lower=lower, upper=upper, from_lower_upper=(-1,1)
+        )
 
         # Map the initial values to optimization domain
         x0 = self.objective.inverse(x0)
@@ -54,11 +56,14 @@ class DaisyCMAOptimizer:
             cma_options["maxfevals"] = 10
 
         if 'bounds'  in cma_options:
-            warnings.warn("'bounds' set in cma_options will be ignored and set to match problem parameters")
+            warnings.warn(
+                "'bounds' set in cma_options will be ignored and set to match problem parameters"
+            )
         cma_options['bounds'] = [-1, 1]
         self.optimizer = cma.CMAEvolutionStrategy(x0, 1/3, cma_options)
 
     def optimize(self):
+        '''Run the optimizer'''
         max_attempts_to_get_feasible = 3
         # TODO: Implement logging + checkpointing every n'th step
         total_f_evals = 0
@@ -68,14 +73,15 @@ class DaisyCMAOptimizer:
                 step += 1
                 # Try a couple of times if we dont get at least one non nan value
                 for i in range(max_attempts_to_get_feasible):
-                    X = self.optimizer.ask()
-                    fvals = np.array(eval_all(X))
+                    xs = self.optimizer.ask()
+                    fvals = np.array(eval_all(xs))
                     total_f_evals += len(fvals)
                     if np.any(np.isfinite(fvals)):
                         break
-                    else:
-                        self.logger.warning(step=step,msg=f'All are infeasible at attempt {i}', fvals=fvals)
-                for x, fval in zip(X, fvals):
+                    self.logger.warning(
+                        step=step,msg=f'All are infeasible at attempt {i}', fvals=fvals
+                    )
+                for x, fval in zip(xs, fvals):
                     params = {
                         p.name : value  for p, value in
                         zip(self.problem.parameters, self.objective.transform(x))
@@ -96,7 +102,7 @@ class DaisyCMAOptimizer:
                     # We want them to have a bigger negative influence
                     # TODO: This assumes that are we minimizing ...
                     fvals[failed] = 2*np.max(fvals[~failed])
-                self.optimizer.tell(X, fvals)
+                self.optimizer.tell(xs, fvals)
 
                 # Log parameter distributions in the standardized space
                 means = self.optimizer.result[5]
@@ -147,11 +153,24 @@ class DaisyCMAOptimizer:
         return result
 
     def checkpoint(self, path):
-        # TODO: Save the state to disk to we can resume
-        # We need to store the original problem along with the current means and stds
+        '''Save the state to disk to we can resume
+
+        Parameters
+        ----------
+        path : str
+          Path to store checkpoint in
+        '''
+        # TODO: Save state to disk
         raise NotImplementedError("Checkpointing is not yet implemented")
 
     @staticmethod
     def from_checkpoint(path):
+        '''Read state from disk to we can resume
+
+        Parameters
+        ----------
+        path : str
+          Path to read checkpoint from
+        '''
         # TODO: Read the state from disk
         raise NotImplementedError("Resuming from checkpoint is not yet implemented")

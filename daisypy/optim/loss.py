@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 
 class DaisyLoss:
@@ -8,17 +7,17 @@ class DaisyLoss:
         Parameters
         ----------
         loss_fn : callable : (actual, target) -> loss
-          actual and target are np.ndarray of shape (n,)        
+          actual and target are numpy.ndarray of shape (n,)
         """
         self.loss_fn = loss_fn
-        
+
     def __call__(self, actual, target):
         """Compute the loss over a timeseries
 
         Timestamps MUST be unique in both actual and target.
         All timestamps in target MUST be in actual.
         Extra timestamps in actual are ignored.
-        
+
         Parameters
         ----------
         actual : pd.DataFrame
@@ -30,7 +29,7 @@ class DaisyLoss:
         Raises
         ------
         ValueError if timestamps are not unique or if actual is missing timestamps
-        
+
         Returns
         -------
         loss as computed by self.loss_fn
@@ -40,14 +39,14 @@ class DaisyLoss:
         target_time = target['time']
         if target_time.nunique() != len(target_time):
             raise ValueError('Timestamps in target must be unique')
-        
+
         actual_time = actual['time']
         if actual_time.nunique() != len(actual_time):
             raise ValueError('Timestamps in actual must be unique')
 
         if not target_time.isin(actual_time).all():
             raise ValueError('All timestamps in target must be in actual')
-        
+
         merged = pd.merge(
             target, actual,
             how='left',

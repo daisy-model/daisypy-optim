@@ -1,4 +1,5 @@
 import tempfile
+import pytest
 from pytest import approx
 from daisypy.optim import (
     DefaultLogger,
@@ -7,6 +8,7 @@ from daisypy.optim import (
 from .mock_problem import MockProblem
 from .test_objectives import beale_function
 
+@pytest.mark.slow
 def test_skopt_optimizer(capsys):
     problem = MockProblem(beale_function.parameters, beale_function)
     out_dir = 'out/cma'

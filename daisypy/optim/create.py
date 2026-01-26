@@ -237,16 +237,12 @@ def finalize():
         cmd.append("cma")
     if 'skopt' in available_optimizers:
         cmd += ["scikit-optimize", "joblib"]
-    try:
-        result = subprocess.run(cmd, text=True)
-        if result.returncode != 0:
-            print("Error adding dependencies. Returncode", result.returncode)
-            print("stdout:", result.stdout)
-            print("stderr:", result.stderr)
-            print("Please verify/add manually")
-            print(*cmd)
-    except Exception as e:
-        print("Error while adding dependencies:", e)
+
+    result = subprocess.run(cmd, text=True, check=False)
+    if result.returncode != 0:
+        print("Error adding dependencies. Returncode", result.returncode)
+        print("stdout:", result.stdout)
+        print("stderr:", result.stderr)
         print("Please verify/add manually")
         print(*cmd)
 

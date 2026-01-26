@@ -3,7 +3,7 @@ import random
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+from matplotlib import animation
 from matplotlib.colors import Normalize
 import matplotlib as mpl
 
@@ -93,13 +93,36 @@ def plot_result(df, step_var='step', f_var='objective_value'):
         case _: return plot_result_nd(df, params, step_var, f_var)
 
 def plot_result_1d(df, var, step_var='step', f_var='objective_value'):
+    '''Make a scatter plot of a single parameter and objective value at each optimization step.
+    Parameters
+    ----------
+    df : pandas.DataFrame OR str
+      If str assume it is a path to a csv file with optimization results
+
+    var : str
+      Name of parameter variable
+
+    step_var : str
+      Name of step variable
+
+    f_var : str
+      Name of objective variable
+
+    Returns
+    -------
+    (matplotlib.Figure, matplotlib.Axes)
+
+    See also
+    --------
+    plot_result, plot_result_2d, plot_result_3d, plot_result_nd
+    '''
     if not isinstance(df, pd.DataFrame):
         df = pd.read_csv(df)
     fig, ax = plt.subplots()
     x = df[step_var]
     y = df[var]
     f = df[f_var]
-    transform, transform_text = _linearize_for_cmap(f)
+    transform, transform_text = _find_cmap_transform(f)
     c = transform(f)
     cm = ax.scatter(x, y, c=c)
     ax.set_xlabel(step_var)
@@ -110,19 +133,44 @@ def plot_result_1d(df, var, step_var='step', f_var='objective_value'):
     return fig, ax
 
 def plot_result_2d(df, x_var, y_var, step_var='step', f_var='objective_value'):
+    '''Make a scatter plot of two parameters and objective value at each optimization step.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame OR str
+      If str assume it is a path to a csv file with optimization results
+
+    x_var : str
+      Name of parameter variable on x-axis
+
+    y_var : str
+      Name of parameter variable on y-axis
+
+    step_var : str
+      Name of step variable
+
+    f_var : str
+      Name of objective variable
+
+    Returns
+    -------
+    (matplotlib.Figure, matplotlib.Axes)
+
+    See also
+    --------
+    plot_result, plot_result_1d, plot_result_3d, plot_result_nd
+    '''
     if not isinstance(df, pd.DataFrame):
         df = pd.read_csv(df)
     fig, ax = plt.subplots()
-    x = df[x_var]
-    y = df[y_var]
-    f = df[f_var]
-    transform, transform_text = _linearize_for_cmap(f)
-    c = transform(f)
+    transform, transform_text = _find_cmap_transform(df[f_var])
+    c = transform(df[f_var])
     norm = Normalize(vmin=np.min(c), vmax=np.max(c))
-    grouped = pd.DataFrame({'x':x, 'y':y, 'c':c, 'step': df[step_var]}).groupby('step')
+    grouped = pd.DataFrame({
+        'x': df[x_var], 'y': df[y_var], 'c': c, 'step': df[step_var]
+    }).groupby('step')
     for step, group in grouped:
-        m = f'${step}$'
-        cm = ax.scatter(group['x'], group['y'], c=group['c'], marker=m, norm=norm)
+        cm = ax.scatter(group['x'], group['y'], c=group['c'], marker=f'${step}$', norm=norm)
     ax.set_xlabel(x_var)
     ax.set_ylabel(y_var)
     ax.set_title(f'Parameters at each step for {len(grouped)} steps')
@@ -131,6 +179,33 @@ def plot_result_2d(df, x_var, y_var, step_var='step', f_var='objective_value'):
     return fig, ax
 
 def plot_result_3d(df, x_var, y_var, z_var, f_var):
+    '''Make a 3D scatter plot of three parameters and objective values.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame OR str
+      If str assume it is a path to a csv file with optimization results
+
+    x_var : str
+      Name of parameter variable on x-axis
+
+    y_var : str
+      Name of parameter variable on y-axis
+
+    z_var : str
+      Name of parameter variable on z-axis
+
+    f_var : str
+      Name of objective variable
+
+    Returns
+    -------
+    (matplotlib.Figure, matplotlib.Axes)
+
+    See also
+    --------
+    plot_result, plot_result_1d, plot_result_2d, plot_result_nd
+    '''
     if not isinstance(df, pd.DataFrame):
         df = pd.read_csv(df)
     fig = plt.figure()
@@ -139,16 +214,45 @@ def plot_result_3d(df, x_var, y_var, z_var, f_var):
     y = df[y_var]
     z = df[z_var]
     f = df[f_var]
-    transform, transform_text = _linearize_for_cmap(f)
+    transform, _ = _find_cmap_transform(f)
     c = transform(f)
     ax.scatter(x, y, z, c=c)
     return fig, ax
 
-def plot_result_nd(df, params, step_var='step', f_var='objective_value'):
+def plot_result_nd(df, params, step_var='step', f_var='objective_value', max_plots_in_figure=20):
+    '''Plot each parameter in a separate subplot, showing the parameter value and objective value at
+    each step. If there is more than 20 parameters, each set of 20 parameters is plotted in a
+    separate figure.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame OR str
+      If str assume it is a path to a csv file with optimization results
+
+    params : list of str
+      Names of parameter variables to plot
+
+    step_var : str
+      Name of step variable
+
+    f_var : str
+      Name of objective variable
+
+    max_plots_in_figure : int
+      Maximum number of parameters to plot per figure
+
+    Returns
+    -------
+    (matplotlib.Figure, matplotlib.Axes) or list of (matplotlib.Figure, matplotlib.Axes)
+
+    See also
+    --------
+    plot_result, plot_result_1d, plot_result_2d, plot_result_3d
+    '''
+    # pylint: disable=too-many-locals
     if not isinstance(df, pd.DataFrame):
         df = pd.read_csv(df)
     n = len(params)
-    max_plots_in_figure = 20
     if n > max_plots_in_figure:
         return [
             plot_result_nd(df, params[i:min(n, i+max_plots_in_figure)], step_var, f_var)
@@ -156,24 +260,22 @@ def plot_result_nd(df, params, step_var='step', f_var='objective_value'):
         ]
 
     x = df[step_var]
-    f = df[f_var]
-    transform, transform_text = _linearize_for_cmap(f)
-    c = transform(f)
-    norm = Normalize(vmin=np.min(c), vmax=np.max(c))
+    c, transform_text = _cmap_transform(df[f_var])
 
     rows = int(np.sqrt(n))
     cols = n // rows
+    if rows * cols < n:
+        cols += 1
     fig, axs = plt.subplots(rows, cols, squeeze=False)
-    i = 0
-    for row in range(rows):
-        for col in range(cols):
-            var = params[i]
-            i += 1
-            ax = axs[row,col]
-            y = df[var]
-            cm = ax.scatter(x, y, c=c)
-            ax.set_xlabel(step_var)
-            ax.set_ylabel(var)
+    row, col = 0, 0
+    for var in params:
+        ax = axs[row,col]
+        cm = ax.scatter(x, df[var], c=c)
+        ax.set_xlabel(step_var)
+        ax.set_ylabel(var)
+        col = (col + 1) % cols
+        if col == 0:
+            row = row + 1
     fig.colorbar(cm, ax=axs, label=transform_text)
     return fig, ax
 
@@ -204,13 +306,37 @@ def animate_result(df, step_var='step', f_var='objective_value'):
         df = pd.read_csv(df)
     params = df.columns[~df.columns.isin({step_var, f_var})]
 
-    # TODO: Handle > 2d cases. Randomize or show all pairwise
     match len(params):
         case 1: return animate_result_1d(df, params[0], step_var, f_var)
         case 2: return animate_result_2d(df, params[0], params[1], step_var, f_var)
         case _: return animate_result_nd(df, params, step_var, f_var)
 
 def animate_result_1d(df, var, step_var='step', f_var='objective_value'):
+    '''Make an animation showing a single parameter at each optimization step.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame OR str
+      If str assume it is a path to a csv file with optimization results
+
+    var : str
+      Name of parameter variable
+
+    step_var : str
+      Name of step variable
+
+    f_var : str
+      Name of objective variable
+
+    Returns
+    -------
+    matplotlib.animation.AnimationFigure
+
+    See also
+    --------
+    animate_result, animate_result_2d, animate_result_nd
+    '''
+    # pylint: disable=too-many-locals
     if not isinstance(df, pd.DataFrame):
         df = pd.read_csv(df)
     # TODO: Add boundary lines showing parameter extents
@@ -221,16 +347,16 @@ def animate_result_1d(df, var, step_var='step', f_var='objective_value'):
     ylim = _compute_limits(df[var])
 
     # Find a suitable transformation of the objective for coloring
-    transform, transform_text = _linearize_for_cmap(df[f_var])
+    transform, transform_text = _find_cmap_transform(df[f_var])
     c = transform(df[f_var])
     norm = Normalize(vmin=np.min(c), vmax=np.max(c))
 
     # Prepare the data so we can just index it
-    X, Y, C = [], [], []
+    xs, ys, cs = [], [], []
     for step, group in df.groupby(step_var):
-        X.append([step]*len(group))
-        Y.append(group[var])
-        C.append(cmap(norm(transform(group[f_var]))))
+        xs.append([step]*len(group))
+        ys.append(group[var])
+        cs.append(cmap(norm(transform(group[f_var]))))
 
     fig, ax = plt.subplots(1)
     ax.set_xlabel(step_var)
@@ -242,17 +368,45 @@ def animate_result_1d(df, var, step_var='step', f_var='objective_value'):
     dummy_plot = ax.scatter([], [], c=[], cmap=cmap, norm=norm)
     fig.colorbar(dummy_plot, label=transform_text)
 
-    plot = ax.scatter(X[0], Y[0], c=C[0])
+    plot = ax.scatter(xs[0], ys[0], c=cs[0])
     def update(frame):
-        data = np.stack([X[frame], Y[frame]]).T
+        data = np.stack([xs[frame], ys[frame]]).T
         plot.set_offsets(data)
-        plot.set_color(C[frame])
-    n_frames = len(X)
+        plot.set_color(cs[frame])
+    n_frames = len(xs)
     interval = max(100, 2000//n_frames)
     return animation.FuncAnimation(fig=fig, func=update, frames=n_frames, interval=interval)
 
 
 def animate_result_2d(df, x_var, y_var, step_var='step', f_var='objective_value'):
+    '''Make an animation showing two parameters at each optimization step.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame OR str
+      If str assume it is a path to a csv file with optimization results
+
+    x_var : str
+      Name of parameter variable on x-axis
+
+    y_var : str
+      Name of parameter variable on y-axis
+
+    step_var : str
+      Name of step variable
+
+    f_var : str
+      Name of objective variable
+
+    Returns
+    -------
+    matplotlib.animation.AnimationFigure
+
+    See also
+    --------
+    animate_result, animate_result_1d, animate_result_nd
+    '''
+    # pylint: disable=too-many-locals
     if not isinstance(df, pd.DataFrame):
         df = pd.read_csv(df)
     cmap = mpl.colormaps[mpl.rcParams['image.cmap']]
@@ -262,17 +416,17 @@ def animate_result_2d(df, x_var, y_var, step_var='step', f_var='objective_value'
     ylim = _compute_limits(df[y_var])
 
     # Find a suitable transformation of the objective for coloring
-    transform, transform_text = _linearize_for_cmap(df[f_var])
+    transform, transform_text = _find_cmap_transform(df[f_var])
     c = transform(df[f_var])
     norm = Normalize(vmin=np.min(c), vmax=np.max(c))
 
     # Prepare the data so we can just index it
-    steps, X, Y, C = [], [], [], []
+    steps, xs, ys, cs = [], [], [], []
     for step, group in df.groupby(step_var):
         steps.append(step)
-        X.append(group[x_var])
-        Y.append(group[y_var])
-        C.append(cmap(norm(transform(group[f_var]))))
+        xs.append(group[x_var])
+        ys.append(group[y_var])
+        cs.append(cmap(norm(transform(group[f_var]))))
 
     fig, ax = plt.subplots(1)
     ax.set_xlabel(x_var)
@@ -285,17 +439,42 @@ def animate_result_2d(df, x_var, y_var, step_var='step', f_var='objective_value'
     dummy_plot = ax.scatter([], [], c=[], cmap=cmap, norm=norm)
     fig.colorbar(dummy_plot, label=transform_text)
 
-    plot = ax.scatter(X[0], Y[0], c=C[0])
+    plot = ax.scatter(xs[0], ys[0], c=cs[0])
     def update(frame):
-        data = np.stack([X[frame], Y[frame]]).T
+        data = np.stack([xs[frame], ys[frame]]).T
         plot.set_offsets(data)
-        plot.set_color(C[frame])
+        plot.set_color(cs[frame])
         ax.set_title(f'Step {steps[frame]}')
-    n_frames = len(X)
+    n_frames = len(xs)
     interval = max(100, 2000//n_frames)
     return animation.FuncAnimation(fig=fig, func=update, frames=n_frames, interval=interval)
 
 def animate_result_nd(df, params, step_var='step', f_var='objective_value'):
+    '''Make an animation of two parameters selected at random from a list of possible parameters
+
+    Parameters
+    ----------
+    df : pandas.DataFrame OR str
+      If str assume it is a path to a csv file with optimization results
+
+    params : list of str
+      Names of parameter variables
+
+    step_var : str
+      Name of step variable
+
+    f_var : str
+      Name of objective variable
+
+    Returns
+    -------
+    matplotlib.animation.AnimationFigure
+
+    See also
+    --------
+    animate_result, animate_result_1d, animate_result_nd
+    '''
+
     warnings.warn("Can only animate 2 parameters at a time. Selecting two at random")
     params_list = list(params)
     random.shuffle(params_list)
@@ -321,7 +500,12 @@ def _linearity(f):
     target = x / n * (f[n] - f[0]) + f[0] # Straight line connecting end points
     return np.mean((f - target))
 
-def _linearize_for_cmap(f):
+
+def _cmap_transform(f):
+    transform, transform_text = _find_cmap_transform(f)
+    return transform(f), transform_text
+
+def _find_cmap_transform(f):
     # Try to find a transformation of f such that it looks nice when used with linear color maps
     lin_score = _linearity(f)
     if lin_score < -0.2:

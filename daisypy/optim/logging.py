@@ -8,7 +8,23 @@ available_logs = {
     "csv" : CsvLog
 }
 
-def DefaultLogger(outdir):
+def DefaultLogger(outdir): # pylint: disable=invalid-name # (It should look like a class)
+    '''Return a logger instance with the following predefined logs.
+
+      'default' : Log to stdout
+      'warning', 'error' : Log to stderr
+      'parameters' : Log to csv file 'parameters.csv' in outdir
+      'result' : Log to csv file 'retult.csv' in outdir
+
+    Parameters
+    ----------
+    outdir : str
+      Directory to store log files in
+
+    Returns
+    -------
+    daisypy.optim.Logger
+    '''
     logs = {
         'default' : TerminalLog(),
         'warning' : TerminalLog(error=True),

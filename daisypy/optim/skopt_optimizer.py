@@ -5,7 +5,7 @@ import skopt
 from joblib import Parallel, delayed
 
 class DaisySkoptOptimizer:
-    def __init__(self, problem, logger, options={}, number_of_processes=None):
+    def __init__(self, problem, logger, options=None, number_of_processes=None):
         """Daisy optimizer using the scikit-optimize library
         https://scikit-optimize.github.io/stable/
 
@@ -16,6 +16,8 @@ class DaisySkoptOptimizer:
         options : dict
           Options to pass on to the optimizer
         """
+        if options is None:
+            options = {}
         self.problem = problem
         self.logger = logger
         if number_of_processes is None:
@@ -34,6 +36,7 @@ class DaisySkoptOptimizer:
         self.optimizer = skopt.Optimizer(dimensions, **options)
 
     def optimize(self):
+        '''Run optimization'''
         max_attempts_to_get_feasible = 3
         step = 0
         total_f_evals = 0
@@ -43,20 +46,19 @@ class DaisySkoptOptimizer:
             for i in range(max_attempts_to_get_feasible):
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    X = self.optimizer.ask(n_points=self.number_of_processes)
+                    xs = self.optimizer.ask(n_points=self.number_of_processes)
                 fvals = np.array(
                     Parallel(prefer="threads", n_jobs=self.number_of_processes)(
-                        delayed(self.objective)(x) for x in X
+                        delayed(self.objective)(x) for x in xs
                     ))
                 total_f_evals += self.number_of_processes
                 if np.any(np.isfinite(fvals)):
                     break
-                else:
-                    self.logger.warning(
-                        step=step,msg=f'All are infeasible at attempt {i}', fvals=fvals
-                    )
+                self.logger.warning(
+                    step=step,msg=f'All are infeasible at attempt {i}', fvals=fvals
+                )
             # Log the specific parameters and the corresponding objective values
-            for x, fval in zip(X, fvals):
+            for x, fval in zip(xs, fvals):
                 params = {
                     p.name : value  for p, value in
                     zip(self.problem.parameters, x)
@@ -76,7 +78,7 @@ class DaisySkoptOptimizer:
                 self.logger.warning(step=step, n_failed_runs=num_failures)
                 # TODO: This assumes that are we minimizing ...
                 fvals[failed] = 2*np.max(fvals[~failed])
-            self.optimizer.tell(X, list(fvals))
+            self.optimizer.tell(xs, list(fvals))
 
         optim_result = self.optimizer.get_result()
         best = optim_result.x
@@ -89,11 +91,24 @@ class DaisySkoptOptimizer:
         return result
 
     def checkpoint(self, path):
-        # TODO: Save the state to disk to we can resume
-        # We need to store the original problem along with the current means and stds
+        '''Save the state to disk to we can resume
+
+        Parameters
+        ----------
+        path : str
+          Path to store checkpoint in
+        '''
+        # TODO: Save state to disk
         raise NotImplementedError("Checkpointing is not yet implemented")
 
     @staticmethod
     def from_checkpoint(path):
+        '''Read state from disk to we can resume
+
+        Parameters
+        ----------
+        path : str
+          Path to read checkpoint from
+        '''
         # TODO: Read the state from disk
         raise NotImplementedError("Resuming from checkpoint is not yet implemented")
