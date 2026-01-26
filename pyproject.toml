@@ -22,7 +22,7 @@ dependencies = [
     "daisypy-io@git+https://github.com/daisy-model/daisypy-io"
 ]
 
-dynamic = ["version"]   
+dynamic = ["version"]
 readme = "README.md"
 
 [project.scripts]
@@ -34,14 +34,6 @@ Homepage = "https://daisy.ku.dk/"
 [project.optional-dependencies]
 cma = ["cma"]
 skopt = ["scikit-optimize", "joblib"]
-tensorboard = ["tensorboard", "torch", "scipy"]
-
-[[tool.uv.index]]
-name = "pytorch"
-url = "https://download.pytorch.org/whl/cpu"
-
-[tool.uv.sources]
-torch = { index = "pytorch" }
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -53,7 +45,7 @@ version_file = "daisypy/optim/_version.py"
 
 [tool.pylint.main]
 init-hook = 'import sys; sys.path.append(".")'
-ignored-modules = [ "numpy", "skopt", "joblib", "cma", "pandas", "scipy", "torch", "matplotlib", "daisypy.io" ]
+ignored-modules = [ "numpy", "skopt", "joblib", "cma", "pandas", "scipy", "matplotlib", "daisypy.io" ]
 
 [tool.pylint.messages_control]
 disable = [
@@ -61,15 +53,20 @@ disable = [
     'trailing-newlines',
     'too-few-public-methods',
     'missing-module-docstring',
-    'missing-class-docstring'
+    'missing-class-docstring',
+    'R0801', # Similar lines in two files
  ]
  ignore = [
-     '_version.py'
+     '_version.py',
+     'data',
  ]
 
 [tool.pytest.ini_options]
-testpaths = [ "daisypy" ]
 addopts = [
+    "--import-mode=importlib"
+]
+markers = [
+    "slow: marks test as slow (deselect with '-m \"not slow\"')"
 ]
 filterwarnings = [
     "error",

@@ -4,7 +4,9 @@ import platform
 import numpy as np
 
 class DaisyOptimizationProblem:
-    def __init__(self, runner, dai_file_generator, objective_fn, parameters, data_dir=None, debug=False):
+    def __init__(
+            self, runner, dai_file_generator, objective_fn, parameters, data_dir=None, debug=False
+    ):
         """
         Parameters
         ----------
@@ -48,9 +50,9 @@ class DaisyOptimizationProblem:
         if self.debug:
             output_directory = tempfile.mkdtemp(dir=self.data_dir)
             return self._run(output_directory, named_parameters)
-        else:
-            with tempfile.TemporaryDirectory(dir=self.data_dir) as output_directory:
-                return self._run(output_directory, named_parameters)
+
+        with tempfile.TemporaryDirectory(dir=self.data_dir) as output_directory:
+            return self._run(output_directory, named_parameters)
 
     def _run(self, output_directory, named_parameters):
         dai_file = self.dai_file_generator(output_directory, named_parameters)

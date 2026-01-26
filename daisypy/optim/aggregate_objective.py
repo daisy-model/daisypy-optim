@@ -32,7 +32,7 @@ class AggregateObjective(Sequence):
         return self.aggregate_fn([f(daisy_output_directory) for f in self.objective_fns])
 
     def __getitem__(self, index):
-        # We could consider flattering objective_fns, but not sure that there is a user case
+        # We could consider flattening objective_fns, but not sure that there is a user case
         # If we do, we also need to update __len__
         return self.objective_fns[index]
 
@@ -41,12 +41,30 @@ class AggregateObjective(Sequence):
 
     @property
     def variable_name(self):
+        '''Names of variables used in aggregated objectives
+
+        Returns
+        -------
+        list of str
+        '''
         return flatten(self.objective_fns, lambda x : x.variable_name)
 
     @property
     def target(self):
+        '''Targets used on aggregated objectives
+
+        Returns
+        -------
+        list of pandas.DataFrame
+        '''
         return flatten(self.objective_fns, lambda x : x.target)
 
     @property
     def log_name(self):
+        '''Names of Daisy log files used in aggregated objectives
+
+        Returns
+        -------
+        list of str
+        '''
         return flatten(self.objective_fns, lambda x : x.log_name)
