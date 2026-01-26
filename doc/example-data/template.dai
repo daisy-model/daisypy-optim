@@ -23,7 +23,7 @@
   "Example"
   ;; The duration of the simulation and the output duration must cover the period in the target file
   (time 1999 12 31)
-  (stop 2000 12 31)
+  (stop 2001 01 01)
   (activate_output (after 1999 12 31))
 
   ;; The weather file must be in an accessible location. For example in a directory added to the path
