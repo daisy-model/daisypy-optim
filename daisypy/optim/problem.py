@@ -5,14 +5,14 @@ import numpy as np
 
 class DaisyOptimizationProblem:
     def __init__(
-            self, runner, dai_file_generator, objective_fn, parameters, data_dir=None, debug=False
+            self, runner, file_generator, objective_fn, parameters, data_dir=None, debug=False
     ):
         """
         Parameters
         ----------
         runner : DaisyRunner
 
-        dai_file_generator : DaiFileGenerator
+        file_generator : FileGenerator
 
         objective_fn : DaisyObjective
 
@@ -23,7 +23,7 @@ class DaisyOptimizationProblem:
           will be created in a default location depending on platform.
         """
         self.runner = runner
-        self.dai_file_generator = dai_file_generator
+        self.file_generator = file_generator
         self.objective_fn = objective_fn
         self.parameters = parameters
         self.data_dir = data_dir
@@ -55,7 +55,7 @@ class DaisyOptimizationProblem:
             return self._run(output_directory, named_parameters)
 
     def _run(self, output_directory, named_parameters):
-        dai_file = self.dai_file_generator(output_directory, named_parameters)
+        dai_file = self.file_generator(output_directory, named_parameters)['dai']
         sim_result = self.runner(dai_file, output_directory)
         if sim_result.returncode != 0:
             print(sim_result)
