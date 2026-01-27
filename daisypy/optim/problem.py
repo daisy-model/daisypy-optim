@@ -16,16 +16,36 @@ class DaisyOptimizationProblem:
 
         objective_fn : DaisyObjective
 
-        parameters : list of DaisyParameter
+        parameters : [DaisyParameter] OR dict of (str, [DaisyParameter])
+          Parameters to optimize. If a list it is assumed that all parameters are for the 'dai' file
 
         data_dir : str
           If not None then temporary directories will be created in this directory. Otherwise, they
           will be created in a default location depending on platform.
+
+        debug: bool
+          If True do not delete the temporary directory where Daisy output is stored
         """
         self.runner = runner
         self.file_generator = file_generator
         self.objective_fn = objective_fn
-        self.parameters = parameters
+        self.parameter_kind = {}
+        if not isinstance(parameters, dict):
+            parameters = { 'dai' : parameters }
+
+        # Convert dict of parameters to a list of parameters and verify that there are no name
+        # clashes.
+        self.parameters = []
+        for kind, params in parameters.items():
+            for param in params:
+                if param.name in self.parameter_kind:
+                    raise ValueError(
+                        'Parameters must have unique names across all templates. '
+                        f'{param.name} from {kind} is also in {self.parameter_kind[param.name]}'
+                    )
+                self.parameter_kind[param.name] = kind
+                self.parameters.append(param)
+
         self.data_dir = data_dir
         if data_dir is None and platform.system().lower() == 'linux':
             # There is a good chance that we are using flatpak, in which case we need to use a tmp
@@ -43,7 +63,14 @@ class DaisyOptimizationProblem:
           Parameter values. Lenght MUST match length of `self.parameters`
 
         """
-        named_parameters = { p.name : value for p, value in zip(self.parameters, parameter_values) }
+        named_parameters = { 'dai' : {} }
+        for p, value in zip(self.parameters, parameter_values):
+            kind = self.parameter_kind[p.name]
+            if kind not in named_parameters:
+                named_parameters[kind] = { p.name : value }
+            else:
+                named_parameters[kind][p.name] = value
+
         # If we debug then we dont want the directory to be deleted after use
         # From python 3.12 we can pass delete=False to TemporaryDirectory, but prior to that we need
         # to use mkdtemp.

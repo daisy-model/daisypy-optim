@@ -15,7 +15,8 @@ class ScalarObjective:
         variable_name : str
           Name of variable to optimize for
 
-        target : pd.DataFrame
+        target : pandas.DataFrame OR str
+          If str it is opened with pandas.read_csv.
           Must contain columns "time" and `variable_name`
 
         loss_fn : daisypy.optim.DaisyLoss
@@ -23,6 +24,8 @@ class ScalarObjective:
         """
         self.log_name = log_name
         self.variable_name = variable_name
+        if not isinstance(target, pd.DataFrame):
+            target = pd.read_csv(target)
         self.target = target[["time", variable_name]].rename(columns={variable_name : 'value'})
         self.target["time"] = pd.to_datetime(self.target["time"])
         self.loss_fn = loss_fn

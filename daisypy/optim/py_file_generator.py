@@ -28,7 +28,7 @@ class PyFileGenerator(FileGenerator):
         template_file_path : str
           Path to template. Overrides template_text if not None
         """
-        self.file_name = out_file
+        self.out_file = out_file
         if template_file_path is not None:
             with open(template_file_path, 'r', encoding='utf-8') as infile:
                 # Skip python line comments
@@ -59,7 +59,7 @@ class PyFileGenerator(FileGenerator):
         """
         os.makedirs(output_directory, exist_ok=True)
         dai_string = self.template_text.format(**params)
-        out_path = os.path.abspath(os.path.join(output_directory, self.file_name))
+        out_path = os.path.abspath(os.path.join(output_directory, self.out_file))
         with open(out_path, "w", encoding='utf-8') as f:
             f.write(dai_string)
 

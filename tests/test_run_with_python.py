@@ -29,7 +29,6 @@ def test_run_with_python(tmp_path):
     assert lines[-2].strip() == EXPECTED
        
 def test_run_with_several_python_files(tmp_path):
-    tmp_path = Path('out')
     EXPECTED = "f(4) = 6, f(-1) = 7.25"
     template_dir = Path(__file__).parent / 'templates'
     python_dir = Path(__file__).parent / 'py-files'
