@@ -22,7 +22,6 @@ from daisypy.optim import (
     DefaultLogger,
     available_loss_fns,
     available_optimizers,
-    DaisyLoss,
     AggregateObjective,
     ScalarObjective,
     DaisyOptimizationProblem,
@@ -85,11 +84,6 @@ def read_parameters(path):
 def setup_objective(log_names, variable_names, target_files, loss_fns, aggregate_fn):
     if not len(variable_names) == len(log_names) == len(target_files) == len(loss_fns):
         raise ValueError("Objective specification mismatch")
-
-    # We need to wrap the loss functions with the DaisyLoss class
-    # You can substitute any loss function with the following signature
-    # (actual : numpy.ndarray, target : numpy.ndarray) -> float
-    loss_fns = [DaisyLoss(loss_fn) for loss_fn in loss_fns]
 
     # Now we can create the objective functions
     objective_fns = [

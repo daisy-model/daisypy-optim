@@ -5,7 +5,6 @@ import pandas as pd
 from daisypy.optim import (
     DaiFileGenerator,
     DaisyCMAOptimizer,
-    DaisyLoss,
     ScalarObjective,
     DaisyOptimizationProblem,
     ContinuousParameter,
@@ -63,8 +62,7 @@ def single_objective_two_parameters_cma(daisy_path, daisy_home):
     target["time"] = pd.to_datetime(target[['year', 'month', 'day', 'hour']])
 
     # The loss function can be any python function mapping a pair of numpy.arrays to a scalar
-    # We need to wrap the loss function with the DaisyLoss class
-    loss_fn = DaisyLoss(ssd)
+    loss_fn = ssd
 
     # We need to know the name of the variable we are optimizing for, and we need to know the name
     # of the Daisy log file where we can find the variable.

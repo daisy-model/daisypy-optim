@@ -9,7 +9,6 @@ from daisypy.optim import (
     DaisyRunner,
     DaisyOptimizationProblem,
     ScalarObjective,
-    DaisyLoss,
     mse
 )
 
@@ -30,7 +29,7 @@ def test_python_chemical_reaction(tmp_path):
     runner = DaisyRunner('daisy')
 
     target_file = data_dir / 'target.csv'
-    objective = ScalarObjective("soil_NO3_profile.dlf", "NO3", target_file, DaisyLoss(mse))
+    objective = ScalarObjective("soil_NO3_profile.dlf", "NO3", target_file, mse)
 
     problem = DaisyOptimizationProblem(
         runner, file_generator, objective, parameters, tmp_path, debug=True

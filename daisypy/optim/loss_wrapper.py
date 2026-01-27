@@ -1,6 +1,6 @@
 import pandas as pd
 
-class DaisyLoss:
+class LossWrapper:
     def __init__(self, loss_fn):
         """Loss wrappeer for use with DaisyObjective
 
