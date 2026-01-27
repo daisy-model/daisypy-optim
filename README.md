@@ -20,7 +20,7 @@ Both continuous and categorical parameters are supported. TODO: Document how the
 
 * [Windows](doc/getting-started-win.md)
 * [Linux](doc/getting-started-win.md)
-
+* [Examples](doc/examples)
 
 If you do not want to read a getting started guide, you can just install with
 
@@ -40,4 +40,5 @@ To enable Tensorboard logging
 
 All of the above
 
-    pip install daisypy-optim@git+https://github.com/daisy-model/daisypy-optim cma scikit-optimize joblib tensorboard torch scipy
+    pip install daisypy-optim@git+https://github.com/daisy-model/daisypy-optim cma scikit-optimize joblib
+

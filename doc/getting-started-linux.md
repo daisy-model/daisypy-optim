@@ -28,7 +28,6 @@ uv tool install --from git+https://github.com/daisy-model/daisypy-optim daisypy_
 ```
 
 * To include the CMA-ES method add the flag `--with cma`
-* To include tensorboard logging add the flag `--with scipy,tensorboard,torch`
 * To include the `scikit-optimize` method add the flag `--with scikit-optimize,joblib`
 
 ## Create and run an example optimization project
