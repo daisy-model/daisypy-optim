@@ -58,11 +58,6 @@ def main(debug=False):
         daisy_path, daisy_home, run_out_dir, dai_template, parameters, objective, debug
     )
     result = optimize(problem, optimizer_name, logger, run_out_dir)
-
-    # Generate a dai file with the best parameters
-    file_generator = problem.file_generator
-    parameters = {{ k : v['best'] for k,v in result.items() }}
-    dai_path = file_generator(out_dir, {{'dai' : parameters }})['dai']
     eval_dir = evaluate(result, problem, run_out_dir)
     analyze(eval_dir, problem, run_out_dir)
 

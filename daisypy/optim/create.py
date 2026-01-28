@@ -236,8 +236,6 @@ def _copy_script(file_name, out_dir):
         except (shutil.SameFileError, IOError):
             print(f'Could not copy {file_name}')
 
-
-
 def finalize():
     '''Try to add dependencies with uv. Inform user if it fails'''
     cmd = [
