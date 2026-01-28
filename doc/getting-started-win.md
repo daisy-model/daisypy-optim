@@ -34,7 +34,7 @@ uv tool  install --from git+https://github.com/daisy-model/daisypy-optim daisypy
 
 ## Create and run an example optimization project
 1. Open a PowerShell and navigate to a directory where you want to store your project
-2. Initialize the project with `uv init daisypy-optim-example`
+2. Initialize the project with `uv init daisypy-optim-example --bare`
     - This will create some scaffolding and initialize a git repository for version control.
 3. Navigate to the newly created project with `cd daisypy-optim-example`
 4. Generate files for the optimization with `daisypy_optim_create --example`
@@ -42,29 +42,36 @@ uv tool  install --from git+https://github.com/daisy-model/daisypy-optim daisypy
 5. Run the optimization with `uv run example/optimize.py`
 
 ```{PowerShell}
-uv init daisypy-optim-example
+uv init daisypy-optim-example --bare
 cd daisypy-optim-example
 daisypy_optim_create --example
 uv run example/optimize.py
 ```
 
-While running this should produce log files in `example/out/logs/0-sequential`. The only one of interest is `scalars.csv` that logs things like the loss, number of parameters sets and total function evaluations.
+While running this should produce log files in `example/out/0/logs`. The only one of interest when using the sequential optimizer is `result.csv` that contains the parameter values and objective values.
 
-Once the optimization is done it should produce a couple of plots summarizing the optimization. These can also be found in `example/out/0/analyze`.
+Once the optimization is done it should produce a couple of plots summarizing the optimization. These can be found in `example/out/0/analyze`.
 
-The numbering in `example/out` and `example/out/logs` is just consecutive integers starting from 0. Every time you rerun the optimization the number is incremented and a new directory created to store the output.
+The numbering in `example/out` is just consecutive integers starting from 0. Every time you rerun the optimization the number is incremented and a new directory created to store the output.
+
+### Visualize optimization
+There is a small script for visualizing the optimization result, run it with
+
+    uv run example/analyze.py example/out/0
+    
+It will make an animation, two parameter plots and a convergence plot.
 
 ### Switch to CMA
 1. Open `example/optimize.py` in your favorite editor
 2. Replace `optimizer_name = "sequential"` with `optimizer_name = "cma"`
 3. Rerun the optimization with `uv run example/optimize.py`
 
-This will use CMA-ES to optimize and produce out in `example/out/1` and `example/out/log/1-cma`, assuming this is the second time you run the the optimization.
+This will use CMA-ES to optimize and produce output in `example/out/1`, assuming this is the second time you run the the optimization.
 
 ## Create a skeleton for your own optimization project
 Replace `<project-name>` with the name of your project.
 ```{PowerShell}
-uv init <project-name>
+uv init <project-name> --bare
 cd <project-name>
 daisypy_optim_create
 ```
