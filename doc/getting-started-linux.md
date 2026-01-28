@@ -28,12 +28,11 @@ uv tool install --from git+https://github.com/daisy-model/daisypy-optim daisypy_
 ```
 
 * To include the CMA-ES method add the flag `--with cma`
-* To include tensorboard logging add the flag `--with scipy,tensorboard,torch`
 * To include the `scikit-optimize` method add the flag `--with scikit-optimize,joblib`
 
 ## Create and run an example optimization project
 1. Open a terminal and navigate to a directory where you want to store your project
-2. Initialize the project with `uv init daisypy-optim-example`
+2. Initialize the project with `uv init daisypy-optim-example --bare`
     - This will create some scaffolding and initialize a git repository for version control.
 3. Navigate to the newly created project with `cd daisypy-optim-example`
 4. Generate files for the optimization with `daisypy_optim_create --example`
@@ -41,7 +40,7 @@ uv tool install --from git+https://github.com/daisy-model/daisypy-optim daisypy_
 5. Run the optimization with `uv run example/optimize.py`
 
 ```{bash}
-uv init daisypy-optim-example
+uv init daisypy-optim-example --bare
 cd daisypy-optim-example
 daisypy_optim_create --example
 uv run example/optimize.py
@@ -63,7 +62,7 @@ This will use CMA-ES to optimize and produce out in `example/out/1` and `example
 ## Create a skeleton for your own optimization project
 Replace `<project-name>` with the name of your project.
 ```{bash}
-uv init <project-name>
+uv init <project-name> --bare
 cd <project-name>
 daisypy_optim_create
 ```

@@ -3,7 +3,7 @@ import subprocess
 class DaisyRunner:
     """Class that knows how to run run daisy"""
 
-    def __init__(self, daisy_bin, daisy_home):
+    def __init__(self, daisy_bin, daisy_home=None):
         """
         Parameters
         ----------
@@ -12,9 +12,10 @@ class DaisyRunner:
 
         daisy_home : str
           Path to daisy home directory containing lib/ and sample/
+          If not None set DAISYHOME to this str when calling daisy. Otherwise dont set DAISYHOME
         """
         self.daisy_bin = daisy_bin
-        self.daisy_home = daisy_home
+        self.env = {} if daisy_home is None else { "DAISYHOME" : daisy_home }
 
     def __call__(self, dai_file, output_directory):
         """Run daisy
@@ -37,7 +38,7 @@ class DaisyRunner:
             "-d", output_directory,
             dai_file
         ]
-        return subprocess.run(args, env={"DAISYHOME" : self.daisy_home}, check=False)
+        return subprocess.run(args, env=self.env, check=False)
 
 
     def serialize(self):
@@ -49,7 +50,7 @@ class DaisyRunner:
         """
         return {
             'daisy_bin' : self.daisy_bin,
-            'daisy_home' : self.daisy_home
+            'daisy_home' : self.env.get('DAISYHOME', None)
         }
 
     @staticmethod
@@ -61,6 +62,6 @@ class DaisyRunner:
         dict_repr : dict of (str, str)
           Must contain
             daisy_bin : path to daisy binary
-            daisy_home : path to daiystr wits home
+            daisy_home : path to daisy home
         """
         return DaisyRunner(dict_repr['daisy_bin'], dict_repr['daisy_home'])

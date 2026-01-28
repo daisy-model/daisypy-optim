@@ -19,7 +19,8 @@ classifiers = [
 dependencies = [
     "numpy",
     "pandas",
-    "daisypy-io@git+https://github.com/daisy-model/daisypy-io"
+    "daisypy-io",
+    "matplotlib"
 ]
 
 dynamic = ["version"]
@@ -34,6 +35,9 @@ Homepage = "https://daisy.ku.dk/"
 [project.optional-dependencies]
 cma = ["cma"]
 skopt = ["scikit-optimize", "joblib"]
+
+[tool.uv.sources]
+daisypy-io = { git = "https://github.com/daisy-model/daisypy-io" }
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -74,7 +78,7 @@ filterwarnings = [
 
 [tool.coverage.run]
 command_line = "-m pytest"
-source = ["."]
+source = ["daisypy"]
 
 [tool.coverage.report]
 show_missing = "true"

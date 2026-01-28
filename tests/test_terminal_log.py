@@ -1,6 +1,7 @@
 from daisypy.optim.terminal_log import TerminalLog
 
 def test_terminal_log(capsys):
+    '''Test that TerminalLog prints to the expected streams (stdout, stderr)'''
     expected_out = '\n'.join([
         'tag=test,step=1,value=0.1,message=string',
         'test,2,0.2,string 2',

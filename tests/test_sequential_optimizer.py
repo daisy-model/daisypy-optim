@@ -1,3 +1,4 @@
+# pylint: disable=relative-beyond-top-level
 import os
 import tempfile
 from daisypy.optim import (
@@ -8,9 +9,11 @@ from daisypy.optim import (
 from .mock_problem import MockProblem
 
 def objective(a, b, c):
+    '''Negative sum of arguments'''
     return - (a + b + c)
 
 def test_sequential_optimizer(capsys):
+    '''Test that sequential optimizer finds the optimmum and generates expected output'''
     expected_result_log = {
         'step,objective_value,a,b,c',
         '1,-1.0,1.0,0.0,0.0',

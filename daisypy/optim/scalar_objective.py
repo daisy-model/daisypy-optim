@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 from daisypy.io.dlf import read_dlf
+from .loss_wrapper import LossWrapper
 
 class ScalarObjective:
     """Scalar objective that extracts data from a daisy output file and computes a loss"""
@@ -15,17 +16,20 @@ class ScalarObjective:
         variable_name : str
           Name of variable to optimize for
 
-        target : pd.DataFrame
+        target : pandas.DataFrame OR str
+          If str it is opened with pandas.read_csv.
           Must contain columns "time" and `variable_name`
 
-        loss_fn : daisypy.optim.DaisyLoss
+        loss_fn : callable : (actual, target) -> loss
           The loss function to use
         """
         self.log_name = log_name
         self.variable_name = variable_name
+        if not isinstance(target, pd.DataFrame):
+            target = pd.read_csv(target)
         self.target = target[["time", variable_name]].rename(columns={variable_name : 'value'})
         self.target["time"] = pd.to_datetime(self.target["time"])
-        self.loss_fn = loss_fn
+        self.loss_fn = LossWrapper(loss_fn) # Wrap it so target and actual are processed correctly
 
     def __call__(self, daisy_output_directory):
         """Compute the objective

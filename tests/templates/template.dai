@@ -1,0 +1,16 @@
+(deffunction f Python
+  "Call Python function."
+  (module "testing")
+  (name "linear")
+  (domain [])
+  (range []))
+
+(defprogram print_it write
+  "Write specific value"
+  (declare v1 Number [] "V1")
+  (declare v2 Number [] "V2")
+  (v1 (apply f {x1} []))
+  (v2 (apply f {x2} []))
+  (what "f({x1}) = ${{v1}}, f({x2}) = ${{v2}}"))
+  
+(run print_it)

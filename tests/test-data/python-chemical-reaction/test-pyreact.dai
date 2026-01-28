@@ -1,0 +1,53 @@
+;; Although no paraemters are defined in this file, it is still a template
+;; So any {} need to be wrapped in extra {}, for example
+;;   (dimension "${unit}")
+;; must be
+;;   (dimension "${{unit}}")
+(input file "dk-soil.dai")
+(input file "log-std.dai")
+
+(defreaction MyReact Python
+  "Use Python for chemical reaction."
+  (module "daisy-react") ; Must match python filename
+  (soil "charles") ; Must match function name in python file
+
+  ;; Soil input parameters.
+  (in (NO3 M_total "NO3")) ;; Chemical!
+  (texture ("clay" 2 [um])
+	   ("below50" 50 [um]))
+  (extra Theta z)
+
+  ;; Soil output parameters.
+  (out (CO2 none)
+       (NO3 primary "NO3")))
+
+(defchemistry MyChem N
+  (reaction MyReact nitrification))
+
+(deflog "Python reaction soil" column
+  "Log total CO2 and NO3 output from Python."
+  (declare unit String "Base unit.")
+  (unit "g/cm^3/h")
+  (when hourly)
+  (entries (interval (path column "${{column}}" Chemistry "*"
+			   combine "MyChem"
+                           reaction MyReact "CO2")
+                     (handle sum)
+                     (negate true)
+                     (dimension "${{unit}}"))
+	   (interval (path column "${{column}}" Chemistry "*"
+			combine "MyChem"
+                        reaction MyReact "NO3")
+                     (handle sum)
+                     (negate true)
+                     (dimension "${{unit}}"))))
+
+(defprogram MySim Daisy
+  (column (Askov (Chemistry multi (combine DOM MyChem))))
+  (weather none)
+  (output("Python reaction soil" (where "soil_NO3_profile.dlf")))
+  (manager activity)
+  (time 1000 1 1 0)
+  (stop 1000 1 2 0))
+
+(run MySim)

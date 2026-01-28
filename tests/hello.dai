@@ -1,0 +1,5 @@
+(input file "dk-soil.dai")
+(defprogram hello write
+  "Write hello"
+  (what "Hello from Daisy")) 
+(run hello)
