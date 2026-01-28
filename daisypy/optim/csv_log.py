@@ -21,6 +21,7 @@ class CsvLog(Log):
         '''
         _dir = os.path.dirname(path)
         os.makedirs(_dir, exist_ok=True)
+        self.path = path
         self._log = open(path, 'w', encoding='utf-8') # pylint: disable=consider-using-with
         if columns is None:
             # Deferred setting of columns such that they can be set on first write

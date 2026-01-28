@@ -47,8 +47,10 @@ class PyFileGenerator(FileGenerator):
         output_directory : str
           Directory to store the generated file in
 
-        params : dict
-          Dictionary of parameters. Keys MUST match the defined template parameters exactly
+        params : dict (str, value) OR { 'py' : dict (str, value) }
+          If tagged is True, then the key 'py' MUST be in params and the value MUST be a dict of
+          parameters, where the keys MUST match the defined template parameters exactly.
+          If tagged is False, then the keys MUST match the defined template parameters exactly.
 
         tagged : bool
           If True return a tagged path otherwise return a plain path
@@ -57,12 +59,13 @@ class PyFileGenerator(FileGenerator):
         -------
         { 'py' : out_path } OR out_path
         """
+        if tagged:
+            params = params['py']
         os.makedirs(output_directory, exist_ok=True)
-        dai_string = self.template_text.format(**params)
+        py_string = self.template_text.format(**params)
         out_path = os.path.abspath(os.path.join(output_directory, self.out_file))
         with open(out_path, "w", encoding='utf-8') as f:
-            f.write(dai_string)
-
+            f.write(py_string)
         if tagged:
             return { 'py' : out_path }
         return out_path
@@ -81,7 +84,7 @@ class PyFileGenerator(FileGenerator):
 
     @staticmethod
     def unzerialize(dict_repr):
-        '''Create a DaiFileGenerator from a serialized representation
+        '''Create a PyFileGenerator from a serialized representation
 
         Parameters
         ----------

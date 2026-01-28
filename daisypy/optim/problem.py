@@ -82,7 +82,7 @@ class DaisyOptimizationProblem:
             return self._run(output_directory, named_parameters)
 
     def _run(self, output_directory, named_parameters):
-        dai_file = self.file_generator(output_directory, named_parameters)['dai']
+        dai_file = self.file_generator(output_directory, named_parameters, tagged=True)['dai']
         sim_result = self.runner(dai_file, output_directory)
         if sim_result.returncode != 0:
             print(sim_result)

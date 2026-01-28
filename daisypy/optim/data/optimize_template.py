@@ -40,7 +40,7 @@ def main(debug=False):
     dai_template = "{dai_template}"
     parameters = read_parameters("{parameter_file}")
 
-    # Objectives
+    # Objective
     log_names = {log_names}
     variable_names = {variable_names}
     target_files = [pd.read_csv(target_file) for target_file in {target_files}]
@@ -50,15 +50,21 @@ def main(debug=False):
     objective = setup_objective(log_names, variable_names, target_files, loss_fns, aggregate_fn)
 
     run_id = get_run_id("{out_dir}")
-    log_dir = os.path.join(out_dir, 'logs', f'{{run_id}}-{{optimizer_name}}')
+    run_out_dir = os.path.join(out_dir, run_id)
+    log_dir = os.path.join(run_out_dir, 'logs')
     logger = DefaultLogger(log_dir)
 
     problem = setup(
-        daisy_path, daisy_home, out_dir, dai_template, parameters, objective, run_id, debug
+        daisy_path, daisy_home, run_out_dir, dai_template, parameters, objective, debug
     )
-    result = optimize(problem, optimizer_name, logger, out_dir, run_id)
-    eval_dir = evaluate(result, problem, out_dir, run_id)
-    analyze(eval_dir, problem, out_dir, run_id)
+    result = optimize(problem, optimizer_name, logger, run_out_dir)
+
+    # Generate a dai file with the best parameters
+    file_generator = problem.file_generator
+    parameters = {{ k : v['best'] for k,v in result.items() }}
+    dai_path = file_generator(out_dir, {{'dai' : parameters }})['dai']
+    eval_dir = evaluate(result, problem, run_out_dir)
+    analyze(eval_dir, problem, run_out_dir)
 
 def read_parameters(path):
     with open(path, 'r', encoding='utf-8') as infile:
@@ -96,30 +102,29 @@ def setup_objective(log_names, variable_names, target_files, loss_fns, aggregate
         return objective_fns[0]
     return AggregateObjective(objective_fns, aggregate_fn)
 
-def setup(daisy_path, daisy_home, base_out_dir, dai_template, parameters, objective, run_id, debug):
+def setup(daisy_path, daisy_home, base_out_dir, dai_template, parameters, objective, debug):
     # Setup a runner that knows how to execute daisy
     runner = DaisyRunner(daisy_path, daisy_home)
 
     # Setup a generator that can generate a valid .dai file from a template and parameter values
-    dai_file_generator = DaiFileGenerator(template_file_path=dai_template)
+    file_generator = DaiFileGenerator(template_file_path=dai_template)
 
     # Create a dirctory for storing setup files for debug/inspection
-    out_dir = os.path.join(base_out_dir, run_id, 'setup')
+    out_dir = os.path.join(base_out_dir, 'setup')
     os.makedirs(out_dir, exist_ok=True)
 
     # Generate a dai file for debug runs
     params = {{ p.name : p.initial_value  for p in parameters }}
-    dai_file_generator(out_dir, params)
-
+    file_generator(out_dir, params, tagged=False)
 
     # Now we can wrap everything as a DaisyOptimizationProblem that knows how to
     # run daisy, get the output data and compute the objetive
-    data_dir = os.path.join(base_out_dir, run_id, "debug") if debug else None
-    problem = DaisyOptimizationProblem(runner, dai_file_generator, objective, parameters, data_dir, debug)
+    data_dir = os.path.join(base_out_dir, "debug") if debug else None
+    problem = DaisyOptimizationProblem(runner, file_generator, objective, parameters, data_dir, debug)
     return problem
 
-def optimize(problem, optimizer_name, logger, base_out_dir, run_id):
-    out_dir = os.path.join(base_out_dir, run_id, "optimize")
+def optimize(problem, optimizer_name, logger, base_out_dir):
+    out_dir = os.path.join(base_out_dir, "optimize")
     os.makedirs(out_dir, exist_ok=True)
 
     # Define some default parameters for each of the optimizers
@@ -153,22 +158,22 @@ def optimize(problem, optimizer_name, logger, base_out_dir, run_id):
 
     return result
 
-def evaluate(result, problem, base_out_dir, run_id):
+def evaluate(result, problem, base_out_dir):
     # Create a directory for outputs
-    out_dir = os.path.join(base_out_dir, run_id, "evaluate")
+    out_dir = os.path.join(base_out_dir, "evaluate")
     os.makedirs(out_dir, exist_ok=True)
 
     # Generate a dai file with the best parameters
-    dai_file_generator = problem.dai_file_generator
+    file_generator = problem.file_generator
     parameters = {{ k : v['best'] for k,v in result.items() }}
-    dai_path = dai_file_generator(out_dir, parameters)
+    dai_path = file_generator(out_dir, {{'dai' : parameters }})['dai']
 
     # Run daisy with the newly generated dai file
     problem.runner(dai_path, out_dir)
     return out_dir
 
-def analyze(eval_dir, problem, base_out_dir, run_id):
-    out_dir = os.path.join(base_out_dir, run_id, 'analyze')
+def analyze(eval_dir, problem, base_out_dir):
+    out_dir = os.path.join(base_out_dir, 'analyze')
     os.makedirs(out_dir, exist_ok=True)
 
     # Extract variables, log names and targets from the problem

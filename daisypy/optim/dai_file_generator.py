@@ -48,8 +48,10 @@ class DaiFileGenerator(FileGenerator):
         output_directory : str
           Directory to store the generated file in
 
-        params : dict
-          Dictionary of parameters. Keys MUST match the defined template parameters exactly
+        params : dict (str, value) OR { 'dai' : dict (str, value) }
+          If tagged is True, then the key 'dai' MUST be in params and the value MUST be a dict of
+          parameters, where the keys MUST match the defined template parameters exactly.
+          If tagged is False, then the keys MUST match the defined template parameters exactly.
 
         tagged : bool
           If True return a tagged path otherwise return a plain path
@@ -58,6 +60,8 @@ class DaiFileGenerator(FileGenerator):
         -------
         { 'dai' : out_path } OR out_path
         """
+        if tagged:
+            params = params['dai']
         os.makedirs(output_directory, exist_ok=True)
         dai_string = self.template_text.format(**params)
         out_path = os.path.abspath(os.path.join(output_directory, self.out_file))

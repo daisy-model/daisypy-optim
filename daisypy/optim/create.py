@@ -159,6 +159,9 @@ def create_optim(config):
     with open(optimize_path, "w", encoding='utf-8') as outfile:
         outfile.write(optimize_program)
 
+    # Copy the analyze script
+    _copy_script('analyze.py', basedir)
+
 def _copy_or_create_param(config, basedir):
     param_path = os.path.join(basedir, "input", "parameters.json")
     if os.path.exists(config["parameter_file"]):
@@ -223,6 +226,17 @@ def _read_optimize_template():
     with open(optimize_inpath, 'r', encoding='utf-8') as infile:
         optimize_template = infile.read()
     return optimize_template
+
+def _copy_script(file_name, out_dir):
+    out_path = os.path.join(out_dir, file_name)
+    with importlib.resources.path("daisypy.optim", "data") as datadir:
+        in_path = os.path.join(datadir, file_name)
+        try:
+            shutil.copyfile(in_path, out_path)
+    except shutil.SameFileError, IOError:
+        print(f'Could not copy {file_name}')
+
+
 
 def finalize():
     '''Try to add dependencies with uv. Inform user if it fails'''
