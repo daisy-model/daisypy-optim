@@ -1,3 +1,4 @@
+# pylint: disable=relative-beyond-top-level
 import tempfile
 from pytest import approx
 from daisypy.optim import (
@@ -7,7 +8,8 @@ from daisypy.optim import (
 from .mock_problem import MockProblem
 from .test_objectives import beale_function
 
-def test_cma_optimizer(capsys):
+def test_cma_optimizer():
+    '''Test that CMA can optimize the Beale function'''
     problem = MockProblem(beale_function.parameters, beale_function)
     out_dir = 'out/cma'
     with tempfile.TemporaryDirectory() as out_dir:

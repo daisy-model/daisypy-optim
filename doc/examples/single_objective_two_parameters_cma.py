@@ -12,9 +12,9 @@ from daisypy.optim import (
     DefaultLogger
 )
 
-# We will use sum of squared distance as the loss
 # We use the multiprocessing module, which uses pickle, so we cannot use local functions
 def ssd(actual, target):
+    '''Sum of squared distance'''
     return ((actual - target)**2).sum()
 
 def single_objective_two_parameters_cma(daisy_path, daisy_home):
@@ -107,6 +107,7 @@ def single_objective_two_parameters_cma(daisy_path, daisy_home):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('daisy_path', type=str, help='Path to daisy binary')
-    parser.add_argument('daisy_home', type=str, help='Path to daisy home directory containing lib/ and sample/')
+    parser.add_argument('daisy_home', type=str,
+                        help='Path to daisy home directory containing lib/ and sample/')
     args = parser.parse_args()
     single_objective_two_parameters_cma(args.daisy_path, args.daisy_home)

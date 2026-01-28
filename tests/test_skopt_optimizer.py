@@ -1,3 +1,4 @@
+# pylint: disable=relative-beyond-top-level
 import tempfile
 import pytest
 from pytest import approx
@@ -9,7 +10,9 @@ from .mock_problem import MockProblem
 from .test_objectives import beale_function
 
 @pytest.mark.slow
-def test_skopt_optimizer(capsys):
+def test_skopt_optimizer():
+    '''Test that Skopt can optimize the Beale function. It is very slow and wont actually find
+    the optimum because maxfevals is too low. But it shows that it "works".'''
     problem = MockProblem(beale_function.parameters, beale_function)
     out_dir = 'out/cma'
     with tempfile.TemporaryDirectory() as out_dir:

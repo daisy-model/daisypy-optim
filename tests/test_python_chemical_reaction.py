@@ -14,6 +14,7 @@ from daisypy.optim import (
 
 
 def test_python_chemical_reaction(tmp_path):
+    '''Test that we can optimize parameters of a python function in a full sim setup'''
     data_dir = Path(__file__).parent / 'test-data' / 'python-chemical-reaction'
     file_generator = MultiFileGenerator({
         'py' : PyFileGenerator('daisy-react.py', template_file_path=data_dir / 'daisy-react.py'),

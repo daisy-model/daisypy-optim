@@ -26,6 +26,7 @@ EXPECTED = {
 }
 
 def test_multi_file_generators(tmp_path):
+    '''Test that MultiFileGenerator generates expected outputs for both dai and python files'''
     template_dir = Path(__file__).parent / 'templates'
     generator = MultiFileGenerator({
         'py' : PyFileGenerator('testing.py', template_file_path=template_dir / 'template.py'),
@@ -38,4 +39,4 @@ def test_multi_file_generators(tmp_path):
     }
     
     for gen_name, file_path in generator(tmp_path, params).items():
-        assert Path(file_path).read_text().strip() == EXPECTED[gen_name]
+        assert Path(file_path).read_text(encoding='utf-8').strip() == EXPECTED[gen_name]

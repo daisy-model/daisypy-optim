@@ -15,7 +15,15 @@ from daisypy.optim import (
 )
 
 
-def single_objective_with_python(daisy_path, daisy_home):
+def single_objective_with_python(daisy_path, daisy_home=None):
+    '''Optimize two parameters in a dai file using a single scalar objective and CMA
+
+    daisy_path: str
+      Path to daisy binary
+
+    daisy_home: str
+      Path to daisy home. If None let the Daisy binary figure it out
+    '''    
     base_dir = Path(__file__).parent
     out_dir = base_dir / 'out' / 'single_objective_with_python'
     data_dir = base_dir / 'example-data' / 'python-chemical-reaction'
@@ -52,6 +60,8 @@ def single_objective_with_python(daisy_path, daisy_home):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('daisy_path', type=str, help='Path to daisy binary')
-    parser.add_argument('--daisy-home', type=str, help='Path to daisy home directory containing lib/ and sample/', default=None)
+    parser.add_argument('--daisy-home', type=str,
+                        help='Path to daisy home directory containing lib/ and sample/',
+                        default=None)
     args = parser.parse_args()
     single_objective_with_python(args.daisy_path, args.daisy_home)

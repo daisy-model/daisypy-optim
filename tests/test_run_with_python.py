@@ -3,8 +3,9 @@ from daisypy.optim import (
     PyFileGenerator, DaiFileGenerator, MultiFileGenerator, DaisyRunner
 )
 
+EXPECTED_ONE_FILE = "f(4) = 8, f(-1) = 6.75"
 def test_run_with_python(tmp_path):
-    EXPECTED = "f(4) = 8, f(-1) = 6.75"
+    '''Test that we can run Daisy with generated dai and python files'''
     template_dir = Path(__file__).parent / 'templates'
     generator = MultiFileGenerator({
         'py' : PyFileGenerator('testing.py', template_file_path=template_dir / 'template.py'),
@@ -24,12 +25,14 @@ def test_run_with_python(tmp_path):
 
     daisy_log = Path(tmp_path / 'daisy.log')
     with daisy_log.open(encoding='utf-8') as f:
-        lines = [ line for line in f ]
+        lines = list(f)
     assert len(lines) >= 2
-    assert lines[-2].strip() == EXPECTED
-       
+    assert lines[-2].strip() == EXPECTED_ONE_FILE
+
+    
+EXPECTED_SEVERAL_FILES = "f(4) = 6, f(-1) = 7.25"
 def test_run_with_several_python_files(tmp_path):
-    EXPECTED = "f(4) = 6, f(-1) = 7.25"
+    '''Test that we can run Daisy with generated dai and multiple python files'''
     template_dir = Path(__file__).parent / 'templates'
     python_dir = Path(__file__).parent / 'py-files'
     # 'py' generates the python module that is called from Daisy. Filename and function name must
@@ -57,9 +60,9 @@ def test_run_with_several_python_files(tmp_path):
 
     daisy_log = Path(tmp_path / 'daisy.log')
     with daisy_log.open(encoding='utf-8') as f:
-        lines = [ line for line in f ]
+        lines = list(f)
     assert len(lines) >= 2
-    assert lines[-2].strip() == EXPECTED
+    assert lines[-2].strip() == EXPECTED_SEVERAL_FILES
     
 
     
