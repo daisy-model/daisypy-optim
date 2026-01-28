@@ -233,8 +233,8 @@ def _copy_script(file_name, out_dir):
         in_path = os.path.join(datadir, file_name)
         try:
             shutil.copyfile(in_path, out_path)
-    except shutil.SameFileError, IOError:
-        print(f'Could not copy {file_name}')
+        except (shutil.SameFileError, IOError):
+            print(f'Could not copy {file_name}')
 
 
 

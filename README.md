@@ -17,7 +17,7 @@ The idea of self-contained environment is to create a repository that contains e
 A tool is included that generates the python script based on user input. Once generated, it can be adapted to specific needs. To start using `daisypy-optim` this way look at
 
 * [Windows](doc/getting-started-win.md)
-* [Linux](doc/getting-started-win.md)
+* [Linux](doc/getting-started-linux.md)
 
 
 ### Regular python modules
