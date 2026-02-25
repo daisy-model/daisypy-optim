@@ -1,5 +1,10 @@
 import os
+import warnings
+from pathlib import Path
 from .file_generator import FileGenerator
+from daisypy.io import parse_dai, format_dai
+from daisypy.io.dai import Definition
+from daisypy.io.exceptions import DaiException
 
 class DaiFileGenerator(FileGenerator):
     def __init__(self, out_file='run.dai', template_text='', template_file_path=None):
@@ -32,13 +37,42 @@ class DaiFileGenerator(FileGenerator):
         """
         self.out_file = out_file
         if template_file_path is not None:
-            with open(template_file_path, 'r', encoding='utf-8') as infile:
-                # Skip dai line comments
-                self.template_text = ''.join((
-                    line for line in infile if not line.lstrip().startswith(';')
-                ))
-        else:
-            self.template_text = template_text
+            template_text = Path(template_file_path).read_text()
+        # Parse the text as a Dai object while allowing placeholders
+        dai = parse_dai(template_text, extended=True)
+
+        # Force all programs that inherits from spawn to run with 1 process
+        for value in dai.values:
+            if isinstance(value, Definition) and value.parent.value == 'spawn':
+                for param in value.body:
+                    if isinstance(param, list) and param[0].value == 'parallel':
+                        if param[1] != 1:
+                            warnings.warn("parallel parameter for spawn forced to 1")
+                            param[1] = 1
+        self.template_text = format_dai(dai)
+
+    def validate(self, params):
+        """Generate a dai file and check that it is valid.
+        The generated file is valid if it can be be parsed by daisypy.io.parse_dai AND if all spawn
+        commands are single threaded "(parallel 1)"
+
+        Parameters
+        ----------
+        params : dict (str, value)
+          The keys MUST match the defined template parameters exactly.
+
+        Returns
+        -------
+        True if the generated file is valid
+        """
+        dai_string = self.template_text.format(**params)
+        try:
+            dai = parse_dai(dai_string)
+
+            self.validated = True
+        except DaiException:
+            self.validated = False
+        return self.validated
 
     def __call__(self, output_directory, params, tagged=True):
         """Generate a dai file from the template using the given params and write it to a directory
@@ -63,7 +97,10 @@ class DaiFileGenerator(FileGenerator):
         if tagged:
             params = params['dai']
         os.makedirs(output_directory, exist_ok=True)
-        dai_string = self.template_text.format(**params)
+        if len(params) == 0:
+            dai_string = self.template_text
+        else:
+            dai_string = self.template_text.format(**params)
         out_path = os.path.abspath(os.path.join(output_directory, self.out_file))
         with open(out_path, "w", encoding='utf-8') as f:
             f.write(dai_string)

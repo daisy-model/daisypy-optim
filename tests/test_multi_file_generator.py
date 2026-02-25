@@ -9,12 +9,7 @@ EXPECTED = {
     return 0.25 * x + 7""",
 
     'dai' : """(deffunction f Python
-  "Call Python function."
-  (module "testing")
-  (name "linear")
-  (domain [])
-  (range []))
-
+  "Call Python function." (module "testing") (name "linear") (domain []) (range []))
 (defprogram print_it write
   "Write specific value"
   (declare v1 Number [] "V1")
@@ -22,7 +17,6 @@ EXPECTED = {
   (v1 (apply f 4 []))
   (v2 (apply f -1 []))
   (what "f(4) = ${v1}, f(-1) = ${v2}"))
-
 (run print_it)"""
 }
 
