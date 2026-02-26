@@ -64,6 +64,7 @@ class DaisySequentialOptimizer:
 
     def optimize(self):
         '''Run optimization'''
+        # pylint: disable=too-many-locals,too-many-statements
         # Recall that we are working with categorical parameters, so there is no sampling of new
         # parameters.
         step = 0

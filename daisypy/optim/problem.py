@@ -4,6 +4,7 @@ import platform
 import numpy as np
 
 class DaisyOptimizationProblem:
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
             self, runner, file_generator, objective_fn, parameters, data_dir=None, debug=False
     ):

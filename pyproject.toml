@@ -63,6 +63,11 @@ disable = [
  ignore = [
      '_version.py',
      'data',
+     'build',
+     '.venv',
+     'example-data',
+     'test-data',
+     'templates'
  ]
 
 [tool.pytest.ini_options]

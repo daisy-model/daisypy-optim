@@ -1,3 +1,4 @@
+# pylint: disable=too-many-locals
 """Example showing how to optimize two Daisy parameters for a single objective using CMA"""
 import argparse
 import os
