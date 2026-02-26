@@ -23,22 +23,22 @@ A tool is included that generates the python script based on user input. Once ge
 ### Regular python modules
 It is also possible to use `daisypy-optim` as a regular python module. Simply install with
 
-    pip install daisypy-optim@git+https://github.com/daisy-model/daisypy-optim
+    pip install daisypy-optim
 
 To enable CMA-ES
 
-    pip install cma
+    pip install daisypy-optim[cma]
 
 To enable scikit-optimize
 
-    pip install scikit-optimize joblib
+    pip install daisypy-optim[skopt]
 
 All of the above
 
-    pip install daisypy-optim@git+https://github.com/daisy-model/daisypy-optim cma scikit-optimize joblib
-
+    pip install daisypy-optim[cma,skopt]
 
 And look at the [examples](doc/examples) and [tests](tests) to see how to setup an optimization
+
 
 ## Chossing an optimization method
 There are several optimization methods available
