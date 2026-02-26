@@ -1,8 +1,10 @@
 from pathlib import Path
 from daisypy.optim import DaisyRunner
+from .markers import requires_daisy
 
 EXPECTED = "Hello from Daisy"
 
+@requires_daisy
 def test_runner(tmp_path):
     '''Thest that DaisyRunner can run Daisy and generate the expected daisy.log'''
     # Assume we are on linux and daisy is installed

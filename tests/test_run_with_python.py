@@ -2,8 +2,10 @@ from pathlib import Path
 from daisypy.optim import (
     PyFileGenerator, DaiFileGenerator, MultiFileGenerator, DaisyRunner
 )
+from .markers import requires_daisy
 
 EXPECTED_ONE_FILE = "f(4) = 8, f(-1) = 6.75"
+@requires_daisy
 def test_run_with_python(tmp_path):
     '''Test that we can run Daisy with generated dai and python files'''
     template_dir = Path(__file__).parent / 'templates'
@@ -31,6 +33,7 @@ def test_run_with_python(tmp_path):
 
     
 EXPECTED_SEVERAL_FILES = "f(4) = 6, f(-1) = 7.25"
+@requires_daisy
 def test_run_with_several_python_files(tmp_path):
     '''Test that we can run Daisy with generated dai and multiple python files'''
     template_dir = Path(__file__).parent / 'templates'
