@@ -12,8 +12,8 @@ authors = [
 ]
 description = "Optimization framework for Daisy"
 requires-python = ">=3.11"
+license = "GPL-3.0-or-later"
 classifiers = [
-    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Programming Language :: Python :: 3"
 ]
 dependencies = [
@@ -35,6 +35,7 @@ Homepage = "https://daisy.ku.dk/"
 [project.optional-dependencies]
 cma = ["cma"]
 skopt = ["scikit-optimize", "joblib"]
+dev = ["pylint", "pytest"]
 
 [tool.uv.sources]
 daisypy-io = { git = "https://github.com/daisy-model/daisypy-io" }
@@ -46,10 +47,6 @@ namespaces = true
 
 [tool.setuptools_scm]
 version_file = "daisypy/optim/_version.py"
-
-[tool.pylint.main]
-init-hook = 'import sys; sys.path.append(".")'
-ignored-modules = [ "numpy", "skopt", "joblib", "cma", "pandas", "scipy", "matplotlib", "daisypy.io" ]
 
 [tool.pylint.messages_control]
 disable = [
