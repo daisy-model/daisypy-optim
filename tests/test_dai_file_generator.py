@@ -15,15 +15,30 @@ EXPECTED = """(deffunction f Python
   (v1 (apply f 0 []))
   (v2 (apply f 5 []))
   (what "f(0) = ${v1}, f(5) = ${v2}"))
-  
+
 (run print_it)
 """
 
-def test_dai_file_generator(tmp_path):
+PARAMS = { 'x1' : 0, 'x2' : 5 }
+
+def test_tagged(tmp_path):
     '''Test that generated dai file is as expected'''
     template_path = Path(__file__).parent / 'templates' / 'template.dai'
     generator = DaiFileGenerator('linear.dai', template_file_path=template_path)
-    file_path = Path(generator(tmp_path, {'x1' : 0, 'x2' : 5})['dai'])
+    file_path = Path(generator(tmp_path, {'dai' : PARAMS})['dai'])
     assert file_path.read_text(encoding='utf-8') == EXPECTED
-    
-    
+
+def test_not_tagged(tmp_path):
+    template_path = Path(__file__).parent / 'templates' / 'template.dai'
+    generator = DaiFileGenerator('linear.dai', template_file_path=template_path)
+    file_path = Path(generator(tmp_path, PARAMS, tagged=False))
+    assert file_path.read_text(encoding='utf-8') == EXPECTED
+
+def test_no_params(tmp_path):
+    template = "(${{no_params}})"
+    expected = "(${no_params})"
+    generator = DaiFileGenerator('linear.dai', template_text=template)
+    file_path = Path(generator(tmp_path, {}, tagged=False))
+    assert file_path.read_text(encoding='utf-8') == expected
+    file_path = Path(generator(tmp_path, {'dai' : {}})['dai'])
+    assert file_path.read_text(encoding='utf-8') == expected

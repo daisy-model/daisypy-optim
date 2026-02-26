@@ -12,5 +12,5 @@
   (v1 (apply f {x1} []))
   (v2 (apply f {x2} []))
   (what "f({x1}) = ${{v1}}, f({x2}) = ${{v2}}"))
-  
+
 (run print_it)
