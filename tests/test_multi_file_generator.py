@@ -57,8 +57,8 @@ def test_not_tagged(tmp_path):
 
 def test_no_params(tmp_path):
     py_template = 'x = {{ "a" : 2 }}'
-    dai_template = '(${{var}})'
-    expected_all = [ 'x = { "a" : 2 }', '(${var})' ]
+    dai_template = '(defprogram print_it write\n  (what "${{v1}}"))'
+    expected_all = [ 'x = { "a" : 2 }', '(defprogram print_it write\n  (what "${v1}"))' ]
     generator = MultiFileGenerator({
         'py' : PyFileGenerator('testing.py', template_text=py_template),
         'dai' : DaiFileGenerator('run.dai', template_text=dai_template)

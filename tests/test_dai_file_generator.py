@@ -30,8 +30,8 @@ def test_not_tagged(tmp_path):
     assert file_path.read_text(encoding='utf-8') == EXPECTED
 
 def test_no_params(tmp_path):
-    template = "(${{no_params}})"
-    expected = "(${no_params})"
+    template = '(defprogram print_it write\n  (what "${{v1}}"))'
+    expected = '(defprogram print_it write\n  (what "${v1}"))'
     generator = DaiFileGenerator('linear.dai', template_text=template)
     file_path = Path(generator(tmp_path, {}, tagged=False))
     assert file_path.read_text(encoding='utf-8') == expected
