@@ -3,7 +3,7 @@ import warnings
 from pathlib import Path
 from .file_generator import FileGenerator
 from daisypy.io import parse_dai, format_dai, filter_dai
-from daisypy.io.dai import Definition, Comment
+from daisypy.io.dai import Definition, Comment, Identifier
 from daisypy.io.exceptions import DaiException
 
 class DaiFileGenerator(FileGenerator):
@@ -45,11 +45,16 @@ class DaiFileGenerator(FileGenerator):
         # Force all programs that inherits from spawn to run with 1 process
         for value in dai.values:
             if isinstance(value, Definition) and value.parent.value == 'spawn':
+                has_parallel = False
                 for param in value.body:
                     if isinstance(param, list) and param[0].value == 'parallel':
+                        has_parallel = True
                         if param[1] != 1:
                             warnings.warn("parallel parameter for spawn forced to 1")
                             param[1] = 1
+                if not has_parallel:
+                    warnings.warn("parallel parameter for spawn forced to 1")
+                    value.body.append([Identifier('parallel'), 1])
         self.template_text = format_dai(dai)
 
     def __call__(self, output_directory, params, tagged=True):
