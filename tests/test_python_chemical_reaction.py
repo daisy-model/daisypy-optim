@@ -11,8 +11,9 @@ from daisypy.optim import (
     ScalarObjective,
     mse
 )
+from .markers import requires_daisy
 
-
+@requires_daisy
 def test_python_chemical_reaction(tmp_path):
     '''Test that we can optimize parameters of a python function in a full sim setup'''
     data_dir = Path(__file__).parent / 'test-data' / 'python-chemical-reaction'
