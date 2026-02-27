@@ -1,9 +1,10 @@
+# pylint: disable=too-few-public-methods
 from .file_generator import FileGenerator
 
 class MultiFileGenerator(FileGenerator):
+    """Wrapper that handles multiple file generators"""
     def __init__(self, generators):
-        """Wrapper that handles multiple file generators
-
+        """
         Parameters
         ----------
         generators : dict of (str, FileGenerator)

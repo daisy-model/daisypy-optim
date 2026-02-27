@@ -1,4 +1,4 @@
-# pylint: disable=missing-function-docstring
+# pylint: disable=missing-function-docstring,R0801
 from pathlib import Path
 from daisypy.optim import (
     PyFileGenerator, DaiFileGenerator, MultiFileGenerator

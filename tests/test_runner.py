@@ -6,7 +6,7 @@ EXPECTED = "Hello from Daisy"
 
 @requires_daisy
 def test_runner(tmp_path):
-    '''Thest that DaisyRunner can run Daisy and generate the expected daisy.log'''
+    '''Test that DaisyRunner can run Daisy and generate the expected daisy.log'''
     # Assume we are on linux and daisy is installed
     runner = DaisyRunner('daisy')
     dai_path = Path(__file__).parent / 'hello.dai'

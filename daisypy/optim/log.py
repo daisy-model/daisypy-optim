@@ -1,7 +1,7 @@
-'''Log interface'''
 from abc import ABC, abstractmethod
 
 class Log(ABC):
+    '''Log interface'''
     @abstractmethod
     def log(self, *args, **kwargs):
         '''Handle any kind of log mesage'''

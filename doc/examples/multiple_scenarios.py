@@ -1,4 +1,4 @@
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,too-few-public-methods
 """Example showing how to optimize two Daisy parameters over multiple scenarios"""
 import argparse
 import os
@@ -22,6 +22,7 @@ def mse(actual, target):
     return ((actual - target)**2).mean()
 
 class WeightedAverage:
+    '''Compute weighted average'''
     def __init__(self, weights):
         self.w = np.array(weights)
 
@@ -62,8 +63,8 @@ def multiple_scenarios(daisy_path):
     ]
 
     # 3. Define the objective
-    # We have three scenarios. We want to optimize the mean squared error and weight the contribution
-    # from each target according to number of measurements
+    # We have three scenarios. We want to optimize the mean squared error weighted by the number
+    # of measurements in each target
     # These where generated with
     # Askov    : temp_offset =  0 (366 samples
     # Jyndevad : temp_offset = -2 (307 samples)
@@ -98,18 +99,19 @@ def multiple_scenarios(daisy_path):
     weights /= weights.sum()
 
     # You can also try these.
+    # only_askov = [1, 0, 0]
+    # only_jyndevad = [0, 1, 0]
+    # only_foulum = [0, 0, 1]
     # We should get
-    # Askov : temp_offset = 0,
-    # jyndevad : temp_offset = -2
-    # foulum : temp_offset = 2
-    only_askov = [1, 0, 0]
-    only_jyndevad = [0, 1, 0]
-    only_foulum = [0, 0, 1]
+    #  Askov : temp_offset = 0,
+    #  jyndevad : temp_offset = -2
+    #  foulum : temp_offset = 2
+
 
     # You could also compute weights based on variance of targets
     # This should give temp_offset = -2
-    var_weights = np.array([np.var(target[variable]) for target in targets])
-    var_weights /= var_weights.sum()
+    # var_weights = np.array([np.var(target[variable]) for target in targets])
+    # var_weights /= var_weights.sum()
 
     aggregate_fn = WeightedAverage(weights)
     objective = AggregateObjective(objective_fns, aggregate_fn)

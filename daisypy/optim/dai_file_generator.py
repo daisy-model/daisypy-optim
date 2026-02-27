@@ -1,26 +1,25 @@
 import os
 import warnings
 from pathlib import Path
-from .file_generator import FileGenerator
 from daisypy.io import parse_dai, format_dai, filter_dai
 from daisypy.io.dai import Definition, Comment, Identifier
-from daisypy.io.exceptions import DaiException
+from .file_generator import FileGenerator
 
 class DaiFileGenerator(FileGenerator):
+    """Template based generation of dai files using string replacement
+
+     Parameters in the template are specifed in curly braces {}. For example,
+
+       ...
+       (Groundwater aquitard
+         (K_aquitard {K_aquitard_param} [mm/d])
+         ...
+       )
+
+     Which specifies a parameter called `K_aquitard_param`
+     """
     def __init__(self, out_file='run.dai', template_text='', template_file_path=None):
-        """Template based generation of dai files using string replacement
-
-        Parameters in the template are specifed in curly braces {}. For example,
-
-          ...
-          (Groundwater aquitard
-            (K_aquitard {K_aquitard_param} [mm/d])
-            ...
-          )
-
-        Which specifies a parameter called `K_aquitard_param`
-
-
+        """
         Parameters
         ----------
         out_file : str
@@ -37,7 +36,7 @@ class DaiFileGenerator(FileGenerator):
         """
         self.out_file = out_file
         if template_file_path is not None:
-            template_text = Path(template_file_path).read_text()
+            template_text = Path(template_file_path).read_text(encoding='utf-8')
         # Parse the text as a Dai object while allowing placeholders
         dai = parse_dai(template_text, extended=True)
         dai = filter_dai(dai, lambda x : not isinstance(x, Comment))

@@ -1,3 +1,4 @@
+# pylint: disable=too-few-public-methods
 import os
 import pandas as pd
 from daisypy.io.dlf import read_dlf

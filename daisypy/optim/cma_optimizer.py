@@ -1,3 +1,4 @@
+# pylint: disable=R0801
 import multiprocessing
 import warnings
 import numpy as np
@@ -6,20 +7,21 @@ from cma.fitness_transformations import ScaleCoordinates
 from cma.optimization_tools import EvalParallel2
 
 class DaisyCMAOptimizer:
+    """Daisy optimizer using the CMA-ES method from https://github.com/CMA-ES/pycma
+
+     There are many options for cma. The most important for new users is `maxfevals`, which
+     limits the number of function evaluations. By default this is set to 10, which is
+     unrealisticly low. This can be overridden by setting it to np.inf to get unlimited
+     evaluations or to to a finite number, e.g
+       cma_options = { "maxfevals" : np.inf }
+       cma_options = { "maxfevals" : 2000 }
+
+     A simple estimate of the time it will take to compute N evaluations can be found in this way
+       time_to_run_once = <time to run one simulation with Daisy>
+       total_run_time = time_to_run_once * maxfevals / number_of_compute_cores
+    """
     def __init__(self, problem, logger, cma_options=None, number_of_processes=None):
-        """Daisy optimizer using the CMA-ES method from https://github.com/CMA-ES/pycma
-
-        There are many options for cma. The most important for new users is `maxfevals`, which
-        limits the number of function evaluations. By default this is set to 10, which is
-        unrealisticly low. This can be overridden by setting it to np.inf to get unlimited
-        evaluations or to to a finite number, e.g
-          cma_options = { "maxfevals" : np.inf }
-          cma_options = { "maxfevals" : 2000 }
-
-        A simple estimate of the time it will take to compute N evaluations can be found in this way
-          time_to_run_once = <time to run one simulation with Daisy>
-          total_run_time = time_to_run_once * maxfevals / number_of_compute_cores
-
+        """
         Parameters
         ----------
         problem : DaisyProblem

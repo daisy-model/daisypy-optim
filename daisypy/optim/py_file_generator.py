@@ -2,21 +2,22 @@ import os
 from .file_generator import FileGenerator
 
 class PyFileGenerator(FileGenerator):
+    """Template based generation of python files using string replacement
+
+    Parameters in the template are specifed in curly braces {}. For example,
+
+        active_depth = {active_soil_layer_depth}
+
+    Which specifies a parameter called `active_soil_layer_depth`.
+
+    Note:
+    In the template, you need to use double braces in sets and f-strings.
+
+    my_set = {{ my_var }}
+    my_string = f'{{ my_var }}
+    """
     def __init__(self, out_file, template_text='', template_file_path=None):
-        """Template based generation of python files using string replacement
-
-        Parameters in the template are specifed in curly braces {}. For example,
-
-            active_depth = {active_soil_layer_depth}
-
-        Which specifies a parameter called `active_soil_layer_depth`.
-
-        Note:
-        In the template, you need to use double braces in sets and f-strings.
-
-          my_set = {{ my_var }}
-          my_string = f'{{ my_var }}
-
+        """
         Parameters
         ----------
         out_file : str

@@ -1,4 +1,4 @@
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,R0801
 """Example showing how to optimize parameters for python functions used in Daisy"""
 import argparse
 from pathlib import Path

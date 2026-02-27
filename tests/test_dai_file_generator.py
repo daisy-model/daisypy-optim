@@ -1,6 +1,6 @@
-# pylint: disable=missing-function-docstring
-import pytest
+# pylint: disable=missing-function-docstring,R0801
 from pathlib import Path
+import pytest
 from daisypy.optim.dai_file_generator import DaiFileGenerator
 
 EXPECTED = """(deffunction f Python
@@ -41,7 +41,7 @@ def test_no_params(tmp_path):
 SPAWN_PARALLEL = """(defprogram p1 spawn (parallel 10))"""
 SPAWN_SEQUENTIAL = """(defprogram p1 spawn\n  (parallel 1))"""
 
-def test_spawn_is_made_sequential(tmp_path):
+def test_spawn_is_made_sequential():
     with pytest.warns(UserWarning, match="spawn forced to 1"):
         generator = DaiFileGenerator('dummy', template_text=SPAWN_PARALLEL)
     assert generator.template_text == SPAWN_SEQUENTIAL

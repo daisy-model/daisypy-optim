@@ -1,3 +1,4 @@
+import os
 import subprocess
 
 class DaisyRunner:
@@ -12,10 +13,11 @@ class DaisyRunner:
 
         daisy_home : str
           Path to daisy home directory containing lib/ and sample/
-          If not None set DAISYHOME to this str when calling daisy. Otherwise dont set DAISYHOME
+          If not None set DAISYHOME environment variable to daisy_home. Otherwise dont set DAISYHOME
         """
         self.daisy_bin = daisy_bin
-        self.env = {} if daisy_home is None else { "DAISYHOME" : daisy_home }
+        if daisy_home is not None:
+            os.environ.update('DAISYHOME', daisy_home)
 
     def __call__(self, dai_file, output_directory):
         """Run daisy
@@ -32,13 +34,14 @@ class DaisyRunner:
         -------
         subprocess.CompletedProcess
         """
+        print(output_directory)
         args = [
             self.daisy_bin,
             "-q",
             "-d", output_directory,
             dai_file
         ]
-        return subprocess.run(args, env=self.env, check=False)
+        return subprocess.run(args, check=False)
 
 
     def serialize(self):
@@ -50,7 +53,7 @@ class DaisyRunner:
         """
         return {
             'daisy_bin' : self.daisy_bin,
-            'daisy_home' : self.env.get('DAISYHOME', None)
+            'daisy_home' : os.environ.get('DAISYHOME', None)
         }
 
     @staticmethod
