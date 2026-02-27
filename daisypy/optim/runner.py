@@ -34,7 +34,6 @@ class DaisyRunner:
         -------
         subprocess.CompletedProcess
         """
-        print(output_directory)
         args = [
             self.daisy_bin,
             "-q",
