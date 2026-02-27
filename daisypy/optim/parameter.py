@@ -1,7 +1,8 @@
+# pylint: disable=too-few-public-methods
 class ContinuousParameter:
+    """Wrapper for continuous Daisy parameters"""
     def __init__(self, name, initial_value, valid_range):
-        """Wrapper for continuous Daisy parameters
-
+        """
         Parameters
         ----------
         name : str
@@ -20,9 +21,9 @@ class ContinuousParameter:
 
 
 class CategoricalParameter:
+    """Wrapper for categorical parameters"""
     def __init__(self, name, values, initial_value_idx=0):
-        """Wrapper for categorical parameters
-
+        """
         Parameters
         ----------
         name : str

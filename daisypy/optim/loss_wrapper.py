@@ -1,9 +1,10 @@
+# pylint: disable=too-few-public-methods
 import pandas as pd
 
 class LossWrapper:
+    """Loss wrappeer for use with DaisyObjective"""
     def __init__(self, loss_fn):
-        """Loss wrappeer for use with DaisyObjective
-
+        """
         Parameters
         ----------
         loss_fn : callable : (actual, target) -> loss

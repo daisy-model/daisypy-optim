@@ -1,7 +1,9 @@
+# pylint: disable=too-few-public-methods
 '''Test functions from https://en.wikipedia.org/wiki/Test_functions_for_optimization'''
 from daisypy.optim import ContinuousParameter
 
 class BealeFunction:
+    '''The BealeFunction'''
     def __init__(self):
         self.parameters = [
             ContinuousParameter('x', 0, (-4,4)),

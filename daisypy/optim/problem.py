@@ -4,7 +4,8 @@ import platform
 import numpy as np
 
 class DaisyOptimizationProblem:
-    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    # pylint: disable=too-many-arguments,too-many-positional-arguments,too-few-public-methods
+    '''Class that knows how to run simulation and compute objective for a paramter set'''
     def __init__(
             self, runner, file_generator, objective_fn, parameters, data_dir=None, debug=False
     ):

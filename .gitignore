@@ -2,6 +2,9 @@
 *~
 
 __pycache__/
+build/
+out/
+tmp/
 dist/
 *.egg-info/
 _version.py

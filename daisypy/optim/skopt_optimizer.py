@@ -5,10 +5,11 @@ import skopt
 from joblib import Parallel, delayed
 
 class DaisySkoptOptimizer:
-    def __init__(self, problem, logger, options=None, number_of_processes=None):
-        """Daisy optimizer using the scikit-optimize library
+    """Daisy optimizer using the scikit-optimize library
         https://scikit-optimize.github.io/stable/
-
+    """
+    def __init__(self, problem, logger, options=None, number_of_processes=None):
+        """
         Parameters
         ----------
         problem : DaisyProblem

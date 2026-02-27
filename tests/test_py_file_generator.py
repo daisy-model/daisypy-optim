@@ -5,7 +5,6 @@ from daisypy.optim.py_file_generator import PyFileGenerator
 EXPECTED = """def linear(x):
     return 0.5 * x + 10
 """
-
 PARAMS = {'a' : 0.5, 'b' : 10}
 
 def test_tagged(tmp_path):

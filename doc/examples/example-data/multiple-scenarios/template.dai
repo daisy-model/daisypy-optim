@@ -1,0 +1,48 @@
+;;; Based on sample/test-spawn.dai
+
+(input file "dk-soil.dai")
+(input file "tillage.dai")
+(input file "fertilizer.dai")
+(input file "crop.dai")
+(input file "dk-management.dai")
+(input file "log-std.dai")
+
+(defprogram Base Daisy
+  "This is the stuff all scenarios have in common."
+  (time 1978 1 1)
+  (stop 1990 1 1)
+  (output ("Field nitrogen" (when daily))))
+
+;; We want to optimize for the temperature offset.
+(defweather Normal table (file "dk-taastrup.dwf"))
+(defweather Weather Normal (TempOffset {temp_offset} [dg C]))
+
+;; We test three different soils: Askov, Jyndevad, Foulum.
+;; These are defined in dk-soil.dai.
+
+;; The Foulum column has no groundwater defined.
+(defcolumn FoulumD Foulum (Groundwater deep))
+
+;; We test one management "SBarley w. catch crop"
+;; It is defined in dk-management.dai.
+
+(defprogram askov Base "Askov scenario"
+            (weather Weather) (column Askov) (manager "SBarley w. catch crop")
+            (activate_output (after 1989 1 1)))
+
+(defprogram jyndevad Base "Jyndevad scenario"
+            (weather Weather) (column Jyndevad) (manager "SBarley w. catch crop")
+            (activate_output (after 1989 3 1)))
+
+(defprogram foulum Base "Foulum scenario"
+            (weather Weather) (column FoulumD) (manager "SBarley w. catch crop")
+            (activate_output (after 1989 6 1)))
+
+;; Now, run them all.
+
+(defprogram all spawn
+  (program askov jyndevad foulum))
+
+(run all)
+
+;;; test-spawn.dai ends her.

@@ -1,16 +1,17 @@
+# pylint: disable=too-few-public-methods,R0801
 from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 from .parameter import CategoricalParameter
 
 class DaisySequentialOptimizer:
+    """Daisy optimizer using a sequential approach
+
+    The method starts from the initial parameters. Then it changes each parameter in turn.
+    The single parameter leading to best performance is then fixed and the process repeated
+    untill all parameters are fixed.
+    """
     def __init__(self, problem, logger, options=None, number_of_processes=None):
-        """Daisy optimizer using a sequential approach
-
-        The methods starts from the initial parameters. Then it changes each parameter in turn.
-        The single parameter leading to best performance is then fixed and the process repeated
-        untill all parameters are fixed.
-
-
+        """
         Parameters
         ----------
         problem : DaisyProblem
