@@ -36,6 +36,7 @@ Homepage = "https://daisy.ku.dk/"
 cma = ["cma"]
 skopt = ["scikit-optimize", "joblib"]
 dev = ["pylint", "pytest"]
+ax = ["ax-platform"]
 
 [tool.uv.sources]
 daisypy-io = { git = "https://github.com/daisy-model/daisypy-io" }
