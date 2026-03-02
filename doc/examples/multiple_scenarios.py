@@ -1,7 +1,7 @@
-# pylint: disable=too-many-locals,too-few-public-methods
+# pylint: disable=too-many-locals,too-few-public-methods,R0801
 """Example showing how to optimize two Daisy parameters over multiple scenarios"""
 import argparse
-import os
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from daisypy.optim import (
@@ -42,14 +42,15 @@ def multiple_scenarios(daisy_path):
     7. Run the optimizer
     8. Look at the results
     '''
-
-    base_out_dir = 'out/multiple-scenarios'
+    base_dir = Path(__file__).parent
+    out_dir = base_dir / 'out' / 'multiple-scenarios'
+    data_dir = base_dir / 'example-data' / 'multiple-scenarios'
 
     # 0. Define a runner that can run Daisy
     runner = DaisyRunner(daisy_path)
 
     # 1. Setup the dai file generator
-    dai_template = 'example-data/multiple-scenarios/template.dai'
+    dai_template = data_dir / 'template.dai'
     dai_file_generator = DaiFileGenerator(template_file_path=dai_template)
 
     # 2. Define the parameters that we will optimize
@@ -70,9 +71,9 @@ def multiple_scenarios(daisy_path):
     # Jyndevad : temp_offset = -2 (307 samples)
     # Foulum   : temp_offset =  2 (215 samples)
     targets = [
-        pd.read_csv('example-data/multiple-scenarios/target-askov.csv'),
-        pd.read_csv('example-data/multiple-scenarios/target-jyndevad.csv'),
-        pd.read_csv('example-data/multiple-scenarios/target-foulum.csv')
+        pd.read_csv(data_dir / 'target-askov.csv'),
+        pd.read_csv(data_dir / 'target-jyndevad.csv'),
+        pd.read_csv(data_dir / 'target-foulum.csv')
     ]
     
     # The logs do not have to be the same
@@ -121,15 +122,15 @@ def multiple_scenarios(daisy_path):
     # Normally we would not set data_dir and we would set debug = False,
     # but here we set them so we can inspect the output.
     # If debug = False, then outputs are deleted as soon as the optimizer is done with them
-    data_dir = os.path.join(base_out_dir, 'data_dir')
+    out_data_dir = out_dir / 'data_dir'
     debug = True
     problem = DaisyOptimizationProblem(
-        runner, dai_file_generator, objective, parameters, data_dir, debug
+        runner, dai_file_generator, objective, parameters, out_data_dir, debug
     )
 
     # 5. Setup a logger
     # We use DefaultLogger that logs parameter distributions and sampled parameters to csv files
-    log_dir = os.path.join(base_out_dir, 'logs')
+    log_dir = out_dir / 'logs'
     logger = DefaultLogger(log_dir)
 
     # 6. Setup an optimizer

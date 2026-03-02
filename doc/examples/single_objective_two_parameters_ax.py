@@ -1,7 +1,7 @@
 # pylint: disable=too-many-locals,R0801
 """Example showing how to optimize two Daisy parameters for a single objective using CMA"""
 import argparse
-import os
+from pathlib import Path
 import pandas as pd
 from ax.api.client import Client
 from ax.api.configs import RangeParameterConfig
@@ -31,14 +31,15 @@ def single_objective_two_parameters_ax(daisy_path, daisy_home):
     7. Run the optimizer
     8. Look at the results
     '''
-
-    base_out_dir = 'out/single-objective-two-parameters-ax'
+    base_dir = Path(__file__).parent
+    out_dir = base_dir / 'out' / 'single-objective-two-parameters-ax'
+    data_dir = base_dir / 'example-data'
 
     # 0. Define a runner that can run Daisy
     runner = DaisyRunner(daisy_path, daisy_home)
 
     # 1. Setup the dai file generator
-    dai_template = 'example-data/template.dai'
+    dai_template = data_dir / 'template.dai'
     dai_file_generator = DaiFileGenerator(template_file_path=dai_template)
 
     # 2. Define the parameters that we will optimize
@@ -59,7 +60,7 @@ def single_objective_two_parameters_ax(daisy_path, daisy_home):
     # 3. Define the objective
     # We need a target, a loss function and the name of the variable and dlf file
     # The target must be a dataframe with a "time" column
-    target = pd.read_csv('example-data/measured-field-nitrogen.csv')
+    target = pd.read_csv(data_dir / 'measured-field-nitrogen.csv')
     target["time"] = pd.to_datetime(target[['year', 'month', 'day', 'hour']])
 
     # The loss function can be any python function mapping a pair of numpy.arrays to a scalar
@@ -76,10 +77,10 @@ def single_objective_two_parameters_ax(daisy_path, daisy_home):
     # Normally we would not set data_dir and we would set debug = False,
     # but here we set them so we can inspect the output.
     # If debug = False, then outputs are deleted as soon as the optimizer is done with them
-    data_dir = os.path.join(base_out_dir, 'data_dir')
+    out_data_dir = out_dir / 'data_dir'
     debug = True
     problem = DaisyOptimizationProblem(
-        runner, dai_file_generator, objective_fn, parameters, data_dir, debug
+        runner, dai_file_generator, objective_fn, parameters, out_data_dir, debug
     )
     metric_name = 'NO3_Error'
 
