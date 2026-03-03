@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 import pandas as pd
 from ax.api.client import Client
-from ax.api.configs import RangeParameterConfig
+from daisypy.optim.ax import daisy_param_to_ax_param
 from daisypy.optim import (
     DaiFileGenerator,
     ScalarObjective,
@@ -84,11 +84,7 @@ def single_objective_two_parameters_ax(daisy_path, daisy_home):
     )
     metric_name = 'NO3_Error'
 
-    ax_parameters = [
-        RangeParameterConfig(name=p.name, parameter_type='float', bounds=p.valid_range)
-        for p in parameters
-    ]
-
+    ax_parameters = [ daisy_param_to_ax_param(p) for p in parameters ]
     client = Client()
     client.configure_experiment(parameters=ax_parameters)
     client.configure_optimization(objective=f'-{metric_name}')
