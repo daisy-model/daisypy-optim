@@ -5,7 +5,7 @@ from .multi_objective import MultiObjective
 class AggregateObjective(Sequence):
     '''Objective that computes several objectives and optionally aggregates them.'''
 
-    def __init__(self, name, objective_fns, aggregate_fn=None):
+    def __init__(self, name, objective_fns, aggregate_fn):
         '''
         Parameters
         ----------
