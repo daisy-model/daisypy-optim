@@ -100,7 +100,7 @@ def multi_objective_ax(daisy_path):
             print(metric, value)
         print('--------------------------------------------------------------------------------')
 
-    
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

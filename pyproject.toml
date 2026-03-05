@@ -51,8 +51,6 @@ version_file = "daisypy/optim/_version.py"
 
 [tool.pylint.messages_control]
 disable = [
-    'trailing-whitespace',
-    'trailing-newlines',
     'missing-module-docstring',
  ]
  ignore = [

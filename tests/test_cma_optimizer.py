@@ -2,7 +2,7 @@
 import tempfile
 from pytest import approx
 from daisypy.optim import (
-    DefaultLogger,    
+    DefaultLogger,
     DaisyCMAOptimizer,
 )
 from .mock_problem import MockProblem

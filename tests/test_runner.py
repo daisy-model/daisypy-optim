@@ -12,7 +12,7 @@ def test_runner(tmp_path):
     dai_path = Path(__file__).parent / 'hello.dai'
     result = runner(str(dai_path), str(tmp_path))
     assert result.returncode == 0
-    
+
     daisy_log = tmp_path / 'daisy.log'
     with daisy_log.open(encoding='utf-8') as f:
         lines = list(f)

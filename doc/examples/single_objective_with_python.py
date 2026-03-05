@@ -24,7 +24,7 @@ def single_objective_with_python(daisy_path, daisy_home=None):
 
     daisy_home: str
       Path to daisy home. If None let the Daisy binary figure it out
-    '''    
+    '''
     base_dir = Path(__file__).parent
     out_dir = base_dir / 'out' / 'single_objective_with_python'
     data_dir = base_dir / 'example-data' / 'python-chemical-reaction'
