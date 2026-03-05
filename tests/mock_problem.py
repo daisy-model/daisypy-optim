@@ -7,4 +7,4 @@ class MockProblem:
 
     def __call__(self, parameter_values):
         named_parameters = { p.name : value for p, value in zip(self.parameters, parameter_values) }
-        return self.objective_fn(**named_parameters)
+        return { 'mock' : self.objective_fn(**named_parameters) }
