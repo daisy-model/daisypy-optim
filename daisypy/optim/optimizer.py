@@ -7,12 +7,6 @@ except ImportError:
     pass
 
 try:
-    from daisypy.optim.skopt_optimizer import DaisySkoptOptimizer
-    available_optimizers["skopt"] = DaisySkoptOptimizer
-except ImportError:
-    pass
-
-try:
     from daisypy.optim.ax_optimizer import DaisyAxOptimizer, AxResult #pylint: disable=unused-import
     available_optimizers["ax"] = DaisyAxOptimizer
 except ImportError:

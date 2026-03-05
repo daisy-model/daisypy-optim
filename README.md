@@ -29,13 +29,13 @@ To enable CMA-ES
 
     pip install daisypy-optim[cma]
 
-To enable scikit-optimize
+To enable Ax
 
-    pip install daisypy-optim[skopt]
+    pip install daisypy-optim[ax]
 
 All of the above
 
-    pip install daisypy-optim[cma,skopt]
+    pip install daisypy-optim[cma,ax]
 
 And look at the [examples](doc/examples) and [tests](tests) to see how to setup an optimization
 
@@ -45,8 +45,8 @@ There are several optimization methods available
 
  * `sequential` : A greedy approach that fixes one parameter at a time. Works well when optimizing few paramaters.
  * `cma` : CMA-ES. Works well for larger number of parameters and when the outcome depends strongly on parameter combinations. Does not work for single parameters.
- * `skopt` : scikit-optimize. Bayesian optimization. Very slow. Will be replaced with a BoTorch/Ax method.
+ * `ax` : Ax. Bayesian optimization. Supports multi-objective optimization.
 
 
 ## Continuous/categorical parameters
-Both continuous and categorical parameters are supported. Currently, the sequential method treats everything as categorial parameters (by sampling a fixed number of values from the continuous parameters). The other methods requires continuous parameters.
+Both continuous and categorical parameters are supported. Currently, the sequential method treats everything as categorial parameters (by sampling a fixed number of values from the continuous parameters). CMA-ES requires continuous parameters. Ax should wotk with both.

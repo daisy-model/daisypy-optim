@@ -84,10 +84,7 @@ You might want to change the optimization parameters in `optimize.py`, specifica
         },
         "cma" : {
             "maxfevals" : 100, # Maximum number of function evaluations
-        },
-        "skopt" : {
-            "maxfevals" : 50,
-        } 
+        }
     }
 ```
 Once you have edited them you can run the optimization with

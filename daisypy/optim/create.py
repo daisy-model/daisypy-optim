@@ -247,8 +247,8 @@ def finalize():
     ]
     if 'cma' in available_optimizers:
         cmd.append("cma")
-    if 'skopt' in available_optimizers:
-        cmd += ["scikit-optimize", "joblib"]
+    if 'ax' in available_optimizers:
+        cmd.append("ax-platform")
 
     result = subprocess.run(cmd, text=True, check=False)
     if result.returncode != 0:
