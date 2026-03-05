@@ -5,6 +5,7 @@ import numpy as np
 import cma
 from cma.fitness_transformations import ScaleCoordinates
 from cma.optimization_tools import EvalParallel2
+from .problem import ScalarProblemWrapper
 
 class DaisyCMAOptimizer:
     """Daisy optimizer using the CMA-ES method from https://github.com/CMA-ES/pycma
@@ -43,7 +44,7 @@ class DaisyCMAOptimizer:
             upper.append(param.valid_range[1])
             x0.append(param.initial_value)
         self.objective = ScaleCoordinates(
-            problem, lower=lower, upper=upper, from_lower_upper=(-1,1)
+            ScalarProblemWrapper(problem), lower=lower, upper=upper, from_lower_upper=(-1,1)
         )
 
         # Map the initial values to optimization domain

@@ -1,16 +1,19 @@
-# pylint: disable=too-few-public-methods
 import os
 import pandas as pd
 from daisypy.io.dlf import read_dlf
 from .loss_wrapper import LossWrapper
 
 class ScalarObjective:
+    # pylint: disable=too-few-public-methods,too-many-arguments,too-many-positional-arguments
     """Scalar objective that extracts data from a daisy output file and computes a loss"""
 
-    def __init__(self, log_name, variable_name, target, loss_fn):
+    def __init__(self, name, log_name, variable_name, target, loss_fn):
         """
         Parameters
         ----------
+        name : str
+          Name of objective
+
         log_name : str
           Name of Daisy log file where `variable_name` is found
 
@@ -24,6 +27,7 @@ class ScalarObjective:
         loss_fn : callable : (actual, target) -> loss
           The loss function to use
         """
+        self.name = name
         self.log_name = log_name
         self.variable_name = variable_name
         if not isinstance(target, pd.DataFrame):
@@ -42,7 +46,8 @@ class ScalarObjective:
 
         Returns
         -------
-        objective : The computed objective value
+        objective_map : dict of [str, float]
+          Map from the objective name to the objetive value
         """
         dlf = read_dlf(os.path.join(daisy_output_directory, self.log_name))
         actual_value = dlf.body[self.variable_name]
@@ -50,5 +55,4 @@ class ScalarObjective:
             dlf.body[['year', 'month', 'mday', 'hour']].rename(columns={'mday' : 'day'})
         )
         actual = pd.DataFrame({'time' : time, 'value' : actual_value})
-        loss = self.loss_fn(actual, self.target)
-        return loss
+        return { self.name : self.loss_fn(actual, self.target) }

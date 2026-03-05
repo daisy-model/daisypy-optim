@@ -3,9 +3,44 @@ import os
 import platform
 import numpy as np
 
+class ScalarProblemWrapper:
+    # pylint: disable=too-few-public-methods
+    '''Helper class that evalues a DaisyOptimizationProblem and extract the value from the returned
+    dict'''
+
+    def __init__(self, problem):
+        '''
+        Parameters
+        ----------
+        problem : DaisyOptimizationProblem
+        '''
+        self.problem = problem
+
+    def __call__(self, parameter_values):
+        '''
+        Parameters
+        ----------
+        parameter_values : sequence
+          Parameter values. Lenght MUST match length of `self.parameters`
+
+        Returns
+        -------
+        float
+        '''
+        result = self.problem(parameter_values)
+        err_msg = 'Expected a dict with exactly one scalar valued objective mapping'
+        try:
+            value = result.popitem()[1]
+            if len(result) != 0 or not isinstance(value, (int, float)):
+                raise RuntimeError(err_msg)
+            return value
+        except (KeyError, AttributeError, TypeError) as e:
+            raise RuntimeError(err_msg) from e
+
+
 class DaisyOptimizationProblem:
     # pylint: disable=too-many-arguments,too-many-positional-arguments,too-few-public-methods
-    '''Class that knows how to run simulation and compute objective for a paramter set'''
+    '''Class that knows how to run simulation and compute objective for a parameter set'''
     def __init__(
             self, runner, file_generator, objective_fn, parameters, data_dir=None, debug=False
     ):
@@ -58,12 +93,18 @@ class DaisyOptimizationProblem:
         self.debug = debug
 
     def __call__(self, parameter_values):
-        """
+        """Run Daisy with the given parameters and evaluate the objective. The return value depends
+        on
+
         Parameters
         ----------
         parameter_values : sequence
           Parameter values. Lenght MUST match length of `self.parameters`
 
+        Returns
+        -------
+        objective_map : dict of [str, float]
+          Mapping from objective names to objective values
         """
         named_parameters = { 'dai' : {} }
         for p, value in zip(self.parameters, parameter_values):

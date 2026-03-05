@@ -2,6 +2,7 @@
 from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 from .parameter import CategoricalParameter
+from .problem import ScalarProblemWrapper
 
 class DaisySequentialOptimizer:
     """Daisy optimizer using a sequential approach
@@ -26,7 +27,7 @@ class DaisySequentialOptimizer:
         """
         if options is None:
             options = {}
-        self.problem = problem
+        self.problem = ScalarProblemWrapper(problem)
         self.logger = logger
         self.number_of_processes = number_of_processes
 
