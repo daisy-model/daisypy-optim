@@ -12,5 +12,11 @@ try:
 except ImportError:
     pass
 
+try:
+    from daisypy.optim.ax_optimizer import DaisyAxOptimizer, AxResult
+    available_optimizers["ax"] = DaisyAxOptimizer
+except ImportError:
+    pass
+
 from daisypy.optim.sequential_optimizer import DaisySequentialOptimizer
 available_optimizers["sequential"] = DaisySequentialOptimizer
