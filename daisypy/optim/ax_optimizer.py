@@ -13,6 +13,7 @@ class AxResult:
     metrics : dict
 
 class DaisyAxOptimizer:
+    # pylint: disable=too-few-public-methods,too-many-locals
     """Daisy optimizer using Ax. Can do scalar and multi objective optimization"""
     def __init__(self, problem, logger, options=None, number_of_processes=None):
         """

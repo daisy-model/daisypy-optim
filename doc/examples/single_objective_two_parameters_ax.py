@@ -3,14 +3,14 @@
 import argparse
 from pathlib import Path
 import pandas as pd
-from ax.api.client import Client
-from daisypy.optim.ax import daisy_param_to_ax_param
 from daisypy.optim import (
     DaiFileGenerator,
     ScalarObjective,
     DaisyOptimizationProblem,
+    DaisyAxOptimizer,
     ContinuousParameter,
-    DaisyRunner
+    DaisyRunner,
+    DefaultLogger
 )
 
 # We use the multiprocessing module, which uses pickle, so we cannot use local functions
@@ -83,27 +83,26 @@ def single_objective_two_parameters_ax(daisy_path, daisy_home):
         runner, dai_file_generator, objective_fn, parameters, out_data_dir, debug
     )
 
-    ax_parameters = [ daisy_param_to_ax_param(p) for p in parameters ]
-    client = Client()
-    client.configure_experiment(parameters=ax_parameters)
-    client.configure_optimization(objective=f'-{objective_fn.name}')
+    # 5. Setup a logger
+    # We use DefaultLogger that logs parameter distributions and sampled parameters to csv files
+    log_dir = out_dir / 'logs'
+    logger = DefaultLogger(log_dir)
 
-    max_trials_total = 50
-    max_trials_iteration = 3
-    num_trials = 0
-    while num_trials < max_trials_total:
-        max_trials_this_iteration = min(max_trials_iteration, max_trials_total - num_trials)
-        trials = client.get_next_trials(max_trials=max_trials_this_iteration)
-        for trial_index, sampled_parameters in trials.items():
-            params = [sampled_parameters[p.name] for p in parameters]
-            result = problem(params)
-            client.complete_trial(trial_index=trial_index, raw_data=result)
-        num_trials += len(trials)
+    # 6. Setup an optimizer
+    options = {
+        "max_trials" : 25,
+        "max_trials_iteration" : 3
+    }
+    optimizer = DaisyAxOptimizer(problem, logger, options)
 
-    best_parameters, prediction, index, name = client.get_best_parameterization()
-    print("Best Parameters:", best_parameters)
-    print("Prediction (mean, variance):", prediction)
-    print('index, name', index, name)
+    # 7. Run the optimizer
+    result = optimizer.optimize()
+
+    # 8. Look at the results
+    for param, value in result.parameters.items():
+        print(param, value)
+    for metric, value in result.metrics.items():
+        print(metric, value)
 
 
 if __name__ == '__main__':
