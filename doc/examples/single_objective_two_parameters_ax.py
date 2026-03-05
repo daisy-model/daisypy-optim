@@ -70,7 +70,7 @@ def single_objective_two_parameters_ax(daisy_path, daisy_home):
     # of the Daisy log file where we can find the variable.
     variable_name = "NO3-Denitrification"
     log_name = "field_nitrogen.dlf"
-    objective_fn = ScalarObjective(log_name, variable_name, target, loss_fn)
+    objective_fn = ScalarObjective("NO3_Error", log_name, variable_name, target, loss_fn)
 
 
     # 4. Wrap everything as an optimization problem
@@ -82,12 +82,11 @@ def single_objective_two_parameters_ax(daisy_path, daisy_home):
     problem = DaisyOptimizationProblem(
         runner, dai_file_generator, objective_fn, parameters, out_data_dir, debug
     )
-    metric_name = 'NO3_Error'
 
     ax_parameters = [ daisy_param_to_ax_param(p) for p in parameters ]
     client = Client()
     client.configure_experiment(parameters=ax_parameters)
-    client.configure_optimization(objective=f'-{metric_name}')
+    client.configure_optimization(objective=f'-{objective_fn.name}')
 
     max_trials_total = 50
     max_trials_iteration = 3
@@ -98,8 +97,7 @@ def single_objective_two_parameters_ax(daisy_path, daisy_home):
         for trial_index, sampled_parameters in trials.items():
             params = [sampled_parameters[p.name] for p in parameters]
             result = problem(params)
-            raw_data = { metric_name : result }
-            client.complete_trial(trial_index=trial_index, raw_data=raw_data)
+            client.complete_trial(trial_index=trial_index, raw_data=result)
         num_trials += len(trials)
 
     best_parameters, prediction, index, name = client.get_best_parameterization()

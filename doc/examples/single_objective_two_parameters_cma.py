@@ -70,7 +70,7 @@ def single_objective_two_parameters_cma(daisy_path, daisy_home):
     # of the Daisy log file where we can find the variable.
     variable_name = "NO3-Denitrification"
     log_name = "field_nitrogen.dlf"
-    objective_fn = ScalarObjective(log_name, variable_name, target, loss_fn)
+    objective_fn = ScalarObjective('NO3', log_name, variable_name, target, loss_fn)
 
 
     # 4. Wrap everything as an optimization problem
