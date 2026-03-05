@@ -31,7 +31,7 @@ class MultiObjective(Sequence):
         objective_map : dict of [str, float]
           Mapping from objective names to objective values
         '''
-        return { f.name : f(daisy_output_directory) for f in self.objective_fns }
+        return { k:v for f in self.objective_fns for k,v in f(daisy_output_directory).items() }
 
     def __getitem__(self, index):
         return self.objective_fns[index]
