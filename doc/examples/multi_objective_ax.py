@@ -1,15 +1,14 @@
 # pylint: disable=too-many-locals,too-few-public-methods,R0801
-"""Example showing how to optimize two Daisy parameters over multiple scenarios"""
+"""Multi objective optimization over multiple scenarios"""
 import argparse
 from pathlib import Path
-import numpy as np
 import pandas as pd
 from daisypy.optim import (
-    AggregateObjective,
     DaiFileGenerator,
-    DaisySequentialOptimizer,
     ScalarObjective,
+    MultiObjective,
     DaisyOptimizationProblem,
+    DaisyAxOptimizer,
     ContinuousParameter,
     DaisyRunner,
     DefaultLogger
@@ -21,29 +20,10 @@ def mse(actual, target):
     """Mean squared error"""
     return ((actual - target)**2).mean()
 
-class WeightedAverage:
-    '''Compute weighted average'''
-    def __init__(self, weights):
-        self.w = np.array(weights)
-
-    def __call__(self, x):
-        return (list(x.values()) * self.w).sum()
-
-def multiple_scenarios(daisy_path):
-    '''How to optimize parameters for Daisy
-
-    0. Define a runner that can run Daisy
-    1. Setup the dai file generator
-    2. Define the parameters that we will optimize
-    3. Define the objective
-    4. Wrap everything as an optimization problem
-    5. Setup a logger
-    6. Choose an optimizer
-    7. Run the optimizer
-    8. Look at the results
-    '''
+def multi_objective_ax(daisy_path):
+    '''Multi objective optimization using DaisyAxOptimizer'''
     base_dir = Path(__file__).parent
-    out_dir = base_dir / 'out' / 'multiple-scenarios'
+    out_dir = base_dir / 'out' / 'multi-objective-ax'
     data_dir = base_dir / 'example-data' / 'multiple-scenarios'
 
     # 0. Define a runner that can run Daisy
@@ -64,9 +44,7 @@ def multiple_scenarios(daisy_path):
     ]
 
     # 3. Define the objective
-    # We have three scenarios. We want to optimize the mean squared error weighted by the number
-    # of measurements in each target
-    # These where generated with
+    # We have three scenarios. These where generated with
     # Askov    : temp_offset =  0 (366 samples
     # Jyndevad : temp_offset = -2 (307 samples)
     # Foulum   : temp_offset =  2 (215 samples)
@@ -85,33 +63,7 @@ def multiple_scenarios(daisy_path):
         ScalarObjective(name, log_names[name], variables[name], targets[name], losses[name])
         for name in scenarios
     ]
-
-    # Define the weighting
-    # We could also do this using sum of squared error as loss_fn and aggregate with mean, but this
-    # way illustrates how we can easily define different weights.
-    # Just be careful that the order of weights match the order of the targets passed to
-    # AggregateObjective
-    # This should give temp_offset = -1.5
-    weights = np.array(list(map(len, targets)), dtype='float32')
-    weights /= weights.sum()
-
-    # You can also try these.
-    # only_askov = [1, 0, 0]
-    # only_jyndevad = [0, 1, 0]
-    # only_foulum = [0, 0, 1]
-    # We should get
-    #  Askov : temp_offset = 0,
-    #  jyndevad : temp_offset = -2
-    #  foulum : temp_offset = 2
-
-
-    # You could also compute weights based on variance of targets
-    # This should give temp_offset = -2
-    # var_weights = np.array([np.var(target[variable]) for target in targets])
-    # var_weights /= var_weights.sum()
-
-    aggregate_fn = WeightedAverage(weights)
-    objective = AggregateObjective('aggregated', objective_fns, aggregate_fn)
+    objective = MultiObjective('multi', objective_fns)
 
 
     # 4. Wrap everything as an optimization problem
@@ -130,24 +82,28 @@ def multiple_scenarios(daisy_path):
     logger = DefaultLogger(log_dir)
 
     # 6. Setup an optimizer
-    # We use sequential because CMA does not work well with a single parameter (it's an
-    # implementation thing)
     options = {
-        'num_samples' : 18
+        "max_trials" : 25,
+        "max_trials_iteration" : 3
     }
-    optimizer = DaisySequentialOptimizer(problem, logger, options)
+    optimizer = DaisyAxOptimizer(problem, logger, options)
+    assert optimizer.multi_objective, "Optimizer is not multi objective"
 
     # 7. Run the optimizer
-    result = optimizer.optimize()
+    results = optimizer.optimize()
 
     # 8. Look at the results
-    for name, res in result.items():
-        print(name)
-        for k,v in res.items():
-            print('    ', k, ' : ', v, sep='')
+    for result in results:
+        for param, value in result.parameters.items():
+            print(param, value)
+        for metric, value in result.metrics.items():
+            print(metric, value)
+        print('--------------------------------------------------------------------------------')
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('daisy_path', type=str, help='Path to daisy binary')
     args = parser.parse_args()
-    multiple_scenarios(args.daisy_path)
+    multi_objective_ax(args.daisy_path)

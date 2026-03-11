@@ -10,4 +10,3 @@ available_aggregate_fns = {
     "sum" : sum,
     "mean" : mean
 }
-

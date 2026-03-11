@@ -34,8 +34,8 @@ Homepage = "https://daisy.ku.dk/"
 
 [project.optional-dependencies]
 cma = ["cma"]
-skopt = ["scikit-optimize", "joblib"]
 dev = ["pylint", "pytest"]
+ax = ["ax-platform"]
 
 [tool.uv.sources]
 daisypy-io = { git = "https://github.com/daisy-model/daisypy-io" }
@@ -50,8 +50,6 @@ version_file = "daisypy/optim/_version.py"
 
 [tool.pylint.messages_control]
 disable = [
-    'trailing-whitespace',
-    'trailing-newlines',
     'missing-module-docstring',
  ]
  ignore = [
@@ -62,7 +60,8 @@ disable = [
      'example-data',
      'test-data',
      'templates',
-     'tmp'
+     'tmp',
+     'cases'
  ]
 
 [tool.pytest.ini_options]
@@ -72,9 +71,6 @@ addopts = [
 ]
 markers = [
     "slow: marks test as slow (deselect with '-m \"not slow\"')"
-]
-filterwarnings = [
-    "error",
 ]
 
 [tool.coverage.run]

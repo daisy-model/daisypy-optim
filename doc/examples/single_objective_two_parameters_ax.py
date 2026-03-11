@@ -5,9 +5,9 @@ from pathlib import Path
 import pandas as pd
 from daisypy.optim import (
     DaiFileGenerator,
-    DaisyCMAOptimizer,
     ScalarObjective,
     DaisyOptimizationProblem,
+    DaisyAxOptimizer,
     ContinuousParameter,
     DaisyRunner,
     DefaultLogger
@@ -18,7 +18,7 @@ def ssd(actual, target):
     '''Sum of squared distance'''
     return ((actual - target)**2).sum()
 
-def single_objective_two_parameters_cma(daisy_path, daisy_home):
+def single_objective_two_parameters_ax(daisy_path, daisy_home):
     '''How to optimize parameters for Daisy
 
     0. Define a runner that can run Daisy
@@ -32,7 +32,7 @@ def single_objective_two_parameters_cma(daisy_path, daisy_home):
     8. Look at the results
     '''
     base_dir = Path(__file__).parent
-    out_dir = base_dir / 'out' / 'single-objective-two-parameters-cma'
+    out_dir = base_dir / 'out' / 'single-objective-two-parameters-ax'
     data_dir = base_dir / 'example-data'
 
     # 0. Define a runner that can run Daisy
@@ -70,7 +70,7 @@ def single_objective_two_parameters_cma(daisy_path, daisy_home):
     # of the Daisy log file where we can find the variable.
     variable_name = "NO3-Denitrification"
     log_name = "field_nitrogen.dlf"
-    objective_fn = ScalarObjective('NO3', log_name, variable_name, target, loss_fn)
+    objective_fn = ScalarObjective("NO3_Error", log_name, variable_name, target, loss_fn)
 
 
     # 4. Wrap everything as an optimization problem
@@ -89,22 +89,21 @@ def single_objective_two_parameters_cma(daisy_path, daisy_home):
     logger = DefaultLogger(log_dir)
 
     # 6. Setup an optimizer
-    # We choose cma. You should try sequential as well.
-    # For cma we should always explicitly set the maximum number of function evaluations AKA the
-    # maximum number of times we will run Daisy. We set it very low
-    cma_options = {
-        "maxfevals" : 50
+    options = {
+        "max_trials" : 25,
+        "max_trials_iteration" : 3
     }
-    optimizer = DaisyCMAOptimizer(problem, logger, cma_options)
+    optimizer = DaisyAxOptimizer(problem, logger, options)
 
     # 7. Run the optimizer
     result = optimizer.optimize()
 
     # 8. Look at the results
-    for name, res in result.items():
-        print(name)
-        for k,v in res.items():
-            print('    ', k, ' : ', v, sep='')
+    for param, value in result.parameters.items():
+        print(param, value)
+    for metric, value in result.metrics.items():
+        print(metric, value)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -112,4 +111,4 @@ if __name__ == '__main__':
     parser.add_argument('--daisy_home', type=str, default=None,
                         help='Path to daisy home directory containing lib/ and sample/')
     args = parser.parse_args()
-    single_objective_two_parameters_cma(args.daisy_path, args.daisy_home)
+    single_objective_two_parameters_ax(args.daisy_path, args.daisy_home)

@@ -29,7 +29,7 @@ class WeightedAverage:
         self.w = np.array(weights)
 
     def __call__(self, x):
-        return (x * self.w).sum()
+        return (list(x.values()) * self.w).sum()
 
 def multiple_scenarios(daisy_path):
     '''How to optimize parameters for Daisy
@@ -80,24 +80,20 @@ def multiple_scenarios(daisy_path):
     # Askov    : temp_offset =  0 (366 samples
     # Jyndevad : temp_offset = -2 (307 samples)
     # Foulum   : temp_offset =  2 (215 samples)
-    targets = [
-        pd.read_csv(dai_data_dir / 'target-askov.csv'),
-        pd.read_csv(dai_data_dir / 'target-jyndevad.csv'),
-        pd.read_csv(dai_data_dir / 'target-foulum.csv')
-    ]
+    scenarios = [ 'askov', 'jyndevad', 'foulum' ]
+    targets = { name : pd.read_csv(dai_data_dir / f'target-{name}.csv') for name in scenarios }
 
     # The logs do not have to be the same
-    log_names = [
-        'askov/field_nitrogen.dlf',
-        'jyndevad/field_nitrogen.dlf',
-        'foulum/field_nitrogen.dlf',
-    ]
+    log_names = { k : f'{k}/field_nitrogen.dlf' for k in scenarios }
 
     # The variables also dont have to be the same
-    variable = 'Matrix-Leaching'
+    variables = { k : 'Matrix-Leaching' for k in scenarios }
+
+    # And the losses do not have to be the same
+    losses = { k : mse for k in scenarios }
     objective_fns = [
-        ScalarObjective(log_name, variable, target, mse) for
-        log_name, target in zip(log_names, targets)
+        ScalarObjective(name, log_names[name], variables[name], targets[name], losses[name])
+        for name in scenarios
     ]
 
     # Define the weighting
@@ -125,7 +121,7 @@ def multiple_scenarios(daisy_path):
     # var_weights /= var_weights.sum()
 
     aggregate_fn = WeightedAverage(weights)
-    objective = AggregateObjective(objective_fns, aggregate_fn)
+    objective = AggregateObjective('aggregated', objective_fns, aggregate_fn)
 
 
     # 4. Wrap everything as an optimization problem

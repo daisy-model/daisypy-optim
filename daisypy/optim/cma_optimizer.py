@@ -5,6 +5,7 @@ import numpy as np
 import cma
 from cma.fitness_transformations import ScaleCoordinates
 from cma.optimization_tools import EvalParallel2
+from .problem import ScalarProblemWrapper
 
 class DaisyCMAOptimizer:
     """Daisy optimizer using the CMA-ES method from https://github.com/CMA-ES/pycma
@@ -43,7 +44,7 @@ class DaisyCMAOptimizer:
             upper.append(param.valid_range[1])
             x0.append(param.initial_value)
         self.objective = ScaleCoordinates(
-            problem, lower=lower, upper=upper, from_lower_upper=(-1,1)
+            ScalarProblemWrapper(problem), lower=lower, upper=upper, from_lower_upper=(-1,1)
         )
 
         # Map the initial values to optimization domain
@@ -85,11 +86,19 @@ class DaisyCMAOptimizer:
                         step=step,msg=f'All are infeasible at attempt {i}', fvals=fvals
                     )
                 for x, fval in zip(xs, fvals):
-                    params = {
-                        p.name : value  for p, value in
+                    raw_params = {
+                        f'param_{p.name}' : value  for p, value in
                         zip(self.problem.parameters, self.objective.transform(x))
                     }
-                    self.logger.result(step=step, objective_value=fval, **params)
+                    standardized_params = {
+                        f'param_{p.name}' : value  for p, value in
+                        zip(self.problem.parameters, x)
+                    }
+                    objective_value = { f'metric_{self.problem.objective_fn.name}' : fval }
+                    self.logger.result(step=step, tag="raw", **objective_value, **raw_params)
+                    self.logger.result(
+                        step=step, tag="standardized", **objective_value, **standardized_params
+                    )
 
                 failed = np.isnan(fvals)
                 if np.all(failed):
@@ -111,29 +120,35 @@ class DaisyCMAOptimizer:
                 means = self.optimizer.result[5]
                 stds = self.optimizer.result[6]
                 p_mean = {
-                    f'{p.name}.mean' : mean for p, mean in zip(self.problem.parameters, means)
+                    f'param_{p.name}_mean' : mean for p, mean in zip(self.problem.parameters, means)
                 }
                 p_std = {
-                    f'{p.name}.std' : std for p, std in zip(self.problem.parameters, stds)
+                    f'param_{p.name}_std' : std for p, std in zip(self.problem.parameters, stds)
                 }
-                self.logger.parameters(tag="standardized",
-                                       step=step,
-                                       **p_mean,
-                                       **p_std)
+                self.logger.parameters(
+                    distribution="normal",
+                    tag="standardized",
+                    step=step,
+                    **p_mean,
+                    **p_std
+                )
 
-                # Log parameter distributions in the standardized space
+                # Log parameter distributions in the raw space
                 means = self.objective.transform(means)
                 stds = np.array(self.objective.multiplier) * stds
                 p_mean = {
-                    f'{p.name}.mean' : mean for p, mean in zip(self.problem.parameters, means)
+                    f'param_{p.name}_mean' : mean for p, mean in zip(self.problem.parameters, means)
                 }
                 p_std = {
-                    f'{p.name}.std' : std for p, std in zip(self.problem.parameters, stds)
+                    f'param_{p.name}_std' : std for p, std in zip(self.problem.parameters, stds)
                 }
-                self.logger.parameters(tag="actual",
-                                       step=step,
-                                       **p_mean,
-                                       **p_std)
+                self.logger.parameters(
+                    distribution="normal",
+                    tag="raw",
+                    step=step,
+                    **p_mean,
+                    **p_std
+                )
 
         status = self.optimizer.result[7]
         self.logger.info('Termination conditions')

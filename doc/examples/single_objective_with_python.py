@@ -24,7 +24,7 @@ def single_objective_with_python(daisy_path, daisy_home=None):
 
     daisy_home: str
       Path to daisy home. If None let the Daisy binary figure it out
-    '''    
+    '''
     base_dir = Path(__file__).parent
     out_dir = base_dir / 'out' / 'single_objective_with_python'
     data_dir = base_dir / 'example-data' / 'python-chemical-reaction'
@@ -41,7 +41,13 @@ def single_objective_with_python(daisy_path, daisy_home=None):
     runner = DaisyRunner(daisy_path, daisy_home)
 
     target_file = data_dir / 'target.csv'
-    objective = ScalarObjective("soil_NO3_profile.dlf", "NO3", target_file, mse)
+    objective = ScalarObjective(
+        name="NO3",
+        log_name="soil_NO3_profile.dlf",
+        variable_name="NO3",
+        target=target_file,
+        loss_fn=mse
+    )
 
     problem = DaisyOptimizationProblem(
         runner, file_generator, objective, parameters, out_dir
@@ -53,6 +59,9 @@ def single_objective_with_python(daisy_path, daisy_home=None):
         optimizer = DaisyCMAOptimizer(problem, logger, cma_options)
         result = optimizer.optimize()
 
+    # Optimum at
+    # param = 0.1
+    # clay = 2 # (But the effect is very small, so dont expect to get this)
     for name, res in result.items():
         print(name)
         for k,v in res.items():

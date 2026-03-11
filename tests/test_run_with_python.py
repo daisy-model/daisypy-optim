@@ -14,7 +14,7 @@ def test_run_with_python(tmp_path):
         'py' : PyFileGenerator('testing.py', template_file_path=template_dir / 'template.py'),
         'dai' : DaiFileGenerator('run.dai', template_file_path=template_dir / 'template.dai')
     })
-    
+
     params = {
         'py' : { 'a' : 0.25, 'b' : 7 },
         'dai' : { 'x1' : 4, 'x2' : -1 }
@@ -32,7 +32,7 @@ def test_run_with_python(tmp_path):
     assert len(lines) >= 2
     assert lines[-2].strip() == EXPECTED_ONE_FILE
 
-    
+
 EXPECTED_SEVERAL_FILES = "f(4) = 6, f(-1) = 7.25"
 @requires_daisy
 def test_run_with_several_python_files(tmp_path):
@@ -49,7 +49,7 @@ def test_run_with_several_python_files(tmp_path):
         'util' : PyFileGenerator('util.py', template_file_path=python_dir / 'util.py'),
         'dai' : DaiFileGenerator('run.dai', template_file_path=template_dir / 'template.dai')
     })
-    
+
     params = {
         'py' : { 'a' : 0.25, 'b' : 7 },
         'dai' : { 'x1' : 4, 'x2' : -1 },
@@ -67,6 +67,3 @@ def test_run_with_several_python_files(tmp_path):
         lines = list(f)
     assert len(lines) >= 2
     assert lines[-2].strip() == EXPECTED_SEVERAL_FILES
-    
-
-    

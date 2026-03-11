@@ -39,4 +39,3 @@ class CategoricalParameter:
         self.name = name
         self.values = values
         self.initial_value_idx = initial_value_idx
-        

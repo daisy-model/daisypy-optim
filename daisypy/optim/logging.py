@@ -14,7 +14,7 @@ def DefaultLogger(outdir): # pylint: disable=invalid-name # (It should look like
       'default' : Log to stdout
       'warning', 'error' : Log to stderr
       'parameters' : Log to csv file 'parameters.csv' in outdir
-      'result' : Log to csv file 'retult.csv' in outdir
+      'result' : Log to csv file 'result.csv' in outdir
 
     Parameters
     ----------

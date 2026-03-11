@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 from daisypy.optim import (
     DaiFileGenerator,
-    DaisyCMAOptimizer,
+    DaisySequentialOptimizer,
     ScalarObjective,
     DaisyOptimizationProblem,
     ContinuousParameter,
@@ -32,7 +32,7 @@ def single_objective_two_parameters_cma(daisy_path, daisy_home):
     8. Look at the results
     '''
     base_dir = Path(__file__).parent
-    out_dir = base_dir / 'out' / 'single-objective-two-parameters-cma'
+    out_dir = base_dir / 'out' / 'single-objective-two-parameters-sequential'
     data_dir = base_dir / 'example-data'
 
     # 0. Define a runner that can run Daisy
@@ -92,10 +92,10 @@ def single_objective_two_parameters_cma(daisy_path, daisy_home):
     # We choose cma. You should try sequential as well.
     # For cma we should always explicitly set the maximum number of function evaluations AKA the
     # maximum number of times we will run Daisy. We set it very low
-    cma_options = {
-        "maxfevals" : 50
+    options = {
+        "num_samples" : 18
     }
-    optimizer = DaisyCMAOptimizer(problem, logger, cma_options)
+    optimizer = DaisySequentialOptimizer(problem, logger, options)
 
     # 7. Run the optimizer
     result = optimizer.optimize()

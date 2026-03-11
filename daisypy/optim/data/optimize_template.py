@@ -129,9 +129,6 @@ def optimize(problem, optimizer_name, logger, base_out_dir):
         }},
         "cma" : {{
             "maxfevals" : 100, # Maximum number of function evaluations
-        }},
-        "skopt" : {{
-            "maxfevals" : 50,
         }}
     }}
 
