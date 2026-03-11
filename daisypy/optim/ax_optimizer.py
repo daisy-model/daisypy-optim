@@ -58,6 +58,7 @@ class DaisyAxOptimizer:
         -------
         AxResult OR list of AxResult
         '''
+        # TODO: Log parameter distributions
         num_trials = 0
         max_trials = self.options['max_trials']
         max_trials_iteration = self.options['max_trials_iteration']

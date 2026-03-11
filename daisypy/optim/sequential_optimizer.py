@@ -27,6 +27,7 @@ class DaisySequentialOptimizer:
         """
         if options is None:
             options = {}
+        self.objective_name = problem.objective_fn.name
         self.problem = ScalarProblemWrapper(problem)
         self.logger = logger
         self.number_of_processes = number_of_processes
@@ -100,6 +101,15 @@ class DaisySequentialOptimizer:
                 # parameters.
                 step += 1
 
+                # Log the parameter distribution
+                params = {
+                    f'param_{name}_choices' : ','.join([str(v) for v in values])
+                    for name, values in floating.items()
+                }
+                for name in fixed:
+                    params[f'param_{name}_choices'] = str(current[name])
+                self.logger.parameters(distribution='categorical', tag='raw', step=step, **params)
+
                 param_sets, param_sets_ids = _generate_parameter_sets(floating, current, order)
                 self.logger.info(step=step, n_param_sets=len(param_sets))
 
@@ -109,8 +119,12 @@ class DaisySequentialOptimizer:
                 # executor.map runs the problems in parallel and yields results in order matching
                 # param_sets.
                 for i, fval in enumerate(executor.map(self.problem, param_sets)):
+                    objective_value = { f'metric_{self.objective_name}' : fval }
+                    params = {
+                        f'param_{name}' : value for name, value in zip(order, param_sets[i])
+                    }
                     self.logger.result(
-                        step=step, objective_value=fval, **dict(zip(order, param_sets[i]))
+                        step=step, tag="raw", **objective_value, **params
                     )
                     if np.isnan(fval):
                         num_failures += 1

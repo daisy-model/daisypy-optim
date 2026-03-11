@@ -5,6 +5,7 @@ from daisypy.optim import ContinuousParameter
 class BealeFunction:
     '''The BealeFunction'''
     def __init__(self):
+        self.name = "Beale"
         self.parameters = [
             ContinuousParameter('x', 0, (-4,4)),
             ContinuousParameter('y', 0, (-4,4))

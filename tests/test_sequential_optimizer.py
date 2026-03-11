@@ -8,25 +8,30 @@ from daisypy.optim import (
 )
 from .mock_problem import MockProblem
 
-def objective(a, b, c):
+class Objective:
+    # pylint: disable=too-few-public-methods
     '''Negative sum of arguments'''
-    return - (a + b + c)
+    def __init__(self, name):
+        self.name = name
+
+    def __call__(self, a, b, c):
+        return - (a + b + c)
 
 def test_sequential_optimizer(capsys):
     '''Test that sequential optimizer finds the optimmum and generates expected output'''
-    expected_result_log = {
-        'step,objective_value,a,b,c',
-        '1,-1.0,1.0,0.0,0.0',
-        '1,-1.0,0.0,1.0,0.0',
-        '1,-2.0,0.0,2.0,0.0',
-        '1,-1.0,0.0,0.0,1.0',
-        '1,-2.0,0.0,0.0,2.0',
-        '1,-3.0,0.0,0.0,3.0',
-        '2,-4.0,1.0,0.0,3.0',
-        '2,-4.0,0.0,1.0,3.0',
-        '2,-5.0,0.0,2.0,3.0',
-        '3,-6.0,1.0,2.0,3.0',
-    }
+    expected_result_log = [
+        'step,tag,metric_neg_sum,param_a,param_b,param_c',
+        '1,"raw",-1.0,1.0,0.0,0.0',
+        '1,"raw",-1.0,0.0,1.0,0.0',
+        '1,"raw",-2.0,0.0,2.0,0.0',
+        '1,"raw",-1.0,0.0,0.0,1.0',
+        '1,"raw",-2.0,0.0,0.0,2.0',
+        '1,"raw",-3.0,0.0,0.0,3.0',
+        '2,"raw",-4.0,1.0,0.0,3.0',
+        '2,"raw",-4.0,0.0,1.0,3.0',
+        '2,"raw",-5.0,0.0,2.0,3.0',
+        '3,"raw",-6.0,1.0,2.0,3.0',
+    ]
     expected_out = '\n'.join([
         'Using at least 11 and at most 15 function evaluations',
         'Evaluating initial parameters',
@@ -52,14 +57,14 @@ def test_sequential_optimizer(capsys):
         CategoricalParameter('c', [0,1,2,3]),
     ]
 
-    problem = MockProblem(parameters, objective)
+    problem = MockProblem(parameters, Objective("neg_sum"))
     with tempfile.TemporaryDirectory() as out_dir:
         with DefaultLogger(out_dir) as logger:
             optimizer = DaisySequentialOptimizer(problem, logger)
             result = optimizer.optimize()
         with open(os.path.join(out_dir, 'result.csv'), 'r', encoding='utf-8') as in_file:
-            result_log = { line.strip() for line in in_file }
-    assert result_log == expected_result_log
+            for expected, row in zip(expected_result_log, in_file, strict=True):
+                assert expected == row.strip()
 
     captured = capsys.readouterr()
     assert captured.out.strip() == expected_out
