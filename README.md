@@ -1,6 +1,16 @@
 # daisypy-optim
 Framework for optimization of Daisy parameters.
 
+## Features
+* Optimization using a greedy sequential optimizer, CMA-ES, or Bayesian optimizers
+* Optimization across multiple scenarios
+* Single or multi-objective optimization
+* Optimization of parameters in both `.dai` and `.py` files
+
+See [doc/examples](doc/examples) for examples of how to run optimizations.
+
+See https://github.com/orting/interactive-decision-maps for visualization of multi-objective optimization results.
+
 ## Overview
 The framework can be used in two ways
 
@@ -21,7 +31,7 @@ A tool is included that generates the python script based on user input. Once ge
 
 
 ### Regular python modules
-It is also possible to use `daisypy-optim` as a regular python module. Simply install with
+To use `daisypy-optim` as a regular python module. Simply install from `pypi` with
 
     pip install daisypy-optim
 
@@ -29,7 +39,7 @@ To enable CMA-ES
 
     pip install daisypy-optim[cma]
 
-To enable Ax
+To enable Ax (this pulls a lot of dependencies)
 
     pip install daisypy-optim[ax]
 
@@ -37,7 +47,7 @@ All of the above
 
     pip install daisypy-optim[cma,ax]
 
-And look at the [examples](doc/examples) and [tests](tests) to see how to setup an optimization
+And look at the [doc/examples](doc/examples) and [tests](tests) to see how to setup an optimization
 
 
 ## Chossing an optimization method
