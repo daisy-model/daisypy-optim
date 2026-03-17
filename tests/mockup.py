@@ -22,11 +22,12 @@ class MockRunner:
 
 class MockObjective:
     '''Mock objective always returning a specific value'''
-    def __init__(self, value=0):
+    def __init__(self, name='mock', value=0):
+        self.name = name
         self.value = value
 
     def __call__(self, daisy_output_directory):
-        return { 'mock' : self.value }
+        return { self.name : self.value }
 
 
 class MockProblem:
