@@ -5,7 +5,7 @@ from daisypy.optim import (
     DefaultLogger,
     DaisyCMAOptimizer,
 )
-from .mock_problem import MockProblem
+from .mockup import MockProblem
 from .test_objectives import beale_function
 
 def test_cma_optimizer():
