@@ -62,7 +62,7 @@ disable = [
      'templates',
      'tmp',
      'cases',
-     'out',
+     'out'
  ]
 
 [tool.pytest.ini_options]

@@ -6,6 +6,7 @@ from daisypy.optim import (
     ContinuousParameter,
     DefaultLogger,
     DaisyCMAOptimizer,
+    DlfDataExtractor,
     PyFileGenerator,
     DaiFileGenerator,
     MultiFileGenerator,
@@ -32,6 +33,9 @@ def single_objective_with_python(daisy_path, daisy_home=None):
         'py' : PyFileGenerator('daisy-react.py', template_file_path=data_dir / 'daisy-react.py'),
         'dai' : DaiFileGenerator('run.dai', template_file_path=data_dir / 'test-pyreact.dai'),
     })
+    data_extractor = DlfDataExtractor({
+        'soil_NO3_profile.dlf' : 'NO3'
+    })
 
     parameters = {
         'py' : [ ContinuousParameter('param', 0.24, (0.01, 0.5)) ],
@@ -43,9 +47,9 @@ def single_objective_with_python(daisy_path, daisy_home=None):
     target_file = data_dir / 'target.csv'
     objective = ScalarObjective(
         name="NO3",
-        log_name="soil_NO3_profile.dlf",
-        variable_name="NO3",
+        data_extractor=data_extractor,
         target=target_file,
+        target_name="NO3",
         loss_fn=mse
     )
 

@@ -93,6 +93,7 @@ class DaisyOptimizationProblem:
         self.debug = debug
 
     def __call__(self, parameter_values):
+        # TODO: Rewrite to accept a dict of parameters. This is too brittle
         """Run Daisy with the given parameters and evaluate the objective. The return value depends
         on
 
@@ -129,5 +130,5 @@ class DaisyOptimizationProblem:
         sim_result = self.runner(dai_file, output_directory)
         if sim_result.returncode != 0:
             print(sim_result)
-            return np.nan
+            return { self.objective_fn.name : np.nan }
         return self.objective_fn(output_directory)

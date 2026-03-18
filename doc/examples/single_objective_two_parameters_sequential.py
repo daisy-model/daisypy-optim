@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 from daisypy.optim import (
     DaiFileGenerator,
+    DlfDataExtractor,
     DaisySequentialOptimizer,
     ScalarObjective,
     DaisyOptimizationProblem,
@@ -66,15 +67,16 @@ def single_objective_two_parameters_cma(daisy_path, daisy_home):
     # The target must be a dataframe with a "time" column
     target = pd.read_csv(data_dir / 'measured-field-nitrogen.csv')
     target["time"] = pd.to_datetime(target[['year', 'month', 'day', 'hour']])
+    target_name = "NO3-Denitrification"
 
     # The loss function can be any python function mapping a pair of numpy.arrays to a scalar
     loss_fn = ssd
 
-    # We need to know the name of the variable we are optimizing for, and we need to know the name
-    # of the Daisy log file where we can find the variable.
-    variable_name = "NO3-Denitrification"
-    log_name = "field_nitrogen.dlf"
-    objective_fn = ScalarObjective('NO3', log_name, variable_name, target, loss_fn)
+    # We need a DlfDataExtractor that can extract the variable we are optimizing for
+    data_extractor = DlfDataExtractor({
+        'field_nitrogen.dlf' : 'NO3-Denitrification'
+    })
+    objective_fn = ScalarObjective("NO3_Error", data_extractor, target, target_name, loss_fn)
 
 
     # 4. Wrap everything as an optimization problem

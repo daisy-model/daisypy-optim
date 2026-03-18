@@ -6,7 +6,7 @@ from daisypy.optim import (
     DefaultLogger,
     DaisySequentialOptimizer,
 )
-from .mock_problem import MockProblem
+from .mockup import MockProblem
 
 class Objective:
     # pylint: disable=too-few-public-methods

@@ -3,6 +3,7 @@ from daisypy.optim import (
     CategoricalParameter,
     DefaultLogger,
     DaisySequentialOptimizer,
+    DlfDataExtractor,
     PyFileGenerator,
     DaiFileGenerator,
     MultiFileGenerator,
@@ -31,7 +32,8 @@ def test_python_chemical_reaction(tmp_path):
     runner = DaisyRunner('daisy')
 
     target_file = data_dir / 'target.csv'
-    objective = ScalarObjective("NO3", "soil_NO3_profile.dlf", "NO3", target_file, mse)
+    data_extractor = DlfDataExtractor({"soil_NO3_profile.dlf" : "NO3"})
+    objective = ScalarObjective("NO3", data_extractor, target_file, "NO3", mse)
 
     problem = DaisyOptimizationProblem(
         runner, file_generator, objective, parameters, tmp_path, debug=True

@@ -7,6 +7,7 @@ import pandas as pd
 from daisypy.optim import (
     AggregateObjective,
     DaiFileGenerator,
+    DlfDataExtractor,
     PyFileGenerator,
     MultiFileGenerator,
     DaisyCMAOptimizer,
@@ -82,6 +83,7 @@ def multiple_scenarios(daisy_path):
     # Foulum   : temp_offset =  2 (215 samples)
     scenarios = [ 'askov', 'jyndevad', 'foulum' ]
     targets = { name : pd.read_csv(dai_data_dir / f'target-{name}.csv') for name in scenarios }
+    target_names = { k : 'Leaching' for k in scenarios }
 
     # The logs do not have to be the same
     log_names = { k : f'{k}/field_nitrogen.dlf' for k in scenarios }
@@ -92,8 +94,13 @@ def multiple_scenarios(daisy_path):
     # And the losses do not have to be the same
     losses = { k : mse for k in scenarios }
     objective_fns = [
-        ScalarObjective(name, log_names[name], variables[name], targets[name], losses[name])
-        for name in scenarios
+        ScalarObjective(
+            name,
+            DlfDataExtractor({log_names[name] : variables[name]}),
+            targets[name],
+            target_names[name],
+            losses[name]
+        ) for name in scenarios
     ]
 
     # Define the weighting
