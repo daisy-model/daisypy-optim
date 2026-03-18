@@ -51,3 +51,9 @@ def test_multiple_vars_sum_post_processor():
     extracted = extractor(data_dir)
     assert set(extracted.columns) == { 'time' , 'value' }
     assert (EXPECTED_NO3 + EXPECTED_CO2 == extracted['value']).all()
+
+def test_bad_logs_and_variables():
+    with pytest.raises(ValueError) as excinfo:
+        # Pass what should be a dict as two separate params
+        _ = DlfDataExtractor('soil_NO3_profile.dlf', 'NO3')
+    assert '`logs_and_variables` must be a Mapping' in str(excinfo.value)

@@ -1,6 +1,7 @@
 # pylint: disable=too-few-public-methods
 '''Classes for extracting and procesing data in Daisy log files'''
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from pathlib import Path
 import pandas as pd
 from daisypy.io.dlf import read_dlf
@@ -21,6 +22,8 @@ class DlfDataExtractor:
           If None then logs_and_variables must contain exactly one key, and that key must map to a
           list of length 1 or a single str
         '''
+        if not isinstance(logs_and_variables, Mapping):
+            raise ValueError("`logs_and_variables` must be a Mapping type")
         self.logs_and_variables = logs_and_variables
         if post_processor is None:
             keys = list(self.logs_and_variables.keys())
