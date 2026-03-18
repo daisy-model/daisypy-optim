@@ -15,10 +15,10 @@ class DlfDataExtractor:
         logs_and_variables : dict of [str, [str]]
           Map from log names to variable names in the log that should be extracted
 
-        post_processor : Callable implemeting DlfPostProcessor interface or None
+        post_processor : Callable implementing DlfPostProcessor interface or None
           Function mapping extracted data to a single pandas.DataFrame with columns 'time' and
-          'value'. It is called with a dict mapping '<log-name>/<var-name>' to a pd.DataFrame with
-          a "time" column and one or more value columns.
+          'value'. It is called with a list of pd.DataFrames with a "time" column and one or more
+          value columns named with '<log-name>/<var-name>'.
           If None then logs_and_variables must contain exactly one key, and that key must map to a
           list of length 1 or a single str
         '''
