@@ -8,7 +8,6 @@ from daisypy.optim import (
     DefaultLogger,
     DaisyCMAOptimizer,
     DlfDataExtractor,
-    PyFileGenerator,
     DaiFileGenerator,
     MultiFileGenerator,
     DaisyRunner,
@@ -23,6 +22,11 @@ from daisypy.optim import (
 # And it has to be defined at the top-level because we cannot pass local functions due to
 # multiprocessing.
 def combine_logs(data_frames):
+    '''
+    Combine outputs by summing "Residuals-*" in field_nitrogen.dlf and multiplying by
+    "Soil matrix water" in field_water.dlf
+
+    '''
     df = data_frames[0]
     for df2 in data_frames[1:]:
         df = pd.merge(df, df2, on='time', validate='1:1')
