@@ -22,3 +22,8 @@ There are two versions, one with a single Daisy parameter and one with a single 
 ## Multiple objectives
 Optimization of three objectives and a single Daisy parameter
 * [Multi objective using Ax](multi_objective_ax.py)
+
+
+## Combining outputs from multiple log files
+Optimization of a combination of three outputs from two log files. Two fertilizer weight parameters. Using CMA.
+* [Single objective combined outputs](single_objective_combined_outputs.py])
