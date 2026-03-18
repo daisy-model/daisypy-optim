@@ -1,38 +1,35 @@
-import os
 import pandas as pd
-from daisypy.io.dlf import read_dlf
 from .loss_wrapper import LossWrapper
 
 class ScalarObjective:
     # pylint: disable=too-few-public-methods,too-many-arguments,too-many-positional-arguments
-    """Scalar objective that extracts data from a daisy output file and computes a loss"""
+    """Scalar objective that extracts data from a daisy output directory and computes a loss"""
 
-    def __init__(self, name, log_name, variable_name, target, loss_fn):
+    def __init__(self, name, data_extractor, target, target_name, loss_fn):
         """
         Parameters
         ----------
         name : str
           Name of objective
 
-        log_name : str
-          Name of Daisy log file where `variable_name` is found
-
-        variable_name : str
-          Name of variable to optimize for
+        data_extractor : DlfDataExtractor
+          Extractor mapping output directories to pandas.Series
 
         target : pandas.DataFrame OR str
           If str it is opened with pandas.read_csv.
-          Must contain columns "time" and `variable_name`
+          Must contain columns "time" and `target_name`
+
+        target_name : str
+          Name of column in target that contains the target values
 
         loss_fn : callable : (actual, target) -> loss
           The loss function to use
         """
         self.name = name
-        self.log_name = log_name
-        self.variable_name = variable_name
+        self.data_extractor = data_extractor
         if not isinstance(target, pd.DataFrame):
             target = pd.read_csv(target)
-        self.target = target[["time", variable_name]].rename(columns={variable_name : 'value'})
+        self.target = target[["time", target_name]].rename(columns={target_name : 'value'})
         self.target["time"] = pd.to_datetime(self.target["time"])
         self.loss_fn = LossWrapper(loss_fn) # Wrap it so target and actual are processed correctly
 
@@ -42,17 +39,12 @@ class ScalarObjective:
         Parameters
         ----------
         daisy_output_directory : str
-          Path to daisy ouput directory where there MUST be a file matching `self.log_name`
+          Path to daisy ouput directory
 
         Returns
         -------
         objective_map : dict of [str, float]
-          Map from the objective name to the objetive value
+          Map from the objective name to the objective value
         """
-        dlf = read_dlf(os.path.join(daisy_output_directory, self.log_name))
-        actual_value = dlf.body[self.variable_name]
-        time = pd.to_datetime(
-            dlf.body[['year', 'month', 'mday', 'hour']].rename(columns={'mday' : 'day'})
-        )
-        actual = pd.DataFrame({'time' : time, 'value' : actual_value})
+        actual = self.data_extractor(daisy_output_directory)
         return { self.name : self.loss_fn(actual, self.target) }
