@@ -1,62 +1,40 @@
-# daisypy-optim
-Framework for optimization of Daisy parameters.
+# Optimization framework for [Daisy](https://github.com/daisy-model/daisy)
+
+A python based framework for optimizing parameters in [Daisy]((https://github.com/daisy-model/daisy). 
 
 ## Features
-* Optimization using a greedy sequential optimizer, CMA-ES, or Bayesian optimizers
+* Multiple optimization methods: a greedy sequential optimizer, CMA-ES, and Bayesian optimizers
 * Optimization across multiple scenarios
 * Single or multi-objective optimization
-* Optimization of parameters in both `.dai` and `.py` files
-
-See [doc/examples](doc/examples) for examples of how to run optimizations.
-
-See https://github.com/orting/interactive-decision-maps for visualization of multi-objective optimization results.
-
-## Overview
-The framework can be used in two ways
-
-1. As a self-contained environment
-2. As a regular python module
-
-### Self contained optimization environment
-The idea of self-contained environment is to create a repository that contains everything that is needed for the optimization (except the Daisy binary). This allow easy sharing, version control and archiving. This type of optimization is defined by
-
-* a single dai file template
-* zero or more python file templates
-* a python script that runs the simulation
-
-A tool is included that generates the python script based on user input. Once generated, it can be adapted to specific needs. To start using `daisypy-optim` this way look at
-
-* [Windows](doc/getting-started-win.md)
-* [Linux](doc/getting-started-linux.md)
+* Optimization of parameters in both Daisy (`.dai`) and Python (`.py`) files
+* Support for categorical and continuous parameters (depending on optimizer)
 
 
-### Regular python modules
-To use `daisypy-optim` as a regular python module. Simply install from `pypi` with
+## Getting started
+The framework is available on https://pypi.org/ and can be installed with pip
 
-    pip install daisypy-optim
+```
+pip install daisypy-optim
+```
 
-To enable CMA-ES
+By default this will only install the greedy sequential optimizer. For most problems you will want to use either CMA-ES or a Bayesian optimizer. The CMA-ES optimizer can be installed with
+```
+pip install daisypy-optim[cma]
+```
 
-    pip install daisypy-optim[cma]
+and the Bayesian optimizers with
+```
+pip install daisypy-optim[ax]
+```
+Note that the Bayesian optimizers pulls in a lot of dependencies.
 
-To enable Ax (this pulls a lot of dependencies)
+## Examples
+There are several examples illustrating how to optimize parameters in various situations. They all share a common structure
 
-    pip install daisypy-optim[ax]
+1. Setup a `DaisyRunner` that knows how to run Daisy
+2. Setup a `FileGenerator` that can generate `.dai` and `.py`
+3. Define the parameters that should be optimized for
+4. Define the objective that should be optimized
+5. Setup and run an optimizer
 
-All of the above
-
-    pip install daisypy-optim[cma,ax]
-
-And look at the [doc/examples](doc/examples) and [tests](tests) to see how to setup an optimization
-
-
-## Chossing an optimization method
-There are several optimization methods available
-
- * `sequential` : A greedy approach that fixes one parameter at a time. Works well when optimizing few paramaters.
- * `cma` : CMA-ES. Works well for larger number of parameters and when the outcome depends strongly on parameter combinations. Does not work for single parameters.
- * `ax` : Ax. Bayesian optimization. Supports multi-objective optimization.
-
-
-## Continuous/categorical parameters
-Both continuous and categorical parameters are supported. Currently, the sequential method treats everything as categorial parameters (by sampling a fixed number of values from the continuous parameters). CMA-ES requires continuous parameters. Ax should wotk with both.
+See [doc/examples](doc/examples] for an overview of the examples.

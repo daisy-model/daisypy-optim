@@ -1,5 +1,8 @@
 # pylint: disable=too-many-locals,R0801
-"""Example showing how to optimize two Daisy parameters for a single objective using CMA"""
+"""
+Example showing how to optimize two Daisy parameters for a single objective using the sequential
+optimizer
+"""
 import argparse
 from pathlib import Path
 import pandas as pd
@@ -14,7 +17,8 @@ from daisypy.optim import (
     DefaultLogger
 )
 
-# We use the multiprocessing module, which uses pickle, so we cannot use local functions
+# We want to optimize the sum of squared distance.
+# We use the multiprocessing module, which uses pickle, so we cannot use local functions.
 def ssd(actual, target):
     '''Sum of squared distance'''
     return ((actual - target)**2).sum()
