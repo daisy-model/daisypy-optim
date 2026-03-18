@@ -1,6 +1,6 @@
 # Optimization framework for [Daisy](https://github.com/daisy-model/daisy)
 
-A python based framework for optimizing parameters in [Daisy]((https://github.com/daisy-model/daisy). 
+A python based framework for optimizing parameters in [Daisy](https://github.com/daisy-model/daisy).
 
 ## Features
 * Multiple optimization methods: a greedy sequential optimizer, CMA-ES, and Bayesian optimizers
@@ -37,4 +37,4 @@ There are several examples illustrating how to optimize parameters in various si
 4. Define the objective that should be optimized
 5. Setup and run an optimizer
 
-See [doc/examples](doc/examples] for an overview of the examples.
+See [doc/examples](doc/examples) for an overview of the examples.
