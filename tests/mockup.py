@@ -44,7 +44,7 @@ class MockDataExtractor:
     '''Mock data extractor returning data it was constructed with'''
     def __init__(self, data):
         self.data = data
-        
+
     def __call__(self, daisy_output_directory):
         return self.data
 

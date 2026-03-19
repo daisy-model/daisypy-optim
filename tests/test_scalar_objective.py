@@ -1,9 +1,9 @@
 # pylint: disable=missing-function-docstring
 from pathlib import Path
 import pandas as pd
-from daisypy.optim import ScalarObjective, DlfDataExtractor
+from daisypy.optim import ScalarObjective
 from daisypy.optim.loss_fns import mse
-from .mockup import MockDataExtractor, MockLoss
+from .mockup import MockDataExtractor
 
 def test_csv_delimiter():
     in_dir = Path(__file__).parent / 'test-data' / 'targets'
