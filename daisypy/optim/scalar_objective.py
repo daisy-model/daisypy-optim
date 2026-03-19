@@ -28,7 +28,15 @@ class ScalarObjective:
         self.name = name
         self.data_extractor = data_extractor
         if not isinstance(target, pd.DataFrame):
-            target = pd.read_csv(target)
+            target = pd.read_csv(target, sep=None, engine='python')
+        if not "time" in target.columns:
+            raise ValueError(
+                f'target must contain "time" column. Got columns {list(target.columns)}'
+            )
+        if not target_name in target.columns:
+            raise ValueError(
+                f'target must contain "{target_name}" column. Got columns {list(target.columns)}'
+            )
         self.target = target[["time", target_name]].rename(columns={target_name : 'value'})
         self.target["time"] = pd.to_datetime(self.target["time"])
         self.loss_fn = LossWrapper(loss_fn) # Wrap it so target and actual are processed correctly
