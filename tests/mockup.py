@@ -39,3 +39,19 @@ class MockProblem:
     def __call__(self, parameter_values):
         named_parameters = { p.name : value for p, value in zip(self.parameters, parameter_values) }
         return { 'mock' : self.objective_fn(**named_parameters) }
+
+class MockDataExtractor:
+    '''Mock data extractor returning data it was constructed with'''
+    def __init__(self, data):
+        self.data = data
+
+    def __call__(self, daisy_output_directory):
+        return self.data
+
+class MockLoss:
+    '''Mock loss that always returns a specificed value'''
+    def __init__(self, value):
+        self.value = value
+
+    def __call__(self, actial, target):
+        return self.value
