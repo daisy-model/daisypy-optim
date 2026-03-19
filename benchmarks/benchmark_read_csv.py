@@ -1,3 +1,4 @@
+import argparse
 import os
 import time
 from pathlib import Path
@@ -55,9 +56,24 @@ def benchmark_read_csv():
     results['python/C'] = results['python'] / results['C']
     print(results)
 
+def check_data_exists():
+    '''Check that all benchmarking data exists'''
+    in_dir = Path(__file__).parent / 'benchmark-data'
+    names = ['small', 'medium', 'large', 'very-large']
+    data_files = [ in_dir / f'{name}.csv' for name in names ]
+    for data_file in data_files:
+        if not data_file.exists():
+            return False
+    return True
 
 if __name__ == '__main__':
-    #print('Generating data')
-    #generate_benchmark_data()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--regenerate', action='store_true', help='If set regenerate benchmark data'
+    )
+    args = parser.parse_args()
+    if args.regenerate or not check_data_exists():
+        print('Generating data')
+        generate_benchmark_data()
     print('Running benchmarks')
     benchmark_read_csv()
