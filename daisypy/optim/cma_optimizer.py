@@ -117,45 +117,38 @@ class DaisyCMAOptimizer:
                 self.optimizer.tell(xs, fvals)
 
                 # Log parameter distributions in the standardized space
-                means = self.optimizer.result[5]
-                stds = self.optimizer.result[6]
-                p_mean = {
-                    f'param_{p.name}_mean' : mean for p, mean in zip(self.problem.parameters, means)
-                }
-                p_std = {
-                    f'param_{p.name}_std' : std for p, std in zip(self.problem.parameters, stds)
-                }
+                means = self.optimizer.result.xfavorite
+                covariance = self.optimizer.sm.C
+                p_mean = self._means_to_columns(means)
+                p_covariance = self._covariance_to_columns(covariance)
                 self.logger.parameters(
-                    distribution="normal",
+                    distribution="multivariate_normal",
                     tag="standardized",
                     step=step,
                     **p_mean,
-                    **p_std
+                    **p_covariance
                 )
 
                 # Log parameter distributions in the raw space
                 means = self.objective.transform(means)
-                stds = np.array(self.objective.multiplier) * stds
-                p_mean = {
-                    f'param_{p.name}_mean' : mean for p, mean in zip(self.problem.parameters, means)
-                }
-                p_std = {
-                    f'param_{p.name}_std' : std for p, std in zip(self.problem.parameters, stds)
-                }
+                scaling = np.diag(self.objective.multiplier)
+                covariance = scaling @ covariance @ scaling
+                p_mean = self._means_to_columns(means)
+                p_covariance = self._covariance_to_columns(covariance)
                 self.logger.parameters(
-                    distribution="normal",
+                    distribution="multivariate_normal",
                     tag="raw",
                     step=step,
                     **p_mean,
-                    **p_std
+                    **p_covariance
                 )
 
-        status = self.optimizer.result[7]
+        status = self.optimizer.result.stop
         self.logger.info('Termination conditions')
         for k, v in status.items():
             self.logger.info(f'{k} = {v}')
-        best = self.objective.transform(self.optimizer.result[0])
-        means, stds = self.optimizer.result[5], self.optimizer.result[6]
+        best = self.objective.transform(self.optimizer.result.xbest)
+        means, stds = self.optimizer.result.xfavorite, self.optimizer.result.stds
         transformed = self.objective.transform(means)
         result = {
             p.name : {
@@ -169,6 +162,20 @@ class DaisyCMAOptimizer:
             } for i, p in enumerate(self.problem.parameters)
         }
         return result
+
+    def _means_to_columns(self, means):
+        return {
+            f'param_{p.name}_mean' : mean for p, mean in zip(self.problem.parameters, means)
+        }
+
+    def _covariance_to_columns(self, covariance):
+        columns = {}
+        for i, row_parameter in enumerate(self.problem.parameters):
+            for j, column_parameter in enumerate(self.problem.parameters[i:], start=i):
+                columns[f'param_{row_parameter.name}__param_{column_parameter.name}_cov'] = (
+                    covariance[i, j]
+                )
+        return columns
 
     def checkpoint(self, path):
         '''Save the state to disk to we can resume
