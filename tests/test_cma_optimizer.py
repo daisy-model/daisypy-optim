@@ -52,3 +52,23 @@ def test_cma_optimizer():
 
     for k,v in result.items():
         assert v['mean_transformed'] == approx(beale_function.amin[k])
+
+def test_cma_optimizer_logs_termination_criteria(capsys):
+    '''Test that CMA logs configured and final termination criteria'''
+    problem = MockProblem(beale_function.parameters, beale_function)
+    with tempfile.TemporaryDirectory() as out_dir:
+        with DefaultLogger(out_dir) as logger:
+            optimizer = DaisyCMAOptimizer(
+                problem,
+                logger,
+                cma_options = { "maxfevals" : 30, "verbose" : -9 }
+            )
+            optimizer.optimize()
+
+    captured = capsys.readouterr()
+    assert 'Configured termination criteria' in captured.out
+    assert 'termination_criterion=maxfevals,threshold=30' in captured.out
+    assert 'termination_criterion=tolx,threshold=1e-11' in captured.out
+    assert 'Termination criteria status' in captured.out
+    assert 'termination_criterion=maxfevals,threshold=30,current_value=' in captured.out
+    assert 'triggered=True' in captured.out

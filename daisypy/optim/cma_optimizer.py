@@ -64,6 +64,22 @@ class DaisyCMAOptimizer:
             )
         cma_options['bounds'] = [-1, 1]
         self.optimizer = cma.CMAEvolutionStrategy(x0, 1/3, cma_options)
+        self.termination_criteria = (
+            'ftarget',
+            'maxfevals',
+            'maxiter',
+            'tolfacupx',
+            'tolx',
+            'tolfun',
+            'tolfunrel',
+            'tolfunhist',
+            'tolstagnation',
+            'tolxstagnation',
+            'tolupsigma',
+            'timeout',
+            'tolconditioncov',
+            'tolflatfitness',
+        )
 
     def optimize(self):
         '''Run the optimizer'''
@@ -71,6 +87,7 @@ class DaisyCMAOptimizer:
         max_attempts_to_get_feasible = 3
         # TODO: Implement logging + checkpointing every n'th step
         total_f_evals = 0
+        self._log_termination_criteria()
         with EvalParallel2(self.objective, self.number_of_processes) as eval_all:
             step = 0
             while not self.optimizer.stop():
@@ -148,9 +165,7 @@ class DaisyCMAOptimizer:
                 )
 
         status = self.optimizer.result.stop
-        self.logger.info('Termination conditions')
-        for k, v in status.items():
-            self.logger.info(f'{k} = {v}')
+        self._log_termination_criteria(status)
         best = self.objective.transform(self.optimizer.result.xbest)
         means, stds = self.optimizer.result.xfavorite, self.optimizer.result.stds
         transformed = self.objective.transform(means)
@@ -188,6 +203,84 @@ class DaisyCMAOptimizer:
         covariance = self.optimizer.sm.C.copy()
         covariance = self.optimizer.sigma_vec.transform_covariance_matrix(covariance)
         return self.optimizer.sigma**2 * covariance
+
+    def _log_termination_criteria(self, status=None):
+        if status is None:
+            self.logger.info('Configured termination criteria')
+            for criterion in self.termination_criteria:
+                self.logger.info(
+                    termination_criterion=criterion,
+                    threshold=self.optimizer.opts[criterion]
+                )
+            return
+
+        self.logger.info('Termination criteria status')
+        for criterion in self.termination_criteria:
+            self.logger.info(
+                termination_criterion=criterion,
+                threshold=self.optimizer.opts[criterion],
+                current_value=self._termination_criterion_value(criterion),
+                triggered=criterion in status
+            )
+
+    def _termination_criterion_value(self, criterion):
+        if criterion == 'ftarget':
+            return self.optimizer.best.f
+        if criterion == 'maxfevals':
+            return self.optimizer.countevals - 1
+        if criterion == 'maxiter':
+            return self.optimizer.countiter
+        if criterion == 'tolfacupx':
+            coordinate_stds = self._standardized_coordinate_stds()
+            reference = np.atleast_1d(self.optimizer.sigma0) * np.atleast_1d(self.optimizer.sigma_vec0)
+            return np.max(coordinate_stds / reference)
+        if criterion == 'tolfun':
+            current_fitness_range = max(self.optimizer.fit.fit) - min(self.optimizer.fit.fit)
+            historic_fitness_range = max(self.optimizer.fit.hist) - min(self.optimizer.fit.hist)
+            return {
+                'current_fitness_range' : current_fitness_range,
+                'historic_fitness_range' : historic_fitness_range,
+            }
+        if criterion == 'tolfunhist':
+            return max(self.optimizer.fit.hist) - min(self.optimizer.fit.hist)
+        if criterion == 'tolstagnation':
+            window = max((
+                self.optimizer.opts['tolstagnation'] / 5. / 2,
+                len(self.optimizer.fit.histbest) / 10
+            ))
+            if window > self.optimizer.countiter:
+                return {
+                    'window' : window,
+                    'countiter' : self.optimizer.countiter,
+                }
+            window = int(window)
+            return {
+                'window' : window,
+                'median_history_previous' : np.median(self.optimizer.fit.histmedian[:window]),
+                'median_history_recent' : np.median(self.optimizer.fit.histmedian[window:2 * window]),
+                'best_history_previous' : np.median(self.optimizer.fit.histbest[:window]),
+                'best_history_recent' : np.median(self.optimizer.fit.histbest[window:2 * window]),
+            }
+        if criterion == 'tolxstagnation':
+            return {
+                'count' : self.optimizer._stoptolxstagnation.count,
+                'count_x' : self.optimizer._stoptolxstagnation.count_x,
+                'time_threshold' : self.optimizer._stoptolxstagnation.time_threshold,
+            }
+        if criterion == 'timeout':
+            if hasattr(self.optimizer, 'timer'):
+                return self.optimizer.timer.elapsed
+            return None
+        if criterion == 'tolconditioncov':
+            return self.optimizer.D[-1]**2 / self.optimizer.D[0]**2
+        if criterion == 'tolflatfitness':
+            return self.optimizer.fit.flatfit_iterations
+        return self.optimizer.stop(check=False, get_value=criterion)
+
+    def _standardized_coordinate_stds(self):
+        return self.optimizer.sigma * (
+            self.optimizer.sigma_vec.scaling * np.sqrt(self.optimizer.dC)
+        )
 
     def _covariance_to_columns(self, covariance):
         columns = {}
