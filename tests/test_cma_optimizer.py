@@ -1,6 +1,7 @@
 # pylint: disable=relative-beyond-top-level
 import csv
 import tempfile
+import numpy as np
 from pytest import approx
 from daisypy.optim import (
     DefaultLogger,
@@ -31,6 +32,23 @@ def test_cma_optimizer():
     assert 'param_y_std' not in rows[0]
     assert {row['tag'] for row in rows} == {'raw', 'standardized'}
     assert {row['distribution'] for row in rows} == {'multivariate_normal'}
+
+    expected_covariance = optimizer.optimizer.sigma**2 * (
+        optimizer.optimizer.sigma_vec.transform_covariance_matrix(
+            optimizer.optimizer.sm.C.copy()
+        )
+    )
+    last_standardized_row = [row for row in rows if row['tag'] == 'standardized'][-1]
+    assert float(last_standardized_row['param_x__param_x_cov']) == approx(expected_covariance[0, 0])
+    assert float(last_standardized_row['param_x__param_y_cov']) == approx(expected_covariance[0, 1])
+    assert float(last_standardized_row['param_y__param_y_cov']) == approx(expected_covariance[1, 1])
+
+    raw_scaling = np.outer(optimizer.objective.multiplier, optimizer.objective.multiplier)
+    expected_raw_covariance = raw_scaling * expected_covariance
+    last_raw_row = [row for row in rows if row['tag'] == 'raw'][-1]
+    assert float(last_raw_row['param_x__param_x_cov']) == approx(expected_raw_covariance[0, 0])
+    assert float(last_raw_row['param_x__param_y_cov']) == approx(expected_raw_covariance[0, 1])
+    assert float(last_raw_row['param_y__param_y_cov']) == approx(expected_raw_covariance[1, 1])
 
     for k,v in result.items():
         assert v['mean_transformed'] == approx(beale_function.amin[k])

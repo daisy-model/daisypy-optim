@@ -118,7 +118,7 @@ class DaisyCMAOptimizer:
 
                 # Log parameter distributions in the standardized space
                 means = self.optimizer.result.xfavorite
-                covariance = self.optimizer.sm.C
+                covariance = self._sampling_covariance()
                 p_mean = self._means_to_columns(means)
                 p_covariance = self._covariance_to_columns(covariance)
                 self.logger.parameters(
@@ -131,8 +131,12 @@ class DaisyCMAOptimizer:
 
                 # Log parameter distributions in the raw space
                 means = self.objective.transform(means)
-                scaling = np.diag(self.objective.multiplier)
-                covariance = scaling @ covariance @ scaling
+                # The raw parameters are an element-wise linear scaling of the standardized
+                # CMA coordinates. A covariance matrix transforms as A @ C @ A.T. Here A is
+                # diagonal, so this becomes an element-wise multiplication by the outer product
+                # of the scaling factors.
+                covariance = np.outer(self.objective.multiplier, self.objective.multiplier)
+                covariance = covariance * self._sampling_covariance()
                 p_mean = self._means_to_columns(means)
                 p_covariance = self._covariance_to_columns(covariance)
                 self.logger.parameters(
@@ -167,6 +171,23 @@ class DaisyCMAOptimizer:
         return {
             f'param_{p.name}_mean' : mean for p, mean in zip(self.problem.parameters, means)
         }
+
+    def _sampling_covariance(self):
+        # pycma stores the sampling distribution as
+        #
+        #   x = mean + sigma * sigma_vec * y,   y ~ N(0, sm.C)
+        #
+        # where sm.C is the normalized covariance "shape" matrix, sigma is the global
+        # step-size, and sigma_vec is an element-wise linear scaling. Therefore the full
+        # covariance of the standardized sampling distribution is
+        #
+        #   sigma^2 * D @ sm.C @ D
+        #
+        # with D the diagonal matrix represented by sigma_vec. pycma exposes this diagonal
+        # transform via sigma_vec.transform_covariance_matrix(...).
+        covariance = self.optimizer.sm.C.copy()
+        covariance = self.optimizer.sigma_vec.transform_covariance_matrix(covariance)
+        return self.optimizer.sigma**2 * covariance
 
     def _covariance_to_columns(self, covariance):
         columns = {}
