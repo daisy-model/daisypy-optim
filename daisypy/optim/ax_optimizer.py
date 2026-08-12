@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from ax.api.client import Client
 from .ax import daisy_param_to_ax_param
 from .multi_objective import MultiObjective
+from .outcome_logging import log_outcomes
+from .problem import EvaluationProblemWrapper
 
 @dataclass
 class AxResult:
@@ -24,6 +26,7 @@ class DaisyAxOptimizer:
         options : dict
         """
         self.problem = problem
+        self.evaluator = EvaluationProblemWrapper(problem)
         self.logger = logger
         if number_of_processes is None:
             self.number_of_processes = multiprocessing.cpu_count()
@@ -79,13 +82,20 @@ class DaisyAxOptimizer:
                     parameter_sets.append(params)
 
                 # Run simulations in parallel
-                for i, result in enumerate(executor.map(self.problem, parameter_sets)):
-                    log = { 'trial' : trial_indices[i] }
+                for i, evaluation in enumerate(executor.map(self.evaluator, parameter_sets)):
+                    result = evaluation.objectives
+                    log = { 'evaluation_id' : str(trial_indices[i]), 'trial' : trial_indices[i] }
                     for name, value in named_parameter_sets[i].items():
                         log[f'param_{name}'] = value
                     for name, value in result.items():
                         log[f'metric_{name}'] = value
                     self.logger.result(**log)
+                    log_outcomes(
+                        self.logger,
+                        evaluation,
+                        evaluation_id=str(trial_indices[i]),
+                        trial=trial_indices[i],
+                    )
                     self.client.complete_trial(trial_index=trial_indices[i], raw_data=result)
                 num_trials += len(trials)
 

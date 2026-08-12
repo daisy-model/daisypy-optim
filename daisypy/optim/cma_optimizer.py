@@ -5,7 +5,8 @@ import numpy as np
 import cma
 from cma.fitness_transformations import ScaleCoordinates
 from cma.optimization_tools import EvalParallel2
-from .problem import ScalarProblemWrapper
+from .outcome_logging import log_outcomes
+from .problem import EvaluationProblemWrapper, ScalarProblemWrapper
 
 class DaisyCMAOptimizer:
     """Daisy optimizer using the CMA-ES method from https://github.com/CMA-ES/pycma
@@ -44,7 +45,7 @@ class DaisyCMAOptimizer:
             upper.append(param.valid_range[1])
             x0.append(param.initial_value)
         self.objective = ScaleCoordinates(
-            ScalarProblemWrapper(problem), lower=lower, upper=upper, from_lower_upper=(-1,1)
+            EvaluationProblemWrapper(problem), lower=lower, upper=upper, from_lower_upper=(-1,1)
         )
 
         # Map the initial values to optimization domain
@@ -95,14 +96,18 @@ class DaisyCMAOptimizer:
                 # Try a couple of times if we dont get at least one non nan value
                 for i in range(max_attempts_to_get_feasible):
                     xs = self.optimizer.ask()
-                    fvals = np.array(eval_all(xs))
+                    evaluations = list(eval_all(xs))
+                    fvals = np.array([
+                        ScalarProblemWrapper.objective_value_from_map(evaluation.objectives)
+                        for evaluation in evaluations
+                    ])
                     total_f_evals += len(fvals)
                     if np.any(np.isfinite(fvals)):
                         break
                     self.logger.warning(
                         step=step,msg=f'All are infeasible at attempt {i}', fvals=fvals
                     )
-                for x, fval in zip(xs, fvals):
+                for sample_index, (x, fval, evaluation) in enumerate(zip(xs, fvals, evaluations)):
                     raw_params = {
                         f'param_{p.name}' : value  for p, value in
                         zip(self.problem.parameters, self.objective.transform(x))
@@ -112,9 +117,26 @@ class DaisyCMAOptimizer:
                         zip(self.problem.parameters, x)
                     }
                     objective_value = { f'metric_{self.problem.objective_fn.name}' : fval }
-                    self.logger.result(step=step, tag="raw", **objective_value, **raw_params)
+                    evaluation_id = f'{step}:{sample_index}'
                     self.logger.result(
-                        step=step, tag="standardized", **objective_value, **standardized_params
+                        evaluation_id=evaluation_id,
+                        step=step,
+                        tag="raw",
+                        **objective_value,
+                        **raw_params
+                    )
+                    self.logger.result(
+                        evaluation_id=evaluation_id,
+                        step=step,
+                        tag="standardized",
+                        **objective_value,
+                        **standardized_params
+                    )
+                    log_outcomes(
+                        self.logger,
+                        evaluation,
+                        evaluation_id=evaluation_id,
+                        step=step,
                     )
 
                 failed = np.isnan(fvals)

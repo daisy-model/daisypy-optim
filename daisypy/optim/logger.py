@@ -44,6 +44,10 @@ class Logger:
         '''Log to the result log'''
         self.log('result', *args, **kwargs)
 
+    def outcome(self, *args, **kwargs):
+        '''Log extracted prediction rows to the outcome log.'''
+        self.log('outcome', *args, **kwargs)
+
     def log(self, name, *args, **kwargs):
         '''Log to a specific named log. Fallback to `default` log if the named log does not exist
 

@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from .objective_evaluation import ObjectiveEvaluation
 from .util import flatten
 from .multi_objective import MultiObjective
 
@@ -13,8 +14,9 @@ class AggregateObjective(Sequence):
           Name of objective
 
         objective_fns : dict of [str, Callable[[str], float]
-          Mapping from objective names to objective functions. The objective function is passed the
-          path to a daisy output directory and is expected to return a scalar
+          Mapping from objective names to objective functions. Each objective function is passed
+          the path to a daisy output directory and is expected to return a scalar objective,
+          optionally via an ``evaluate`` method that also exposes predictions.
 
         aggregate_fn : Callable[[dict of [str, float]], float]
           Function that aggregates the computed objectives. It should map a dict of named objective
@@ -25,7 +27,11 @@ class AggregateObjective(Sequence):
         self.aggregate_fn = aggregate_fn
 
     def __call__(self, daisy_output_directory):
-        '''Compute the objective
+        """Compute only the aggregated scalar objective."""
+        return self.evaluate(daisy_output_directory).objectives
+
+    def evaluate(self, daisy_output_directory):
+        '''Compute the aggregated objective and retain child predictions.
 
         Parameters
         ----------
@@ -34,10 +40,15 @@ class AggregateObjective(Sequence):
 
         Returns
         -------
-        objective_map : dict of [str, float]
-          Map from the objective name to the aggregated objective value
+        ObjectiveEvaluation
+          Structured result containing the aggregated scalar objective and the predictions produced
+          by the child objective functions before aggregation.
         '''
-        return { self.name : self.aggregate_fn(self.multi_objective(daisy_output_directory)) }
+        evaluation = self.multi_objective.evaluate(daisy_output_directory)
+        return ObjectiveEvaluation(
+            objectives={ self.name : self.aggregate_fn(evaluation.objectives) },
+            predictions=evaluation.predictions
+        )
 
     def __getitem__(self, index):
         # We could consider flattening objective_fns, but not sure that there is a user case

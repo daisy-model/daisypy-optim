@@ -1,9 +1,13 @@
 import pandas as pd
 from .loss_wrapper import LossWrapper
+from .objective_evaluation import ObjectiveEvaluation
 
 class ScalarObjective:
     # pylint: disable=too-few-public-methods,too-many-arguments,too-many-positional-arguments
-    """Scalar objective that extracts data from a daisy output directory and computes a loss"""
+    """Scalar objective that extracts data from a daisy output directory and computes a loss.
+
+    The exact extracted prediction can also be retrieved via :meth:`evaluate`.
+    """
 
     def __init__(self, name, data_extractor, target, target_name, loss_fn):
         """
@@ -13,7 +17,7 @@ class ScalarObjective:
           Name of objective
 
         data_extractor : DlfDataExtractor
-          Extractor mapping output directories to pandas.Series
+          Extractor mapping output directories to pandas.DataFrame with columns "time" and "value"
 
         target : pandas.DataFrame OR str
           If str it is opened with pandas.read_csv.
@@ -42,7 +46,11 @@ class ScalarObjective:
         self.loss_fn = LossWrapper(loss_fn) # Wrap it so target and actual are processed correctly
 
     def __call__(self, daisy_output_directory):
-        """Compute the objective
+        """Compute the objective value only."""
+        return self.evaluate(daisy_output_directory).objectives
+
+    def evaluate(self, daisy_output_directory):
+        """Compute the objective and return the extracted prediction.
 
         Parameters
         ----------
@@ -51,8 +59,12 @@ class ScalarObjective:
 
         Returns
         -------
-        objective_map : dict of [str, float]
-          Map from the objective name to the objective value
+        ObjectiveEvaluation
+          Structured result containing the scalar objective value and the exact extracted
+          prediction under ``predictions[self.name]``.
         """
         actual = self.data_extractor(daisy_output_directory)
-        return { self.name : self.loss_fn(actual, self.target) }
+        return ObjectiveEvaluation(
+            objectives={ self.name : self.loss_fn(actual, self.target) },
+            predictions={ self.name : actual }
+        )

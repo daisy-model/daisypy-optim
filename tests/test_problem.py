@@ -16,6 +16,9 @@ def test_runner_succeds(tmp_path):
     )
     result = problem([-1])
     assert result['mock'] == objective.value
+    evaluation = problem.evaluate([-1])
+    assert evaluation.objectives['mock'] == objective.value
+    assert evaluation.predictions == {}
 
 
 def test_runner_fails(tmp_path):
