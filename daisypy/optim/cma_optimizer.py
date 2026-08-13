@@ -263,8 +263,12 @@ class DaisyCMAOptimizer:
         if criterion == 'tolfun':
             if len(self.optimizer.fit.fit) == 0 or len(self.optimizer.fit.hist) == 0:
                 return None
-            current_fitness_range = float(np.max(self.optimizer.fit.fit) - np.min(self.optimizer.fit.fit))
-            historic_fitness_range = float(np.max(self.optimizer.fit.hist) - np.min(self.optimizer.fit.hist))
+            current_fitness_range = float(
+                np.max(self.optimizer.fit.fit) - np.min(self.optimizer.fit.fit)
+            )
+            historic_fitness_range = float(
+                np.max(self.optimizer.fit.hist) - np.min(self.optimizer.fit.hist)
+            )
             return {
                 'current_fitness_range' : current_fitness_range,
                 'historic_fitness_range' : historic_fitness_range,
@@ -273,6 +277,7 @@ class DaisyCMAOptimizer:
             if len(self.optimizer.fit.hist) == 0:
                 return None
             return float(np.max(self.optimizer.fit.hist) - np.min(self.optimizer.fit.hist))
+        if criterion == 'tolstagnation':
             window = max((
                 self.optimizer.opts['tolstagnation'] / 5. / 2,
                 len(self.optimizer.fit.histbest) / 10

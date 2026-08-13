@@ -2,6 +2,7 @@
 import os
 import csv
 import tempfile
+from types import SimpleNamespace
 import numpy as np
 from pytest import approx
 from daisypy.optim import (
@@ -19,7 +20,8 @@ def test_cma_optimizer():
         with DefaultLogger(out_dir) as logger:
             optimizer = DaisyCMAOptimizer(problem, logger, cma_options = { "maxfevals" : 500 })
             result = optimizer.optimize()
-        with open(os.path.join(out_dir, 'parameters.csv'), 'r', encoding='utf-8', newline='') as in_file:
+        params_path = os.path.join(out_dir, 'parameters.csv')
+        with open(params_path, 'r', encoding='utf-8', newline='') as in_file:
             rows = list(csv.DictReader(in_file))
 
     assert rows
@@ -73,3 +75,25 @@ def test_cma_optimizer_logs_termination_criteria(capsys):
     assert 'Termination criteria status' in captured.out
     assert 'termination_criterion=maxfevals,threshold=30,current_value=' in captured.out
     assert 'triggered=True' in captured.out
+
+def test_cma_optimizer_reports_tolstagnation_status():
+    '''Test that tolstagnation status is reported from CMA history'''
+    optimizer = DaisyCMAOptimizer.__new__(DaisyCMAOptimizer)
+    optimizer.optimizer = SimpleNamespace(
+        opts={'tolstagnation' : 20},
+        fit=SimpleNamespace(
+            histbest=np.array([1.0, 2.0, 3.0, 4.0]),
+            histmedian=np.array([2.0, 4.0, 6.0, 8.0]),
+        ),
+        countiter=10,
+    )
+    # pylint: disable=protected-access
+    result = optimizer._termination_criterion_value('tolstagnation')
+
+    assert result == {
+        'window' : 2,
+        'median_history_previous' : 3.0,
+        'median_history_recent' : 7.0,
+        'best_history_previous' : 1.5,
+        'best_history_recent' : 3.5,
+    }
