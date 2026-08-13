@@ -1,4 +1,5 @@
 # pylint: disable=relative-beyond-top-level
+import os
 import csv
 import tempfile
 import numpy as np
@@ -18,7 +19,7 @@ def test_cma_optimizer():
         with DefaultLogger(out_dir) as logger:
             optimizer = DaisyCMAOptimizer(problem, logger, cma_options = { "maxfevals" : 500 })
             result = optimizer.optimize()
-        with open(f'{out_dir}/parameters.csv', 'r', encoding='utf-8') as in_file:
+        with open(os.path.join(out_dir, 'parameters.csv'), 'r', encoding='utf-8', newline='') as in_file:
             rows = list(csv.DictReader(in_file))
 
     assert rows

@@ -176,8 +176,8 @@ class DaisyCMAOptimizer:
                 # CMA coordinates. A covariance matrix transforms as A @ C @ A.T. Here A is
                 # diagonal, so this becomes an element-wise multiplication by the outer product
                 # of the scaling factors.
-                covariance = np.outer(self.objective.multiplier, self.objective.multiplier)
-                covariance = covariance * self._sampling_covariance()
+                raw_scaling = np.outer(self.objective.multiplier, self.objective.multiplier)
+                covariance = raw_scaling * covariance
                 p_mean = self._means_to_columns(means)
                 p_covariance = self._covariance_to_columns(covariance)
                 self.logger.parameters(
@@ -261,15 +261,18 @@ class DaisyCMAOptimizer:
                 np.atleast_1d(self.optimizer.sigma_vec0)
             return np.max(coordinate_stds / reference)
         if criterion == 'tolfun':
-            current_fitness_range = max(self.optimizer.fit.fit) - min(self.optimizer.fit.fit)
-            historic_fitness_range = max(self.optimizer.fit.hist) - min(self.optimizer.fit.hist)
+            if len(self.optimizer.fit.fit) == 0 or len(self.optimizer.fit.hist) == 0:
+                return None
+            current_fitness_range = float(np.max(self.optimizer.fit.fit) - np.min(self.optimizer.fit.fit))
+            historic_fitness_range = float(np.max(self.optimizer.fit.hist) - np.min(self.optimizer.fit.hist))
             return {
                 'current_fitness_range' : current_fitness_range,
                 'historic_fitness_range' : historic_fitness_range,
             }
         if criterion == 'tolfunhist':
-            return max(self.optimizer.fit.hist) - min(self.optimizer.fit.hist)
-        if criterion == 'tolstagnation':
+            if len(self.optimizer.fit.hist) == 0:
+                return None
+            return float(np.max(self.optimizer.fit.hist) - np.min(self.optimizer.fit.hist))
             window = max((
                 self.optimizer.opts['tolstagnation'] / 5. / 2,
                 len(self.optimizer.fit.histbest) / 10
