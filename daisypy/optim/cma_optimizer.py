@@ -297,11 +297,13 @@ class DaisyCMAOptimizer:
                 'best_history_recent' : np.median(self.optimizer.fit.histbest[window:2 * window]),
             }
         if criterion == 'tolxstagnation':
-            # pylint: disable=protected-access
+            stopper = getattr(self.optimizer, '_stoptolxstagnation', None)
+            if stopper is None:
+                return self.optimizer.stop(check=False, get_value=criterion)
             return {
-                'count' : self.optimizer._stoptolxstagnation.count,
-                'count_x' : self.optimizer._stoptolxstagnation.count_x,
-                'time_threshold' : self.optimizer._stoptolxstagnation.time_threshold,
+                'count' : stopper.count,
+                'count_x' : stopper.count_x,
+                'time_threshold' : stopper.time_threshold,
             }
         if criterion == 'timeout':
             if hasattr(self.optimizer, 'timer'):
