@@ -42,6 +42,7 @@ class MockProblem:
         return self.evaluate(parameter_values).objectives
 
     def evaluate(self, parameter_values):
+        '''Evaluate objective and return ObjectiveEvaluation'''
         named_parameters = { p.name : value for p, value in zip(self.parameters, parameter_values) }
         objective_value = self.objective_fn(**named_parameters)
         prediction = pd.DataFrame({

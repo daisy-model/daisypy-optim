@@ -132,7 +132,11 @@ class DaisySequentialOptimizer:
                     }
                     evaluation_id = f'{step}:{i}'
                     self.logger.result(
-                        evaluation_id=evaluation_id, step=step, tag="raw", **objective_value, **params
+                        evaluation_id=evaluation_id,
+                        step=step,
+                        tag="raw",
+                        **objective_value,
+                        **params
                     )
                     log_outcomes(
                         self.logger, evaluation, evaluation_id=evaluation_id, step=step

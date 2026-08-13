@@ -15,6 +15,7 @@ def sanitize_name(name):
 
 def _prepare_objective_data(data, objective_name, max_curves=None, targets=None):
     '''Prepare grouped outcome data and run-based coloring metadata.'''
+    # pylint: disable=too-many-locals
     objective_data = data[data['objective_name'] == objective_name].copy()
     objective_data['time'] = pd.to_datetime(objective_data['time'])
     grouped = list(objective_data.groupby('evaluation_id', sort=False))
@@ -79,6 +80,7 @@ def _draw_target(ax, target_data):
 
 def plot_objective_curves(data, objective_name, output_path=None, max_curves=None, targets=None):
     '''Plot all outcome curves for a single objective.'''
+    # pylint: disable=too-many-locals
     grouped, _, color_lookup, cmap, norm, xlim, ylim, target_data = _prepare_objective_data(
         data, objective_name, max_curves=max_curves, targets=targets
     )
@@ -114,6 +116,7 @@ def animate_objective_curves(
         data, objective_name, output_path=None, max_curves=None, fps=2, targets=None
 ):
     '''Animate one run per frame, keeping the previous run visible with reduced alpha.'''
+    # pylint: disable=too-many-locals, too-many-arguments, too-many-positional-arguments
     _, run_groups, color_lookup, cmap, norm, xlim, ylim, target_data = _prepare_objective_data(
         data, objective_name, max_curves=max_curves, targets=targets
     )
@@ -212,7 +215,9 @@ def main():
         candidate = args.outcomes_csv.with_name('targets.csv')
         if candidate.exists():
             targets_path = candidate
-    targets = pd.read_csv(targets_path) if targets_path is not None and targets_path.exists() else None
+    targets = pd.read_csv(targets_path) if (
+        targets_path is not None and targets_path.exists()
+    ) else None
     objective_names = args.objectives
     if objective_names is None:
         objective_names = list(data['objective_name'].drop_duplicates())

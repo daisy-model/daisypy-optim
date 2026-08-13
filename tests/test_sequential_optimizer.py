@@ -24,6 +24,7 @@ class Objective:
 
 def test_sequential_optimizer(capsys):
     '''Test that sequential optimizer finds the optimmum and generates expected output'''
+    # pylint: disable=too-many-locals
     expected_result_log = [
         'evaluation_id,step,tag,metric_neg_sum,param_a,param_b,param_c',
         '"1:0",1,"raw",-1.0,1.0,0.0,0.0',

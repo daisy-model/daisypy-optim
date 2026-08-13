@@ -58,13 +58,16 @@ def save_figures(figures, output_path):
         return
     for fig, suffix in figures:
         fig.savefig(
-            output_path.with_name(f'{output_path.stem}-{_sanitize_name(suffix)}{output_path.suffix}'),
+            output_path.with_name(
+                f'{output_path.stem}-{_sanitize_name(suffix)}{output_path.suffix}'
+            ),
             dpi=150,
         )
 
 
 def plot_samples(df, standardized, figures=None):
     '''Create or update sample plots from a result.csv DataFrame.'''
+    # pylint: disable=too-many-statements, too-many-locals
     tag = "standardized" if standardized else "raw"
     df = df[df["tag"] == tag]
     metrics = [s for s in df.columns if s.startswith("metric_")]
@@ -80,7 +83,7 @@ def plot_samples(df, standardized, figures=None):
     figsize = (2 + 5 * ncols, 5 * nrows)
 
     cmap = plt.colormaps['viridis']
-    norm = colors.Normalize(vmin=min(step), vmax=max(min(step) + 1, max(step)))
+    norm = colors.Normalize(vmin=min(step), vmax=max(min(step) + 1, step))
 
     existing_figures = {} if figures is None else {suffix : fig for fig, suffix in figures}
     figures = []

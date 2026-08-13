@@ -248,6 +248,7 @@ class DaisyCMAOptimizer:
             )
 
     def _termination_criterion_value(self, criterion):
+        # pylint: disable=too-many-return-statements,too-many-branches
         if criterion == 'ftarget':
             return self.optimizer.best.f
         if criterion == 'maxfevals':
@@ -256,7 +257,8 @@ class DaisyCMAOptimizer:
             return self.optimizer.countiter
         if criterion == 'tolfacupx':
             coordinate_stds = self._standardized_coordinate_stds()
-            reference = np.atleast_1d(self.optimizer.sigma0) * np.atleast_1d(self.optimizer.sigma_vec0)
+            reference = np.atleast_1d(self.optimizer.sigma0) * \
+                np.atleast_1d(self.optimizer.sigma_vec0)
             return np.max(coordinate_stds / reference)
         if criterion == 'tolfun':
             current_fitness_range = max(self.optimizer.fit.fit) - min(self.optimizer.fit.fit)
@@ -281,11 +283,13 @@ class DaisyCMAOptimizer:
             return {
                 'window' : window,
                 'median_history_previous' : np.median(self.optimizer.fit.histmedian[:window]),
-                'median_history_recent' : np.median(self.optimizer.fit.histmedian[window:2 * window]),
+                'median_history_recent' :
+                np.median(self.optimizer.fit.histmedian[window:2 * window]),
                 'best_history_previous' : np.median(self.optimizer.fit.histbest[:window]),
                 'best_history_recent' : np.median(self.optimizer.fit.histbest[window:2 * window]),
             }
         if criterion == 'tolxstagnation':
+            # pylint: disable=protected-access
             return {
                 'count' : self.optimizer._stoptolxstagnation.count,
                 'count_x' : self.optimizer._stoptolxstagnation.count_x,
