@@ -7,6 +7,7 @@ from .ax import daisy_param_to_ax_param
 from .multi_objective import MultiObjective
 from .outcome_logging import log_outcomes
 from .problem import EvaluationProblemWrapper
+from .target_logging import log_targets
 
 @dataclass
 class AxResult:
@@ -65,6 +66,7 @@ class DaisyAxOptimizer:
         num_trials = 0
         max_trials = self.options['max_trials']
         max_trials_iteration = self.options['max_trials_iteration']
+        log_targets(self.logger, self.problem.objective_fn)
         with ProcessPoolExecutor(self.number_of_processes) as executor:
             while num_trials < self.options['max_trials']:
                 max_trials_this_iteration = min(max_trials_iteration, max_trials - num_trials)

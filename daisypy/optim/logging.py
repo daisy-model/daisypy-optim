@@ -16,6 +16,7 @@ def DefaultLogger(outdir): # pylint: disable=invalid-name # (It should look like
       'parameters' : Log to csv file 'parameters.csv' in outdir
       'result' : Log to csv file 'result.csv' in outdir
       'outcome' : Log to csv file 'outcomes.csv' in outdir with extracted predictions
+      'target' : Log to csv file 'targets.csv' in outdir with target time series
 
     Parameters
     ----------
@@ -33,5 +34,6 @@ def DefaultLogger(outdir): # pylint: disable=invalid-name # (It should look like
         'parameters' : CsvLog(os.path.join(outdir, 'parameters.csv')),
         'result' : CsvLog(os.path.join(outdir, 'result.csv')),
         'outcome' : CsvLog(os.path.join(outdir, 'outcomes.csv')),
+        'target' : CsvLog(os.path.join(outdir, 'targets.csv')),
     }
     return Logger(**logs)

@@ -7,6 +7,7 @@ from cma.fitness_transformations import ScaleCoordinates
 from cma.optimization_tools import EvalParallel2
 from .outcome_logging import log_outcomes
 from .problem import EvaluationProblemWrapper, ScalarProblemWrapper
+from .target_logging import log_targets
 
 class DaisyCMAOptimizer:
     """Daisy optimizer using the CMA-ES method from https://github.com/CMA-ES/pycma
@@ -88,6 +89,7 @@ class DaisyCMAOptimizer:
         max_attempts_to_get_feasible = 3
         # TODO: Implement logging + checkpointing every n'th step
         total_f_evals = 0
+        log_targets(self.logger, self.problem.objective_fn)
         self._log_termination_criteria()
         with EvalParallel2(self.objective, self.number_of_processes) as eval_all:
             step = 0

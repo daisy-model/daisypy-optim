@@ -4,6 +4,7 @@ import numpy as np
 from .outcome_logging import log_outcomes
 from .parameter import CategoricalParameter
 from .problem import EvaluationProblemWrapper, ScalarProblemWrapper
+from .target_logging import log_targets
 
 class DaisySequentialOptimizer:
     """Daisy optimizer using a sequential approach
@@ -86,6 +87,7 @@ class DaisySequentialOptimizer:
 
         min_evals, max_evals = _count_min_max_param_evals(num_param_values)
         self.logger.info(f'Using at least {min_evals} and at most {max_evals} function evaluations')
+        log_targets(self.logger, self.problem.objective_fn)
 
         # Compute the initial loss
         self.logger.info('Evaluating initial parameters')
