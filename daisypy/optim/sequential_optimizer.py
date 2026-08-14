@@ -1,8 +1,10 @@
 # pylint: disable=too-few-public-methods,R0801
 from concurrent.futures import ProcessPoolExecutor
 import numpy as np
+from .outcome_logging import log_outcomes
 from .parameter import CategoricalParameter
-from .problem import ScalarProblemWrapper
+from .problem import EvaluationProblemWrapper, ScalarProblemWrapper
+from .target_logging import log_targets
 
 class DaisySequentialOptimizer:
     """Daisy optimizer using a sequential approach
@@ -28,7 +30,8 @@ class DaisySequentialOptimizer:
         if options is None:
             options = {}
         self.objective_name = problem.objective_fn.name
-        self.problem = ScalarProblemWrapper(problem)
+        self.problem = problem
+        self.evaluator = EvaluationProblemWrapper(problem)
         self.logger = logger
         self.number_of_processes = number_of_processes
 
@@ -84,10 +87,13 @@ class DaisySequentialOptimizer:
 
         min_evals, max_evals = _count_min_max_param_evals(num_param_values)
         self.logger.info(f'Using at least {min_evals} and at most {max_evals} function evaluations')
+        log_targets(self.logger, self.problem.objective_fn)
 
         # Compute the initial loss
         self.logger.info('Evaluating initial parameters')
-        current_fval = self.problem([current[name] for name in order])
+        current_evaluation = self.problem.evaluate([current[name] for name in order])
+        current_fval = ScalarProblemWrapper.objective_value_from_map(current_evaluation.objectives)
+        log_outcomes(self.logger, current_evaluation, evaluation_id='0:0', step=0)
         if np.isnan(current_fval):
             self.logger.error('Initial parameters failed, aborting')
             raise RuntimeError('Initial parameters failed')
@@ -118,13 +124,22 @@ class DaisySequentialOptimizer:
                 num_failures = 0
                 # executor.map runs the problems in parallel and yields results in order matching
                 # param_sets.
-                for i, fval in enumerate(executor.map(self.problem, param_sets)):
+                for i, evaluation in enumerate(executor.map(self.evaluator, param_sets)):
+                    fval = ScalarProblemWrapper.objective_value_from_map(evaluation.objectives)
                     objective_value = { f'metric_{self.objective_name}' : fval }
                     params = {
                         f'param_{name}' : value for name, value in zip(order, param_sets[i])
                     }
+                    evaluation_id = f'{step}:{i}'
                     self.logger.result(
-                        step=step, tag="raw", **objective_value, **params
+                        evaluation_id=evaluation_id,
+                        step=step,
+                        tag="raw",
+                        **objective_value,
+                        **params
+                    )
+                    log_outcomes(
+                        self.logger, evaluation, evaluation_id=evaluation_id, step=step
                     )
                     if np.isnan(fval):
                         num_failures += 1

@@ -1,6 +1,7 @@
 # pylint: disable=relative-beyond-top-level
 import os
 import tempfile
+import pandas as pd
 from daisypy.optim import (
     CategoricalParameter,
     DefaultLogger,
@@ -13,24 +14,29 @@ class Objective:
     '''Negative sum of arguments'''
     def __init__(self, name):
         self.name = name
+        self.target = pd.DataFrame({
+            'time' : pd.to_datetime(['2000-01-01']),
+            'value' : [42]
+        })
 
     def __call__(self, a, b, c):
         return - (a + b + c)
 
 def test_sequential_optimizer(capsys):
     '''Test that sequential optimizer finds the optimmum and generates expected output'''
+    # pylint: disable=too-many-locals
     expected_result_log = [
-        'step,tag,metric_neg_sum,param_a,param_b,param_c',
-        '1,"raw",-1.0,1.0,0.0,0.0',
-        '1,"raw",-1.0,0.0,1.0,0.0',
-        '1,"raw",-2.0,0.0,2.0,0.0',
-        '1,"raw",-1.0,0.0,0.0,1.0',
-        '1,"raw",-2.0,0.0,0.0,2.0',
-        '1,"raw",-3.0,0.0,0.0,3.0',
-        '2,"raw",-4.0,1.0,0.0,3.0',
-        '2,"raw",-4.0,0.0,1.0,3.0',
-        '2,"raw",-5.0,0.0,2.0,3.0',
-        '3,"raw",-6.0,1.0,2.0,3.0',
+        'evaluation_id,step,tag,metric_neg_sum,param_a,param_b,param_c',
+        '"1:0",1,"raw",-1.0,1.0,0.0,0.0',
+        '"1:1",1,"raw",-1.0,0.0,1.0,0.0',
+        '"1:2",1,"raw",-2.0,0.0,2.0,0.0',
+        '"1:3",1,"raw",-1.0,0.0,0.0,1.0',
+        '"1:4",1,"raw",-2.0,0.0,0.0,2.0',
+        '"1:5",1,"raw",-3.0,0.0,0.0,3.0',
+        '"2:0",2,"raw",-4.0,1.0,0.0,3.0',
+        '"2:1",2,"raw",-4.0,0.0,1.0,3.0',
+        '"2:2",2,"raw",-5.0,0.0,2.0,3.0',
+        '"3:0",3,"raw",-6.0,1.0,2.0,3.0',
     ]
     expected_out = '\n'.join([
         'Using at least 11 and at most 15 function evaluations',
@@ -65,6 +71,18 @@ def test_sequential_optimizer(capsys):
         with open(os.path.join(out_dir, 'result.csv'), 'r', encoding='utf-8') as in_file:
             for expected, row in zip(expected_result_log, in_file, strict=True):
                 assert expected == row.strip()
+        with open(os.path.join(out_dir, 'outcomes.csv'), 'r', encoding='utf-8') as in_file:
+            outcome_rows = [row.strip() for row in in_file]
+        assert outcome_rows[0] == 'evaluation_id,step,objective_name,time,predicted_value'
+        assert outcome_rows[1] == '"0:0",0,"neg_sum","2000-01-01T00:00:00",0'
+        assert outcome_rows[-1] == '"3:0",3,"neg_sum","2000-01-01T00:00:00",-6.0'
+        assert len(outcome_rows) == 12
+        with open(os.path.join(out_dir, 'targets.csv'), 'r', encoding='utf-8') as in_file:
+            target_rows = [row.strip() for row in in_file]
+        assert target_rows == [
+            'objective_name,time,target_value',
+            '"neg_sum","2000-01-01T00:00:00",42'
+        ]
 
     captured = capsys.readouterr()
     assert captured.out.strip() == expected_out

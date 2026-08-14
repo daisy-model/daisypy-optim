@@ -2,11 +2,11 @@ import tempfile
 import os
 import platform
 import numpy as np
+from .objective_evaluation import ObjectiveEvaluation
 
 class ScalarProblemWrapper:
     # pylint: disable=too-few-public-methods
-    '''Helper class that evalues a DaisyOptimizationProblem and extract the value from the returned
-    dict'''
+    '''Helper class that evaluates a DaisyOptimizationProblem and extracts a scalar objective.'''
 
     def __init__(self, problem):
         '''
@@ -17,17 +17,38 @@ class ScalarProblemWrapper:
         self.problem = problem
 
     def __call__(self, parameter_values):
-        '''
+        '''Evaluate the problem and return the single scalar objective value.
+
         Parameters
         ----------
         parameter_values : sequence
-          Parameter values. Lenght MUST match length of `self.parameters`
+          Parameter values. Length MUST match length of ``self.problem.parameters``.
 
         Returns
         -------
         float
         '''
-        result = self.problem(parameter_values)
+        result = self.problem.evaluate(parameter_values).objectives
+        return self.objective_value_from_map(result)
+
+    @staticmethod
+    def objective_value_from_map(result):
+        '''
+        Parameters
+        ----------
+        result : Mapping[str, float]
+          Mapping from objective names to objective values.
+
+        Returns
+        -------
+        float
+
+        Raises
+        ------
+        RuntimeError
+          If the mapping does not contain exactly one scalar objective value.
+        '''
+        result = dict(result)
         err_msg = 'Expected a dict with exactly one scalar valued objective mapping'
         try:
             value = result.popitem()[1]
@@ -36,6 +57,17 @@ class ScalarProblemWrapper:
             return value
         except (KeyError, AttributeError, TypeError) as e:
             raise RuntimeError(err_msg) from e
+
+class EvaluationProblemWrapper:
+    # pylint: disable=too-few-public-methods
+    '''Helper class that evaluates a DaisyOptimizationProblem to an ObjectiveEvaluation.'''
+
+    def __init__(self, problem):
+        self.problem = problem
+
+    def __call__(self, parameter_values):
+        '''Evaluate the problem and return the structured objective evaluation.'''
+        return self.problem.evaluate(parameter_values)
 
 
 class DaisyOptimizationProblem:
@@ -93,19 +125,22 @@ class DaisyOptimizationProblem:
         self.debug = debug
 
     def __call__(self, parameter_values):
+        """Run Daisy and return only the scalar objective map."""
+        return self.evaluate(parameter_values).objectives
+
+    def evaluate(self, parameter_values):
         # TODO: Rewrite to accept a dict of parameters. This is too brittle
-        """Run Daisy with the given parameters and evaluate the objective. The return value depends
-        on
+        """Run Daisy with the given parameters and evaluate the objective.
 
         Parameters
         ----------
         parameter_values : sequence
-          Parameter values. Lenght MUST match length of `self.parameters`
+          Parameter values. Length MUST match length of ``self.parameters``.
 
         Returns
         -------
-        objective_map : dict of [str, float]
-          Mapping from objective names to objective values
+        ObjectiveEvaluation
+          Structured result containing objective values and any extracted predictions.
         """
         named_parameters = { 'dai' : {} }
         for p, value in zip(self.parameters, parameter_values):
@@ -126,9 +161,12 @@ class DaisyOptimizationProblem:
             return self._run(output_directory, named_parameters)
 
     def _run(self, output_directory, named_parameters):
+        '''Run Daisy in ``output_directory`` and evaluate the objective on the produced files.'''
         dai_file = self.file_generator(output_directory, named_parameters, tagged=True)['dai']
         sim_result = self.runner(dai_file, output_directory)
         if sim_result.returncode != 0:
             print(sim_result)
-            return { self.objective_fn.name : np.nan }
-        return self.objective_fn(output_directory)
+            return ObjectiveEvaluation({ self.objective_fn.name : np.nan })
+        if hasattr(self.objective_fn, 'evaluate'):
+            return self.objective_fn.evaluate(output_directory)
+        return ObjectiveEvaluation(self.objective_fn(output_directory))

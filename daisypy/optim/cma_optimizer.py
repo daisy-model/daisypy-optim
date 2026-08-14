@@ -5,7 +5,9 @@ import numpy as np
 import cma
 from cma.fitness_transformations import ScaleCoordinates
 from cma.optimization_tools import EvalParallel2
-from .problem import ScalarProblemWrapper
+from .outcome_logging import log_outcomes
+from .problem import EvaluationProblemWrapper, ScalarProblemWrapper
+from .target_logging import log_targets
 
 class DaisyCMAOptimizer:
     """Daisy optimizer using the CMA-ES method from https://github.com/CMA-ES/pycma
@@ -44,7 +46,7 @@ class DaisyCMAOptimizer:
             upper.append(param.valid_range[1])
             x0.append(param.initial_value)
         self.objective = ScaleCoordinates(
-            ScalarProblemWrapper(problem), lower=lower, upper=upper, from_lower_upper=(-1,1)
+            EvaluationProblemWrapper(problem), lower=lower, upper=upper, from_lower_upper=(-1,1)
         )
 
         # Map the initial values to optimization domain
@@ -64,6 +66,22 @@ class DaisyCMAOptimizer:
             )
         cma_options['bounds'] = [-1, 1]
         self.optimizer = cma.CMAEvolutionStrategy(x0, 1/3, cma_options)
+        self.termination_criteria = (
+            'ftarget',
+            'maxfevals',
+            'maxiter',
+            'tolfacupx',
+            'tolx',
+            'tolfun',
+            'tolfunrel',
+            'tolfunhist',
+            'tolstagnation',
+            'tolxstagnation',
+            'tolupsigma',
+            'timeout',
+            'tolconditioncov',
+            'tolflatfitness',
+        )
 
     def optimize(self):
         '''Run the optimizer'''
@@ -71,6 +89,8 @@ class DaisyCMAOptimizer:
         max_attempts_to_get_feasible = 3
         # TODO: Implement logging + checkpointing every n'th step
         total_f_evals = 0
+        log_targets(self.logger, self.problem.objective_fn)
+        self._log_termination_criteria()
         with EvalParallel2(self.objective, self.number_of_processes) as eval_all:
             step = 0
             while not self.optimizer.stop():
@@ -78,14 +98,18 @@ class DaisyCMAOptimizer:
                 # Try a couple of times if we dont get at least one non nan value
                 for i in range(max_attempts_to_get_feasible):
                     xs = self.optimizer.ask()
-                    fvals = np.array(eval_all(xs))
+                    evaluations = list(eval_all(xs))
+                    fvals = np.array([
+                        ScalarProblemWrapper.objective_value_from_map(evaluation.objectives)
+                        for evaluation in evaluations
+                    ])
                     total_f_evals += len(fvals)
                     if np.any(np.isfinite(fvals)):
                         break
                     self.logger.warning(
                         step=step,msg=f'All are infeasible at attempt {i}', fvals=fvals
                     )
-                for x, fval in zip(xs, fvals):
+                for sample_index, (x, fval, evaluation) in enumerate(zip(xs, fvals, evaluations)):
                     raw_params = {
                         f'param_{p.name}' : value  for p, value in
                         zip(self.problem.parameters, self.objective.transform(x))
@@ -95,9 +119,26 @@ class DaisyCMAOptimizer:
                         zip(self.problem.parameters, x)
                     }
                     objective_value = { f'metric_{self.problem.objective_fn.name}' : fval }
-                    self.logger.result(step=step, tag="raw", **objective_value, **raw_params)
+                    evaluation_id = f'{step}:{sample_index}'
                     self.logger.result(
-                        step=step, tag="standardized", **objective_value, **standardized_params
+                        evaluation_id=evaluation_id,
+                        step=step,
+                        tag="raw",
+                        **objective_value,
+                        **raw_params
+                    )
+                    self.logger.result(
+                        evaluation_id=evaluation_id,
+                        step=step,
+                        tag="standardized",
+                        **objective_value,
+                        **standardized_params
+                    )
+                    log_outcomes(
+                        self.logger,
+                        evaluation,
+                        evaluation_id=evaluation_id,
+                        step=step,
                     )
 
                 failed = np.isnan(fvals)
@@ -117,45 +158,40 @@ class DaisyCMAOptimizer:
                 self.optimizer.tell(xs, fvals)
 
                 # Log parameter distributions in the standardized space
-                means = self.optimizer.result[5]
-                stds = self.optimizer.result[6]
-                p_mean = {
-                    f'param_{p.name}_mean' : mean for p, mean in zip(self.problem.parameters, means)
-                }
-                p_std = {
-                    f'param_{p.name}_std' : std for p, std in zip(self.problem.parameters, stds)
-                }
+                means = self.optimizer.result.xfavorite
+                covariance = self._sampling_covariance()
+                p_mean = self._means_to_columns(means)
+                p_covariance = self._covariance_to_columns(covariance)
                 self.logger.parameters(
-                    distribution="normal",
+                    distribution="multivariate_normal",
                     tag="standardized",
                     step=step,
                     **p_mean,
-                    **p_std
+                    **p_covariance
                 )
 
                 # Log parameter distributions in the raw space
                 means = self.objective.transform(means)
-                stds = np.array(self.objective.multiplier) * stds
-                p_mean = {
-                    f'param_{p.name}_mean' : mean for p, mean in zip(self.problem.parameters, means)
-                }
-                p_std = {
-                    f'param_{p.name}_std' : std for p, std in zip(self.problem.parameters, stds)
-                }
+                # The raw parameters are an element-wise linear scaling of the standardized
+                # CMA coordinates. A covariance matrix transforms as A @ C @ A.T. Here A is
+                # diagonal, so this becomes an element-wise multiplication by the outer product
+                # of the scaling factors.
+                raw_scaling = np.outer(self.objective.multiplier, self.objective.multiplier)
+                covariance = raw_scaling * covariance
+                p_mean = self._means_to_columns(means)
+                p_covariance = self._covariance_to_columns(covariance)
                 self.logger.parameters(
-                    distribution="normal",
+                    distribution="multivariate_normal",
                     tag="raw",
                     step=step,
                     **p_mean,
-                    **p_std
+                    **p_covariance
                 )
 
-        status = self.optimizer.result[7]
-        self.logger.info('Termination conditions')
-        for k, v in status.items():
-            self.logger.info(f'{k} = {v}')
-        best = self.objective.transform(self.optimizer.result[0])
-        means, stds = self.optimizer.result[5], self.optimizer.result[6]
+        status = self.optimizer.result.stop
+        self._log_termination_criteria(status)
+        best = self.objective.transform(self.optimizer.result.xbest)
+        means, stds = self.optimizer.result.xfavorite, self.optimizer.result.stds
         transformed = self.objective.transform(means)
         result = {
             p.name : {
@@ -169,6 +205,129 @@ class DaisyCMAOptimizer:
             } for i, p in enumerate(self.problem.parameters)
         }
         return result
+
+    def _means_to_columns(self, means):
+        return {
+            f'param_{p.name}_mean' : mean for p, mean in zip(self.problem.parameters, means)
+        }
+
+    def _sampling_covariance(self):
+        # pycma stores the sampling distribution as
+        #
+        #   x = mean + sigma * sigma_vec * y,   y ~ N(0, sm.C)
+        #
+        # where sm.C is the normalized covariance "shape" matrix, sigma is the global
+        # step-size, and sigma_vec is an element-wise linear scaling. Therefore the full
+        # covariance of the standardized sampling distribution is
+        #
+        #   sigma^2 * D @ sm.C @ D
+        #
+        # with D the diagonal matrix represented by sigma_vec. pycma exposes this diagonal
+        # transform via sigma_vec.transform_covariance_matrix(...).
+        covariance = self.optimizer.sm.C.copy()
+        covariance = self.optimizer.sigma_vec.transform_covariance_matrix(covariance)
+        return self.optimizer.sigma**2 * covariance
+
+    def _log_termination_criteria(self, status=None):
+        if status is None:
+            self.logger.info('Configured termination criteria')
+            for criterion in self.termination_criteria:
+                self.logger.info(
+                    termination_criterion=criterion,
+                    threshold=self.optimizer.opts[criterion]
+                )
+            return
+
+        self.logger.info('Termination criteria status')
+        for criterion in self.termination_criteria:
+            self.logger.info(
+                termination_criterion=criterion,
+                threshold=self.optimizer.opts[criterion],
+                current_value=self._termination_criterion_value(criterion),
+                triggered=criterion in status
+            )
+
+    def _termination_criterion_value(self, criterion):
+        # pylint: disable=too-many-return-statements,too-many-branches
+        if criterion == 'ftarget':
+            return self.optimizer.best.f
+        if criterion == 'maxfevals':
+            return self.optimizer.countevals - 1
+        if criterion == 'maxiter':
+            return self.optimizer.countiter
+        if criterion == 'tolfacupx':
+            coordinate_stds = self._standardized_coordinate_stds()
+            reference = np.atleast_1d(self.optimizer.sigma0) * \
+                np.atleast_1d(self.optimizer.sigma_vec0)
+            return np.max(coordinate_stds / reference)
+        if criterion == 'tolfun':
+            if len(self.optimizer.fit.fit) == 0 or len(self.optimizer.fit.hist) == 0:
+                return None
+            current_fitness_range = float(
+                np.max(self.optimizer.fit.fit) - np.min(self.optimizer.fit.fit)
+            )
+            historic_fitness_range = float(
+                np.max(self.optimizer.fit.hist) - np.min(self.optimizer.fit.hist)
+            )
+            return {
+                'current_fitness_range' : current_fitness_range,
+                'historic_fitness_range' : historic_fitness_range,
+            }
+        if criterion == 'tolfunhist':
+            if len(self.optimizer.fit.hist) == 0:
+                return None
+            return float(np.max(self.optimizer.fit.hist) - np.min(self.optimizer.fit.hist))
+        if criterion == 'tolstagnation':
+            window = max((
+                self.optimizer.opts['tolstagnation'] / 5. / 2,
+                len(self.optimizer.fit.histbest) / 10
+            ))
+            if window > self.optimizer.countiter:
+                return {
+                    'window' : window,
+                    'countiter' : self.optimizer.countiter,
+                }
+            window = int(window)
+            return {
+                'window' : window,
+                'median_history_previous' : np.median(self.optimizer.fit.histmedian[:window]),
+                'median_history_recent' :
+                np.median(self.optimizer.fit.histmedian[window:2 * window]),
+                'best_history_previous' : np.median(self.optimizer.fit.histbest[:window]),
+                'best_history_recent' : np.median(self.optimizer.fit.histbest[window:2 * window]),
+            }
+        if criterion == 'tolxstagnation':
+            stopper = getattr(self.optimizer, '_stoptolxstagnation', None)
+            if stopper is None:
+                return self.optimizer.stop(check=False, get_value=criterion)
+            return {
+                'count' : stopper.count,
+                'count_x' : stopper.count_x,
+                'time_threshold' : stopper.time_threshold,
+            }
+        if criterion == 'timeout':
+            if hasattr(self.optimizer, 'timer'):
+                return self.optimizer.timer.elapsed
+            return None
+        if criterion == 'tolconditioncov':
+            return self.optimizer.D[-1]**2 / self.optimizer.D[0]**2
+        if criterion == 'tolflatfitness':
+            return self.optimizer.fit.flatfit_iterations
+        return self.optimizer.stop(check=False, get_value=criterion)
+
+    def _standardized_coordinate_stds(self):
+        return self.optimizer.sigma * (
+            self.optimizer.sigma_vec.scaling * np.sqrt(self.optimizer.dC)
+        )
+
+    def _covariance_to_columns(self, covariance):
+        columns = {}
+        for i, row_parameter in enumerate(self.problem.parameters):
+            for j, column_parameter in enumerate(self.problem.parameters[i:], start=i):
+                columns[f'param_{row_parameter.name}__param_{column_parameter.name}_cov'] = (
+                    covariance[i, j]
+                )
+        return columns
 
     def checkpoint(self, path):
         '''Save the state to disk to we can resume

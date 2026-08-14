@@ -16,3 +16,16 @@ def test_csv_delimiter():
             f = ScalarObjective(target_file.name, data_extractor, target_file, "NO3", mse)
             result = f(in_dir).pop(target_file.name)
             assert result == 0, target_file
+
+
+def test_scalar_objective_evaluate_returns_exact_prediction():
+    in_dir = Path(__file__).parent / 'test-data' / 'targets'
+    expected = pd.read_csv(in_dir / 'comma-separated.csv').rename(columns={"NO3" : "value"})
+    expected["time"] = pd.to_datetime(expected["time"])
+    data_extractor = MockDataExtractor(expected)
+
+    objective = ScalarObjective('NO3', data_extractor, in_dir / 'comma-separated.csv', 'NO3', mse)
+    evaluation = objective.evaluate(in_dir)
+
+    assert evaluation.objectives['NO3'] == 0
+    pd.testing.assert_frame_equal(evaluation.predictions['NO3'], expected)

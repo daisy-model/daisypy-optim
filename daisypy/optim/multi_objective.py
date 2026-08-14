@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from .objective_evaluation import ObjectiveEvaluation
 from .util import flatten
 
 class MultiObjective(Sequence):
@@ -12,14 +13,19 @@ class MultiObjective(Sequence):
           Name of objective
 
         objective_fns : list of Callable[[str], float]
-          List of objective functions. The objective function is passed the
-          path to a daisy output directory and is expected to return a scalar
+          List of objective functions. Each objective function is passed the
+          path to a daisy output directory and is expected to return a named scalar objective,
+          optionally via an ``evaluate`` method that also exposes predictions.
         '''
         self.name = name
         self.objective_fns = objective_fns
 
     def __call__(self, daisy_output_directory):
-        '''Compute the objectives
+        """Compute only the scalar objective map."""
+        return self.evaluate(daisy_output_directory).objectives
+
+    def evaluate(self, daisy_output_directory):
+        '''Compute the objectives and collect extracted predictions.
 
         Parameters
         ----------
@@ -28,10 +34,20 @@ class MultiObjective(Sequence):
 
         Returns
         -------
-        objective_map : dict of [str, float]
-          Mapping from objective names to objective values
+        ObjectiveEvaluation
+          Structured result containing all scalar objectives and any predictions exposed by the
+          child objective functions.
         '''
-        return { k:v for f in self.objective_fns for k,v in f(daisy_output_directory).items() }
+        objectives = {}
+        predictions = {}
+        for objective_fn in self.objective_fns:
+            if hasattr(objective_fn, 'evaluate'):
+                evaluation = objective_fn.evaluate(daisy_output_directory)
+            else:
+                evaluation = ObjectiveEvaluation(objectives=objective_fn(daisy_output_directory))
+            objectives.update(evaluation.objectives)
+            predictions.update(evaluation.predictions)
+        return ObjectiveEvaluation(objectives=objectives, predictions=predictions)
 
     def __getitem__(self, index):
         return self.objective_fns[index]
