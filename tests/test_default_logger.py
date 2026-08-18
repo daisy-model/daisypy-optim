@@ -8,11 +8,11 @@ def test_default_logger(capsys, tmp_path):
         'line 1 warning',
         'line 1 error'
     ])
-    expected_result = [
+    expected_samples = [
         'step,tag,value,p1,p2,p3',
         '1,"a",0.1,0,2,4'
     ]
-    expected_result_path = tmp_path / 'result.csv'
+    expected_samples_path = tmp_path / 'samples.csv'
     expected_outcome = [
         'evaluation_id,time,predicted_value',
         '"eval-1","2000-01-01T00:00:00",0.1'
@@ -27,14 +27,14 @@ def test_default_logger(capsys, tmp_path):
         logger.info('line 1 info')
         logger.warning('line 1 warning')
         logger.error('line 1 error')
-        logger.result(step=1, tag='a', value=0.1, p1=0, p2=2, p3=4)
+        logger.samples(step=1, tag='a', value=0.1, p1=0, p2=2, p3=4)
         logger.outcome(evaluation_id='eval-1', time='2000-01-01T00:00:00', predicted_value=0.1)
         logger.target(objective_name='obj-1', time='2000-01-01T00:00:00', target_value=0.2)
 
-    assert os.path.exists(expected_result_path)
-    with open(expected_result_path, 'r', encoding='utf-8') as in_file:
+    assert os.path.exists(expected_samples_path)
+    with open(expected_samples_path, 'r', encoding='utf-8') as in_file:
         lines = [line.strip() for line in in_file]
-    assert lines == expected_result
+    assert lines == expected_samples
     assert os.path.exists(expected_outcome_path)
     with open(expected_outcome_path, 'r', encoding='utf-8') as in_file:
         lines = [line.strip() for line in in_file]

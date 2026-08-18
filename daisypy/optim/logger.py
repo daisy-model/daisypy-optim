@@ -40,9 +40,9 @@ class Logger:
         '''Log to the parameters log'''
         self.log('parameters', *args, **kwargs)
 
-    def result(self, *args, **kwargs):
-        '''Log to the result log'''
-        self.log('result', *args, **kwargs)
+    def samples(self, *args, **kwargs):
+        '''Log to the samples log'''
+        self.log('samples', *args, **kwargs)
 
     def outcome(self, *args, **kwargs):
         '''Log extracted prediction rows to the outcome log.'''

@@ -120,14 +120,14 @@ class DaisyCMAOptimizer:
                     }
                     objective_value = { f'metric_{self.problem.objective_fn.name}' : fval }
                     evaluation_id = f'{step}:{sample_index}'
-                    self.logger.result(
+                    self.logger.samples(
                         evaluation_id=evaluation_id,
                         step=step,
                         tag="raw",
                         **objective_value,
                         **raw_params
                     )
-                    self.logger.result(
+                    self.logger.samples(
                         evaluation_id=evaluation_id,
                         step=step,
                         tag="standardized",
