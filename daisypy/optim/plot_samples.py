@@ -6,24 +6,25 @@ import pandas as pd
 from matplotlib import cm, colors
 import matplotlib.pyplot as plt
 
+plt.rcParams["figure.raise_window"]=False
 
 def run(log_dir, standardized=False, output_path=None, poll_interval=1.0):
-    '''Monitor a result log and keep the sample plots updated until interrupted.'''
+    '''Monitor a samples log and keep the sample plots updated until interrupted.'''
     log_dir = Path(log_dir)
-    result_path = log_dir / 'result.csv'
-    if not result_path.exists():
-        raise FileNotFoundError(f'Could not find result.csv in {log_dir}')
+    samples_path = log_dir / 'samples.csv'
+    if not samples_path.exists():
+        raise FileNotFoundError(f'Could not find samples.csv in {log_dir}')
     plt.ion()
 
-    print(f'Monitoring {result_path}. Press Ctrl+C to terminate.')
+    print(f'Monitoring {samples_path}. Press Ctrl+C to terminate.')
     previous_state = None
     figures = []
     try:
         while True:
-            current_state = _file_state(result_path)
+            current_state = _file_state(samples_path)
             if current_state != previous_state:
                 previous_state = current_state
-                df = pd.read_csv(result_path)
+                df = pd.read_csv(samples_path)
                 figures = plot_samples(df, standardized, figures=figures)
                 if output_path is not None:
                     save_figures(figures, output_path)
@@ -66,7 +67,7 @@ def save_figures(figures, output_path):
 
 
 def plot_samples(df, standardized, figures=None):
-    '''Create or update sample plots from a result.csv DataFrame.'''
+    '''Create or update sample plots from a samples.csv DataFrame.'''
     # pylint: disable=too-many-statements, too-many-locals
     tag = "standardized" if standardized else "raw"
     df = df[df["tag"] == tag]
@@ -80,10 +81,12 @@ def plot_samples(df, standardized, figures=None):
     nplots = len(params)
     nrows = math.floor(math.sqrt(nplots))
     ncols = math.ceil(nplots / nrows)
-    figsize = (2 + 5 * ncols, 5 * nrows)
+    figsize = (2 + 7 * ncols, 7 * nrows)
 
     cmap = plt.colormaps['viridis']
-    norm = colors.Normalize(vmin=min(step), vmax=max(min(step) + 1, step))
+    # pylint: disable=nested-min-max
+    norm = colors.Normalize(vmin=min(step), vmax=max(min(step) + 1, max(step)))
+    # pylint: enable=nested-min-max
 
     existing_figures = {} if figures is None else {suffix : fig for fig, suffix in figures}
     figures = []
@@ -124,6 +127,7 @@ def plot_samples(df, standardized, figures=None):
                     cmap=cmap,
                     norm=norm,
                     marker='+',
+                    s=100,
                 )
                 if col == 0:
                     axis.set_ylabel(metric[7:])
@@ -185,7 +189,7 @@ def main():
         '--poll-interval',
         type=float,
         default=15.0,
-        help='Seconds between checks for updates to result.csv.',
+        help='Seconds between checks for updates to samples.csv.',
     )
     args = parser.parse_args()
     run(args.log_dir, args.standardized, args.output, args.poll_interval)

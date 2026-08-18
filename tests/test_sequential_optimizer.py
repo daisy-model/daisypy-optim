@@ -25,7 +25,7 @@ class Objective:
 def test_sequential_optimizer(capsys):
     '''Test that sequential optimizer finds the optimmum and generates expected output'''
     # pylint: disable=too-many-locals
-    expected_result_log = [
+    expected_samples_log = [
         'evaluation_id,step,tag,metric_neg_sum,param_a,param_b,param_c',
         '"1:0",1,"raw",-1.0,1.0,0.0,0.0',
         '"1:1",1,"raw",-1.0,0.0,1.0,0.0',
@@ -68,8 +68,8 @@ def test_sequential_optimizer(capsys):
         with DefaultLogger(out_dir) as logger:
             optimizer = DaisySequentialOptimizer(problem, logger)
             result = optimizer.optimize()
-        with open(os.path.join(out_dir, 'result.csv'), 'r', encoding='utf-8') as in_file:
-            for expected, row in zip(expected_result_log, in_file, strict=True):
+        with open(os.path.join(out_dir, 'samples.csv'), 'r', encoding='utf-8') as in_file:
+            for expected, row in zip(expected_samples_log, in_file, strict=True):
                 assert expected == row.strip()
         with open(os.path.join(out_dir, 'outcomes.csv'), 'r', encoding='utf-8') as in_file:
             outcome_rows = [row.strip() for row in in_file]

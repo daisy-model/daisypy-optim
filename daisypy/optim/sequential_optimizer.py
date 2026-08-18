@@ -131,7 +131,7 @@ class DaisySequentialOptimizer:
                         f'param_{name}' : value for name, value in zip(order, param_sets[i])
                     }
                     evaluation_id = f'{step}:{i}'
-                    self.logger.result(
+                    self.logger.samples(
                         evaluation_id=evaluation_id,
                         step=step,
                         tag="raw",

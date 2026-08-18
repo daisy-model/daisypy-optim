@@ -91,7 +91,7 @@ class DaisyAxOptimizer:
                         log[f'param_{name}'] = value
                     for name, value in result.items():
                         log[f'metric_{name}'] = value
-                    self.logger.result(**log)
+                    self.logger.samples(**log)
                     log_outcomes(
                         self.logger,
                         evaluation,
