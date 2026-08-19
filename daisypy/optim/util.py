@@ -1,8 +1,10 @@
 '''Utility functions'''
 from collections.abc import Sequence
+import shutil
 
 __all__ = [
-    'flatten'
+    'flatten',
+    'copy_into'
     ]
 
 def flatten(xs, f=None):
@@ -75,3 +77,13 @@ def _flatten_func(xs, f):
         else:
             ys.append(f(x))
     return ys
+
+
+def copy_into(src, dst_dir):
+    """Copy src into dst_dir. This mimics Path.copy_into that is introduced in python 3.14"""
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    if src.is_dir():
+        dst = dst_dir / src.name
+        shutil.copytree(src, dst, dirs_exist_ok=True)
+    else:
+        shutil.copy(src, dst_dir)
