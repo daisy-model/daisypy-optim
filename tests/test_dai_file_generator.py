@@ -36,6 +36,34 @@ def test_sub_dir(tmp_path):
     assert file_path == tmp_path / 'nested' / 'dai' / 'linear.dai'
     assert file_path.read_text(encoding='utf-8') == EXPECTED
 
+def test_relative_out_path():
+    generator = DaiFileGenerator('linear.dai', template_text='(run test)', sub_dir='nested/dai')
+    assert generator.relative_out_path() == 'nested/dai/linear.dai'
+
+def test_copy_and_update(tmp_path):
+    generator = DaiFileGenerator('linear.dai', template_text='(run {value})', sub_dir='nested/dai')
+    copied = generator.copy_and_update(out_file='copied.dai', sub_dir='updated')
+    file_path = Path(copied(tmp_path, {'dai' : {'value' : 'test'} })['dai'])
+    assert isinstance(copied, DaiFileGenerator)
+    assert copied is not generator
+    assert copied.template_text == generator.template_text
+    assert copied.relative_out_path() == 'updated/copied.dai'
+    assert generator.relative_out_path() == 'nested/dai/linear.dai'
+    assert file_path.read_text(encoding='utf-8') == '(run test)'
+
+def test_serialize_roundtrip(tmp_path):
+    generator = DaiFileGenerator('linear.dai', template_text='(run {value})')
+    serialized = generator.serialize()
+    copied = DaiFileGenerator.unzerialize(serialized)
+    file_path = Path(copied(tmp_path, {'dai' : {'value' : 'test'} })['dai'])
+    assert serialized == {
+        'template_text' : '(run {value})',
+        'out_file' : 'linear.dai'
+    }
+    assert isinstance(copied, DaiFileGenerator)
+    assert copied.relative_out_path() == './linear.dai'
+    assert file_path.read_text(encoding='utf-8') == '(run test)'
+
 def test_no_params(tmp_path):
     template = '(defprogram print_it write\n  (what "${{v1}}"))'
     expected = '(defprogram print_it write\n  (what "${v1}"))'
