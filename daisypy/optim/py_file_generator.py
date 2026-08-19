@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from .file_generator import FileGenerator
 
 class PyFileGenerator(FileGenerator):
@@ -16,7 +17,7 @@ class PyFileGenerator(FileGenerator):
     my_set = {{ my_var }}
     my_string = f'{{ my_var }}
     """
-    def __init__(self, out_file, template_text='', template_file_path=None):
+    def __init__(self, out_file, template_text='', template_file_path=None, sub_dir=None):
         """
         Parameters
         ----------
@@ -28,8 +29,12 @@ class PyFileGenerator(FileGenerator):
 
         template_file_path : str
           Path to template. Overrides template_text if not None
+
+        sub_dir : str or None
+          If not None generate files in this subdirectory otherwise generate in root of outdir
         """
         self.out_file = out_file
+        self.sub_dir = "." if sub_dir is None else sub_dir
         if template_file_path is not None:
             with open(template_file_path, 'r', encoding='utf-8') as infile:
                 # Skip python line comments
@@ -62,14 +67,27 @@ class PyFileGenerator(FileGenerator):
         """
         if tagged:
             params = params['py']
-        os.makedirs(output_directory, exist_ok=True)
+        output_directory = (Path(output_directory) / self.sub_dir).resolve()
+        output_directory.mkdir(parents=True, exist_ok=True)
+        out_path = output_directory / self.out_file
         py_string = self.template_text.format(**params)
-        out_path = os.path.abspath(os.path.join(output_directory, self.out_file))
         with open(out_path, "w", encoding='utf-8') as f:
             f.write(py_string)
         if tagged:
             return { 'py' : out_path }
         return out_path
+
+    def relative_out_path(self):
+        """Return thee relative path the generated py files will be written to"""
+        return os.path.join(self.sub_dir, self.out_file)
+
+    def copy_and_update(self, **kwargs):
+        return PyFileGenerator(
+            kwargs.get("out_file", self.out_file),
+            kwargs.get("template_text", self.template_text),
+            kwargs.get("template_file_path", None),
+            kwargs.get("sub_dir", self.sub_dir)
+        )
 
     def serialize(self):
         '''Serializable representation of this PyFileGenerator

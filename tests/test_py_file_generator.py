@@ -19,6 +19,13 @@ def test_not_tagged(tmp_path):
     file_path = Path(generator(tmp_path, PARAMS, tagged=False))
     assert file_path.read_text(encoding='utf-8') == EXPECTED
 
+def test_sub_dir(tmp_path):
+    template_path = Path(__file__).parent / 'templates' / 'template.py'
+    generator = PyFileGenerator('testing.py', template_file_path=template_path, sub_dir='nested/py')
+    file_path = Path(generator(tmp_path, {'py' : PARAMS})['py'])
+    assert file_path == tmp_path / 'nested' / 'py' / 'testing.py'
+    assert file_path.read_text(encoding='utf-8') == EXPECTED
+
 def test_no_params(tmp_path):
     template = "x = {{ 'a' : 1 }}"
     expected = "x = { 'a' : 1 }"
