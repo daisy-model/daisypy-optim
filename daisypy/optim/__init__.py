@@ -4,7 +4,7 @@ from daisypy.optim.aggregate_fns import *
 from daisypy.optim.file_generators import *
 from daisypy.optim.logging import *
 from daisypy.optim.loss_fns import *
-from daisypy.optim.objective import *
+from daisypy.optim.objectives import *
 from daisypy.optim.optimizer import *
 from daisypy.optim.parameter import *
 from daisypy.optim.problem import DaisyOptimizationProblem
