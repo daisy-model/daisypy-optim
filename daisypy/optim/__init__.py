@@ -9,6 +9,8 @@ from daisypy.optim.optimizer import *
 from daisypy.optim.parameter import *
 from daisypy.optim.problem import DaisyOptimizationProblem
 from daisypy.optim.runner import DaisyRunner
+from daisypy.optim.static_data import StaticData
+from daisypy.optim.simulation import Simulation
 from daisypy.optim.visualize import *
 from daisypy.optim.dlf_data_extraction import (
     DlfDataExtractor,
