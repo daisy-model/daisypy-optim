@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from daisypy.optim.util import copy_into
 from daisypy.optim.static_data import StaticData
+from daisypy.optim.output_spec import OutputSpec
 
 __all__ = [
     'Simulation'
@@ -9,9 +10,9 @@ __all__ = [
 
 class Simulation:
     # pylint: disable=too-few-public-methods
-    """Container holding everything required forrunning a simulation.
-    The point of this class is to ensure that all
-    files are in the expected locations for each simulation.
+    """Container holding everything required for running a simulation.
+    The point of this class is to ensure that all files are in the expected locations for each
+    simulation.
 
     In dai files it is common to include other files using relative paths, like
         (input file "../relative/path/to/other.dai")
@@ -22,13 +23,22 @@ class Simulation:
     Relative paths that are at the parent ("../") or further up are handled by computing the full
     file tree and rooting it at the temporary directory. This means that the actual simulation
     file and the corresponding outputs are not necesarily in the base directory.
+
+    Attributes
+    ----------
+    outputs : dict of (str, OutputSpec)
+      Dict of named output specifications, i.e. paths to log files and names of variables
     """
-    def __init__(self, file_generators, static_data=None):
+    outputs : [OutputSpec]
+
+    def __init__(self, file_generators, outputs, static_data=None):
         """
         Parameters
         ----------
         file_generators : dict of (str, FileGenerator)
           Named file generators
+
+        outputs : [OutputSpec]
 
         static_data : [StaticData] or None
           Each static data path is copied to its relative destination directory.
@@ -41,6 +51,7 @@ class Simulation:
         # static data.
         assert "dai" in file_generators, "There must be a generated dai file"
         self._generators = file_generators
+        self.outputs = outputs
         self._static_data = [] if static_data is None else static_data
         self._update_paths()
 
@@ -63,11 +74,19 @@ class Simulation:
 
         generators = {}
         for g_name, g in self._generators.items():
+            # This finds the path to the generated file relative to the shared root and then
+            # extracts the path to the parent
             sub_dir = Path(g.relative_out_path()).resolve().relative_to(root).parent
             generators[g_name] = g.copy_and_update(sub_dir=sub_dir)
+            if g_name == "dai":
+                # Update the outputs so their paths are relative to simulation root
+                self.outputs = {
+                    k : OutputSpec(o.log, o.var, sub_dir) for k, o in self.outputs.items()
+                }
         self._generators = generators
 
-    def __call__(self, output_directory, params):
+
+    def setup(self, output_directory, params):
         """Setup environment by copying static files and instantiating parameterized files
 
         Parameters
@@ -86,12 +105,21 @@ class Simulation:
         assert params.keys() == self._generators.keys(), \
             "Keys in params must match generator names exactly"
         output_directory = Path(output_directory)
+
+        # Update root dir of outputs
+        self.outputs = {
+            k : OutputSpec(o.log, o.var, o._sub_dir, output_directory)
+            for k, o in self.outputs.items()
+        }
+
+        # Copy static data
         for sd in self._static_data:
             dst = output_directory / sd.dst
             copy_into(sd.src, dst)
             # From python 3.14 we can use Path.copy_into
             # sd.src.copy_into(sd.dst, follow_symlinks=False)
 
+        # Generate dynamic files
         paths = {}
         for gen_name, gen_params in params.items():
             paths[gen_name] = self._generators[gen_name](output_directory, gen_params, False)

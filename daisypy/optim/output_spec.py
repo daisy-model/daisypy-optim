@@ -1,9 +1,7 @@
-from dataclasses import dataclass
 from pathlib import Path
 
-@dataclass
-class SimulationOutput:
-    """Container for handling simulation output paths.
+class OutputSpec:
+    """Container for keeping track of simulation output paths.
 
     The point of this class is to keep things simple for users while allowing for reorganization of
     the simulation file hierarchy and subsequent rebasing when the simulation is actually running .
@@ -54,3 +52,6 @@ class SimulationOutput:
         Path
         """
         return self._root / self._sub_dir / self.log
+
+    def __repr__(self):
+        return repr((self.path(), self.var))
