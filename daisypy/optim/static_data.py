@@ -3,7 +3,7 @@ from pathlib import Path
 
 @dataclass
 class StaticData:
-    """Container for static simulation data
+    """Container for handling static simulation data paths
 
     Attributes
     ----------

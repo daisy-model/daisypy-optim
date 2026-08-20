@@ -35,7 +35,9 @@ class DaiFileGenerator(FileGenerator):
           If not None generate files in this subdirectory otherwise generate in root of outdir
         """
         self.out_file = out_file
-        self.sub_dir = "." if sub_dir is None else sub_dir
+        self.sub_dir = Path("." if sub_dir is None else sub_dir)
+        # Verify that it is an actual sub dir. Will throw ValueError if not
+        self.sub_dir.resolve().relative_to(Path.cwd(), walk_up=False)
         if template_file_path is not None:
             template_text = Path(template_file_path).read_text(encoding='utf-8')
         # Parse the text as a Dai object while allowing placeholders

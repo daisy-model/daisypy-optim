@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 class FileGenerator(ABC):
     """Generate a file in the given output directory using the given params"""
     @abstractmethod
-    def __call__(self, output_directory, params, dry_run=False):
+    def __call__(self, output_directory, params):
         """
         Parameters
         ----------
@@ -13,9 +13,6 @@ class FileGenerator(ABC):
 
         params : dict
           Dictionary of parameters.
-
-        dry_run : bool
-          If True compute and retirn paths, but do not actually generate anything
 
         Returns
         -------

@@ -1,8 +1,9 @@
 import os
 import subprocess
+from pathlib import Path
 
 class DaisyRunner:
-    """Class that knows how to run run daisy"""
+    """Class that knows how to run daisy"""
 
     def __init__(self, daisy_bin, daisy_home=None):
         """
@@ -19,7 +20,7 @@ class DaisyRunner:
         if daisy_home is not None:
             os.environ.update('DAISYHOME', daisy_home)
 
-    def __call__(self, dai_file, output_directory):
+    def __call__(self, dai_file, output_directory=None):
         """Run daisy
 
         Parameters
@@ -27,13 +28,15 @@ class DaisyRunner:
         dai_file : str
           Path to dai file to run
 
-        output_directory : str
-          Path to output directory
+        output_directory : str or None
+          Path to output directory, if None use the directory of the dai file as output directory
 
         Returns
         -------
         subprocess.CompletedProcess
         """
+        if output_directory is None:
+            output_directory = Path(dai_file).parent
         args = [
             self.daisy_bin,
             "-q",
