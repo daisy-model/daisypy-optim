@@ -1,7 +1,7 @@
 # pylint: disable=missing-function-docstring
-import numpy as np
 import pandas as pd
-from daisypy.optim.output_store import AggregateColumns, OutputStore
+import pytest
+from daisypy.optim.output_store import AggregateColumns, OutputStore, merge_outputs
 
 
 def test_output_store_from_empty_supports_insert_extract_and_combine():
@@ -34,7 +34,7 @@ def test_output_store_from_empty_supports_insert_extract_and_combine():
             'water' : ('sim1', 'field_water.dlf', 'water'),
             'temp' : ('sim1', 'field_temp.dlf', 'temp')
         },
-        AggregateColumns(lambda values: np.sum(values, axis=0), 'combined'),
+        AggregateColumns(lambda row: row.sum(), 'combined'),
         ('sim1', 'combined.dlf')
     )
 
@@ -43,3 +43,26 @@ def test_output_store_from_empty_supports_insert_extract_and_combine():
         'combined' : [6.0, 10.0]
     })
     pd.testing.assert_frame_equal(store['sim1']['combined.dlf'], expected_combined)
+
+
+def test_merge_outputs_merges_named_dataframes_on_time():
+    time = pd.to_datetime(['2000-01-01', '2000-01-02'])
+    inputs = {
+        'water' : pd.DataFrame({
+            'time' : time,
+            'water' : [1.0, 3.0]
+        }),
+        'temp' : pd.DataFrame({
+            'time' : time,
+            'temp' : [5.0, 7.0]
+        })
+    }
+
+    merged = merge_outputs(inputs)
+
+    expected = pd.DataFrame({
+        'time' : time,
+        'water' : [1.0, 3.0],
+        'temp' : [5.0, 7.0]
+    })
+    pd.testing.assert_frame_equal(merged, expected)

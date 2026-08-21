@@ -1,5 +1,6 @@
 import pandas as pd
 from daisypy.optim.data_extraction import extract_from_dlf
+from daisypy.optim.util import merge_dataframes, check_dataframes
 
 class OutputStore(dict):
     """An output store is an extended dict that holds outputs from a Daisy simulation
@@ -90,6 +91,24 @@ class OutputStore(dict):
         self.insert(*output_spec, combinator(inputs))
 
 
+def merge_outputs(inputs):
+    """Merge output DataFrames. All inputs MUST have "time" column with the same timepoints and
+    no inputs may share other column names
+
+    Parameters
+    ----------
+    inputs : { str : pandas.DataFrame }
+      Named DataFrames. The names are ignored
+
+    Returns
+    -------
+    pandas.DataFrame with all inputs merged
+    """
+    inputs = list(inputs.values())
+    check_dataframes(*inputs) # Will throw if there are issues
+    return merge_dataframes(*inputs)
+
+
 class AggregateColumns:
     # pylint: disable=too-few-public-methods
     """Aggregate all non-time columns to produce a new DataFrame with aggregated values for each
@@ -99,8 +118,8 @@ class AggregateColumns:
         """
         Parameters
         ----------
-        fn : callable [[numpy.ndarray]] -> numpy.ndarray
-          Callable aggregating the column values into a single column of values
+        fn : Callable [pandas.Series] -> float
+          Scalar valued aggregation function.
 
         out_name : str
           Name to use for the output column
@@ -114,21 +133,16 @@ class AggregateColumns:
         Parameters
         ----------
         inputs : { str : pandas.DataFrame }
-          dict of input names to input DataFrames. The names are ingored
+          Named DataFrames. The names are ignored
 
         Returns
         -------
         pandas.DataFrame with columns "time" and out_name
         """
-        merged = None
-        for df in inputs.values():
-            if merged is None:
-                merged = df
-            else:
-                merged = pd.merge(merged, df, on="time", validate="1:1")
-        # Merging worked
-        values = [merged[c].values for c in merged.columns if c != "time"]
+        inputs = list(inputs.values())
+        check_dataframes(*inputs) # Will throw if there are issues
+        merged = merge_dataframes(*inputs)
         return pd.DataFrame({
             "time" : merged["time"],
-            self.out_name : self.fn(values)
+            self.out_name : merged.drop(columns=["time"]).aggregate(self.fn, axis="columns").values
         })
