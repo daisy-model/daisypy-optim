@@ -1,70 +1,67 @@
 import pandas as pd
-from .loss_wrapper import LossWrapper
-from .objective_evaluation import ObjectiveEvaluation
+from daisypy.optim.loss_wrapper import LossWrapper
+from daisypy.optim.objective import Objective
+from daisypy.optim.util import check_dataframes
 
-class ScalarObjective:
-    # pylint: disable=too-few-public-methods,too-many-arguments,too-many-positional-arguments
-    """Scalar objective that extracts data from a daisy output directory and computes a loss.
+class ScalarObjective(Objective):
+    # pylint: disable=too-few-public-methods
+    """Scalar objective"""
 
-    The exact extracted prediction can also be retrieved via :meth:`evaluate`.
-    """
-
-    def __init__(self, name, data_extractor, target, target_name, loss_fn):
+    def __init__(self, name, target, target_col, outcome_name, outcome_col, loss_fn):
+        # pylint: disable=too-many-arguments,too-many-positional-arguments
         """
         Parameters
         ----------
         name : str
           Name of objective
 
-        data_extractor : DlfDataExtractor
-          Extractor mapping output directories to pandas.DataFrame with columns "time" and "value"
+        target : Pathlike OR pandas.DataFrame
+          Either a path to csv file with the target or a DataFrame with the target
+          The target DataFrame must have a "time" column with unique timestamps and atleast one
+          other column.
 
-        target : pandas.DataFrame OR str
-          If str it is opened with pandas.read_csv.
-          Must contain columns "time" and `target_name`
+        target_col : str
+          The target column to use when computing the loss
 
-        target_name : str
-          Name of column in target that contains the target values
+        outcome_name : str
+          Name of the outcome to use when computing the loss
 
-        loss_fn : callable : (actual, target) -> loss
-          The loss function to use
+        outcome_col : str
+          The outcome column to use when computing the loss
+
+        loss_fn : Callable [numpy.ndarray, numpy.ndarray] -> float
+          Compute a scalar valued loss
+
         """
         self.name = name
-        self.data_extractor = data_extractor
+        self.outcome_name = outcome_name
+        self.outcome_col = outcome_col
         if not isinstance(target, pd.DataFrame):
             target = pd.read_csv(target, sep=None, engine='python')
-        if not "time" in target.columns:
-            raise ValueError(
-                f'target must contain "time" column. Got columns {list(target.columns)}'
-            )
-        if not target_name in target.columns:
-            raise ValueError(
-                f'target must contain "{target_name}" column. Got columns {list(target.columns)}'
-            )
-        self.target = target[["time", target_name]].rename(columns={target_name : 'value'})
-        self.target["time"] = pd.to_datetime(self.target["time"])
-        self.loss_fn = LossWrapper(loss_fn) # Wrap it so target and actual are processed correctly
+        check_dataframes(target)
 
-    def __call__(self, daisy_output_directory):
-        """Compute the objective value only."""
-        return self.evaluate(daisy_output_directory).objectives
+        if not target_col in target.columns:
+            raise ValueError(
+                f'target must contain "{target_col}" column. Got columns {list(target.columns)}'
+            )
 
-    def evaluate(self, daisy_output_directory):
-        """Compute the objective and return the extracted prediction.
+        self._target = target[["time", target_col]].rename(columns={target_col : 'value'})
+        self._target["time"] = pd.to_datetime(self._target["time"])
+        self._loss_fn = LossWrapper(loss_fn) # Wrap it so target and actual are processed correctly
+
+    def __call__(self, outcomes):
+        """Compute the objective value
 
         Parameters
         ----------
-        daisy_output_directory : str
-          Path to daisy ouput directory
+        outcomes : { str : pandas.DataFrame }
+          A dict of named DataFrames. MUST contain the key `self.outcome_name` and the corresponding
+          DataFrame MUST have a column named `self.outcome_col`
 
         Returns
         -------
-        ObjectiveEvaluation
-          Structured result containing the scalar objective value and the exact extracted
-          prediction under ``predictions[self.name]``.
+        { str : float }
+          A dict of length 1 with the key `self.name` mapping to the objective value
         """
-        actual = self.data_extractor(daisy_output_directory)
-        return ObjectiveEvaluation(
-            objectives={ self.name : self.loss_fn(actual, self.target) },
-            predictions={ self.name : actual }
-        )
+        outcome = outcomes[self.outcome_name].rename(columns={self.outcome_col : "value"})
+        return { self.name : self._loss_fn(actual=outcome, target=self._target) }
