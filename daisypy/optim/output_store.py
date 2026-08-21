@@ -71,8 +71,8 @@ class OutputStore(dict):
                     assert c not in self[sim][output].columns, f"{c} is already in {sim}/{output}"
             self[sim][output] = pd.merge(self[sim][output], df, on="time", validate="1:1")
 
-    def combine(self, input_specs, combinator, output_spec):
-        """Combine existing inputs and insert in to store
+    def combine(self, input_specs, combinator):
+        """Combine inputs in the store and return the result
 
         Parameters
         ----------
@@ -88,7 +88,7 @@ class OutputStore(dict):
         inputs = {}
         for k, spec in input_specs.items():
             inputs[k] = self.extract(*spec)
-        self.insert(*output_spec, combinator(inputs))
+        return combinator(inputs)
 
 
 def merge_outputs(inputs):

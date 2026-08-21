@@ -29,20 +29,20 @@ def test_output_store_from_empty_supports_insert_extract_and_combine():
     })
     pd.testing.assert_frame_equal(extracted, expected_extracted)
 
-    store.combine(
+    combined = store.combine(
         {
             'water' : ('sim1', 'field_water.dlf', 'water'),
             'temp' : ('sim1', 'field_temp.dlf', 'temp')
         },
-        AggregateColumns(lambda row: row.sum(), 'combined'),
-        ('sim1', 'combined.dlf')
+        AggregateColumns(lambda row: row.sum(), 'combined')
     )
 
     expected_combined = pd.DataFrame({
         'time' : time,
         'combined' : [6.0, 10.0]
     })
-    pd.testing.assert_frame_equal(store['sim1']['combined.dlf'], expected_combined)
+    pd.testing.assert_frame_equal(combined, expected_combined)
+    assert 'combined.dlf' not in store['sim1']
 
 
 def test_merge_outputs_merges_named_dataframes_on_time():
