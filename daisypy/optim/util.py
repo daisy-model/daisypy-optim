@@ -1,10 +1,13 @@
 '''Utility functions'''
 from collections.abc import Sequence
 import shutil
+import pandas as pd
 
 __all__ = [
     'flatten',
-    'copy_into'
+    'copy_into',
+    "merge_dataframes",
+    "check_dataframes"
     ]
 
 def flatten(xs, f=None):
@@ -87,6 +90,29 @@ def copy_into(src, dst_dir):
         shutil.copytree(src, dst, dirs_exist_ok=True)
     else:
         shutil.copy(src, dst_dir)
+
+
+def merge_dataframes(*dfs):
+    """Merge a set of DataFrames using left join. If check_dataframes(*dfs) does not throw, then
+    this function produces a valid DataFrame as defined in check_dataframes.
+
+    Parameters
+    ----------
+    dfs : pandas.DataFrame(s)
+      One or more DataFrames to merge. If only a single DataFrame is provided then this is the
+      identity function.
+
+    Returns
+    -------
+    pandas.DataFrame
+    """
+    merged = None
+    for df in dfs:
+        if merged is None:
+            merged = df
+        else:
+            merged = pd.merge(merged, df, on="time", how="left")
+    return merged
 
 
 def check_dataframes(*dfs, check_unique_col_names=True):
