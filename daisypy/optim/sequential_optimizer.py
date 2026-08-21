@@ -3,8 +3,9 @@ from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 from .outcome_logging import log_outcomes
 from .parameter import CategoricalParameter
-from .problem import EvaluationProblemWrapper, ScalarProblemWrapper
+from .problem import ScalarProblemWrapper
 from .target_logging import log_targets
+from daisypy.optim.util import get_single_scalar
 
 class DaisySequentialOptimizer:
     """Daisy optimizer using a sequential approach
@@ -29,9 +30,7 @@ class DaisySequentialOptimizer:
         """
         if options is None:
             options = {}
-        self.objective_name = problem.objective_fn.name
         self.problem = problem
-        self.evaluator = EvaluationProblemWrapper(problem)
         self.logger = logger
         self.number_of_processes = number_of_processes
 
@@ -91,9 +90,9 @@ class DaisySequentialOptimizer:
 
         # Compute the initial loss
         self.logger.info('Evaluating initial parameters')
-        current_evaluation = self.problem.evaluate([current[name] for name in order])
-        current_fval = ScalarProblemWrapper.objective_value_from_map(current_evaluation.objectives)
-        log_outcomes(self.logger, current_evaluation, evaluation_id='0:0', step=0)
+        objective, outcomes = self.problem([current[name] for name in order])
+        current_fval = get_single_scalar(objective)
+        log_outcomes(self.logger, outcomes, evaluation_id='0:0', step=0)
         if np.isnan(current_fval):
             self.logger.error('Initial parameters failed, aborting')
             raise RuntimeError('Initial parameters failed')
@@ -124,9 +123,9 @@ class DaisySequentialOptimizer:
                 num_failures = 0
                 # executor.map runs the problems in parallel and yields results in order matching
                 # param_sets.
-                for i, evaluation in enumerate(executor.map(self.evaluator, param_sets)):
-                    fval = ScalarProblemWrapper.objective_value_from_map(evaluation.objectives)
-                    objective_value = { f'metric_{self.objective_name}' : fval }
+                for i, (objective, outcomes) in enumerate(executor.map(self.problem, param_sets)):
+                    fval = get_single_scalar(objective)
+                    objective_value = { f'metric_{k}' : v for k,v in objective.items() }
                     params = {
                         f'param_{name}' : value for name, value in zip(order, param_sets[i])
                     }
@@ -139,7 +138,7 @@ class DaisySequentialOptimizer:
                         **params
                     )
                     log_outcomes(
-                        self.logger, evaluation, evaluation_id=evaluation_id, step=step
+                        self.logger, outcomes, evaluation_id=evaluation_id, step=step
                     )
                     if np.isnan(fval):
                         num_failures += 1

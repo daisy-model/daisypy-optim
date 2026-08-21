@@ -7,7 +7,8 @@ __all__ = [
     'flatten',
     'copy_into',
     "merge_dataframes",
-    "check_dataframes"
+    "check_dataframes",
+    "get_single_scalar",
     ]
 
 def flatten(xs, f=None):
@@ -168,3 +169,27 @@ def _validate_dataframe(df, check_unique_timepoints=True):
     if check_unique_timepoints:
         if df["time"].nunique() != len(df):
             raise ValueError("Time points are not unique")
+
+
+def get_single_scalar(mapping):
+    """Get the scalar value from a length 1 Mapping
+
+    Parameters
+    ----------
+    mapping : Mapping
+      A length 1 mapping with a scalar value
+
+    Returns
+    -------
+    float
+
+    Raises
+    ------
+    ValueError : If len(mapping) != 1 or the mapped value is not int or float
+    """
+    if len(mapping) != 1:
+        raise ValueError("Expected a Mapping of length 1")
+    value = list(mapping.values())[0]
+    if not isinstance(value, (int, float)):
+        raise ValueError("Expected a scalar value")
+    return value

@@ -1,89 +1,40 @@
 import tempfile
 import os
 import platform
-import numpy as np
-from .objective_evaluation import ObjectiveEvaluation
-
-class ScalarProblemWrapper:
-    # pylint: disable=too-few-public-methods
-    '''Helper class that evaluates a DaisyOptimizationProblem and extracts a scalar objective.'''
-
-    def __init__(self, problem):
-        '''
-        Parameters
-        ----------
-        problem : DaisyOptimizationProblem
-        '''
-        self.problem = problem
-
-    def __call__(self, parameter_values):
-        '''Evaluate the problem and return the single scalar objective value.
-
-        Parameters
-        ----------
-        parameter_values : sequence
-          Parameter values. Length MUST match length of ``self.problem.parameters``.
-
-        Returns
-        -------
-        float
-        '''
-        result = self.problem.evaluate(parameter_values).objectives
-        return self.objective_value_from_map(result)
-
-    @staticmethod
-    def objective_value_from_map(result):
-        '''
-        Parameters
-        ----------
-        result : Mapping[str, float]
-          Mapping from objective names to objective values.
-
-        Returns
-        -------
-        float
-
-        Raises
-        ------
-        RuntimeError
-          If the mapping does not contain exactly one scalar objective value.
-        '''
-        result = dict(result)
-        err_msg = 'Expected a dict with exactly one scalar valued objective mapping'
-        try:
-            value = result.popitem()[1]
-            if len(result) != 0 or not isinstance(value, (int, float)):
-                raise RuntimeError(err_msg)
-            return value
-        except (KeyError, AttributeError, TypeError) as e:
-            raise RuntimeError(err_msg) from e
-
-class EvaluationProblemWrapper:
-    # pylint: disable=too-few-public-methods
-    '''Helper class that evaluates a DaisyOptimizationProblem to an ObjectiveEvaluation.'''
-
-    def __init__(self, problem):
-        self.problem = problem
-
-    def __call__(self, parameter_values):
-        '''Evaluate the problem and return the structured objective evaluation.'''
-        return self.problem.evaluate(parameter_values)
-
+from pathlib import Path
+from daisypy.optim.output_store import OutputStore
 
 class DaisyOptimizationProblem:
-    # pylint: disable=too-many-arguments,too-many-positional-arguments,too-few-public-methods
-    '''Class that knows how to run simulation and compute objective for a parameter set'''
-    def __init__(
-            self, runner, file_generator, objective_fn, parameters, data_dir=None, debug=False
-    ):
+    # pylint: disable=too-many-arguments,too-many-positional-arguments,too-few-public-methods,too-many-instance-attributes
+    '''A DaisyOptimizationProblem maps parameters to objectives, and is defined by
+      - a list of simulations that should be "run as one"
+      - a runner that knows how to run Daisy
+      - a set of parameters
+      - an objective
+    '''
+    def __init__(self,
+                 runner,
+                 simulations,
+                 outcome_specs,
+                 post_processing,
+                 objective_fn,
+                 parameters,
+                 data_dir=None,
+                 debug=False):
         """
         Parameters
         ----------
         runner : DaisyRunner
 
-        file_generator : FileGenerator
+        simulations : dict of (str, Simulation)
+          A dict of named simulations to run using the same set of parameters
 
-        objective_fn : DaisyObjective
+        outcome_specs : {str : {"inputs" : (str, str, [str]), "function" : [pd.Series] -> float}}
+          A dict with named outcomes.
+
+        objective_fn : Callable [{str : pandas.DataFrame}] -> {str : float}
+          An objective function that computes one or more named objective values from a dict of
+          named DataFrames.
 
         parameters : [DaisyParameter] OR dict of (str, [DaisyParameter])
           Parameters to optimize. If a list it is assumed that all parameters are for the 'dai' file
@@ -96,7 +47,9 @@ class DaisyOptimizationProblem:
           If True do not delete the temporary directory where Daisy output is stored
         """
         self.runner = runner
-        self.file_generator = file_generator
+        self.simulations = simulations
+        self.outcome_specs = outcome_specs
+        self.post_processing = post_processing
         self.objective_fn = objective_fn
         self.parameter_kind = {}
         if not isinstance(parameters, dict):
@@ -125,10 +78,6 @@ class DaisyOptimizationProblem:
         self.debug = debug
 
     def __call__(self, parameter_values):
-        """Run Daisy and return only the scalar objective map."""
-        return self.evaluate(parameter_values).objectives
-
-    def evaluate(self, parameter_values):
         # TODO: Rewrite to accept a dict of parameters. This is too brittle
         """Run Daisy with the given parameters and evaluate the objective.
 
@@ -139,8 +88,9 @@ class DaisyOptimizationProblem:
 
         Returns
         -------
-        ObjectiveEvaluation
-          Structured result containing objective values and any extracted predictions.
+        ({ str : float }, { str : pandas.DataFrame })
+          Tuple of dicts, the firs dict holds named objective values, the second dict holds named
+          outcomes.
         """
         named_parameters = { 'dai' : {} }
         for p, value in zip(self.parameters, parameter_values):
@@ -154,19 +104,28 @@ class DaisyOptimizationProblem:
         # From python 3.12 we can pass delete=False to TemporaryDirectory, but prior to that we need
         # to use mkdtemp.
         if self.debug:
-            output_directory = tempfile.mkdtemp(dir=self.data_dir)
-            return self._run(output_directory, named_parameters)
+            sim_dir = tempfile.mkdtemp(dir=self.data_dir)
+            return self._run(sim_dir, named_parameters)
 
-        with tempfile.TemporaryDirectory(dir=self.data_dir) as output_directory:
-            return self._run(output_directory, named_parameters)
+        with tempfile.TemporaryDirectory(dir=self.data_dir) as sim_dir:
+            return self._run(sim_dir, named_parameters)
 
-    def _run(self, output_directory, named_parameters):
-        '''Run Daisy in ``output_directory`` and evaluate the objective on the produced files.'''
-        dai_file = self.file_generator(output_directory, named_parameters, tagged=True)['dai']
-        sim_result = self.runner(dai_file, output_directory)
-        if sim_result.returncode != 0:
-            print(sim_result)
-            return ObjectiveEvaluation({ self.objective_fn.name : np.nan })
-        if hasattr(self.objective_fn, 'evaluate'):
-            return self.objective_fn.evaluate(output_directory)
-        return ObjectiveEvaluation(self.objective_fn(output_directory))
+    def _run(self, base_sim_dir, named_parameters):
+        '''Run Daisy in ``base_sim_dir`` and evaluate the objective on the produced files.'''
+        base_sim_dir = Path(base_sim_dir)
+        # We need to run all simulations in the problem before we can evaluate the objective
+        for sim_name, sim in self.simulations.items():
+            sim_dir = base_sim_dir / sim_name
+            # This will fail if there already is a dir with `sim_name` in the base dir, something
+            # that should not be possible so we want a failure if it happens
+            sim_dir.mkdir()
+            sim_file = sim.setup(sim_dir, named_parameters)
+            sim_result = self.runner(sim_file, sim_dir)
+            if sim_result.returncode != 0:
+                print(f"Simulation '{sim_name}' failed")
+                print(sim_result)
+        output_store = OutputStore(self.simulations)
+        outcomes = {
+            name : output_store.extract(spec) for name, spec in self.outcome_specs.items()
+        }
+        return self.objective_fn(outcomes), outcomes

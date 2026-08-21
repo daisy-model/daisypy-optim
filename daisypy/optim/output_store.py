@@ -1,6 +1,5 @@
 import pandas as pd
 from daisypy.optim.data_extraction import extract_from_dlf
-from daisypy.optim.util import merge_dataframes, check_dataframes
 
 class OutputStore(dict):
     """An output store is an extended dict that holds outputs from a Daisy simulation
@@ -22,27 +21,19 @@ class OutputStore(dict):
                 k : extract_from_dlf(sim.outputs) for k, sim in simulations.items()
             })
 
-    def extract(self, sim, output, var):
+    def extract(self, spec):
         """Get a specific output variable
 
         Parameters
         ----------
-        sim : str
-          The simulation to get data from
-
-        output : str
-          The output to get data from
-
-        var : str or [str]
-          The specific column(s) to get
+        spec : daisypy.optim.output_spec.OutputSpec
+          Specification of the output to get.
 
         Returns
         -------
-        pandas.DataFrame with columns "time" and var
+        pandas.DataFrame with columns "time" and "value"
         """
-        if isinstance(var, list):
-            return self[sim][output][["time"] + var]
-        return self[sim][output][["time", var]]
+        return self[spec.sim][spec.output][["time", spec.var]].rename(columns={spec.var:"value"})
 
     def insert(self, sim, output, df):
         """Insert new values in the store
@@ -70,78 +61,3 @@ class OutputStore(dict):
                 if c != "time":
                     assert c not in self[sim][output].columns, f"{c} is already in {sim}/{output}"
             self[sim][output] = pd.merge(self[sim][output], df, on="time", validate="1:1")
-
-    def combine(self, input_specs, combinator):
-        """Combine inputs in the store and return the result
-
-        Parameters
-        ----------
-        input_specs : [(str, str, str OR [str])]
-          List of inputs to combine, each input spec is a triple of (sim, output, var) and must
-          exist in the store. Note that var can be a list of strings if several columns from the
-          output file is needed.
-
-        combinator : callable [{str : pandas.DataFrame}] -> pandas.DataFrame
-          Callable combining the inputs. Input DataFrames have "time" column and the requested
-          variables. Output DataFrame must have "time" column and whatever columns are computed.
-        """
-        inputs = {}
-        for k, spec in input_specs.items():
-            inputs[k] = self.extract(*spec)
-        return combinator(inputs)
-
-
-def merge_outputs(inputs):
-    """Merge output DataFrames. All inputs MUST have "time" column with the same timepoints and
-    no inputs may share other column names
-
-    Parameters
-    ----------
-    inputs : { str : pandas.DataFrame }
-      Named DataFrames. The names are ignored
-
-    Returns
-    -------
-    pandas.DataFrame with all inputs merged
-    """
-    inputs = list(inputs.values())
-    check_dataframes(*inputs) # Will throw if there are issues
-    return merge_dataframes(*inputs)
-
-
-class AggregateColumns:
-    # pylint: disable=too-few-public-methods
-    """Aggregate all non-time columns to produce a new DataFrame with aggregated values for each
-    timepoint. All inputs MUST have the same timepoints.
-    """
-    def __init__(self, fn):
-        """
-        Parameters
-        ----------
-        fn : Callable [pandas.Series] -> float
-          Scalar valued aggregation function.
-
-        out_name : str
-          Name to use for the output column
-        """
-        self.fn = fn
-
-    def __call__(self, inputs):
-        """Aggregate the inputs
-
-        Parameters
-        ----------
-        inputs : { str : pandas.DataFrame }
-          Named DataFrames. The names are ignored
-
-        Returns
-        -------
-        pandas.DataFrame with columns "time" and out_name
-        """
-        inputs = list(inputs.values())
-        check_dataframes(*inputs) # Will throw if there are issues
-        merged = merge_dataframes(*inputs)
-        return pd.DataFrame({
-            "time" : merged["time"],
-            "value" : merged.drop(columns=["time"]).aggregate(self.fn, axis="columns").values
-        })
