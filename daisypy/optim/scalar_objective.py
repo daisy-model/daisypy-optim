@@ -7,7 +7,7 @@ class ScalarObjective(Objective):
     # pylint: disable=too-few-public-methods
     """Scalar objective"""
 
-    def __init__(self, name, target, target_col, outcome_name, outcome_col, loss_fn):
+    def __init__(self, name, target, target_col, outcome_name, loss_fn):
         # pylint: disable=too-many-arguments,too-many-positional-arguments
         """
         Parameters
@@ -26,16 +26,12 @@ class ScalarObjective(Objective):
         outcome_name : str
           Name of the outcome to use when computing the loss
 
-        outcome_col : str
-          The outcome column to use when computing the loss
-
         loss_fn : Callable [numpy.ndarray, numpy.ndarray] -> float
           Compute a scalar valued loss
 
         """
         self.name = name
         self.outcome_name = outcome_name
-        self.outcome_col = outcome_col
         if not isinstance(target, pd.DataFrame):
             target = pd.read_csv(target, sep=None, engine='python')
         check_dataframes(target)
@@ -56,12 +52,13 @@ class ScalarObjective(Objective):
         ----------
         outcomes : { str : pandas.DataFrame }
           A dict of named DataFrames. MUST contain the key `self.outcome_name` and the corresponding
-          DataFrame MUST have a column named `self.outcome_col`
+          DataFrame MUST have columns "time" and "value"
 
         Returns
         -------
         { str : float }
           A dict of length 1 with the key `self.name` mapping to the objective value
         """
-        outcome = outcomes[self.outcome_name].rename(columns={self.outcome_col : "value"})
-        return { self.name : self._loss_fn(actual=outcome, target=self._target) }
+        return {
+            self.name : self._loss_fn(actual=outcomes[self.outcome_name], target=self._target)
+        }

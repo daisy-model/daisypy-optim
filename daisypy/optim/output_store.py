@@ -114,7 +114,7 @@ class AggregateColumns:
     """Aggregate all non-time columns to produce a new DataFrame with aggregated values for each
     timepoint. All inputs MUST have the same timepoints.
     """
-    def __init__(self, fn, out_name):
+    def __init__(self, fn):
         """
         Parameters
         ----------
@@ -125,7 +125,6 @@ class AggregateColumns:
           Name to use for the output column
         """
         self.fn = fn
-        self.out_name = out_name
 
     def __call__(self, inputs):
         """Aggregate the inputs
@@ -144,5 +143,5 @@ class AggregateColumns:
         merged = merge_dataframes(*inputs)
         return pd.DataFrame({
             "time" : merged["time"],
-            self.out_name : merged.drop(columns=["time"]).aggregate(self.fn, axis="columns").values
+            "value" : merged.drop(columns=["time"]).aggregate(self.fn, axis="columns").values
         })

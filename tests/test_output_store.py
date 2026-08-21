@@ -34,12 +34,12 @@ def test_output_store_from_empty_supports_insert_extract_and_combine():
             'water' : ('sim1', 'field_water.dlf', 'water'),
             'temp' : ('sim1', 'field_temp.dlf', 'temp')
         },
-        AggregateColumns(lambda row: row.sum(), 'combined')
+        AggregateColumns(lambda row: row.sum())
     )
 
     expected_combined = pd.DataFrame({
         'time' : time,
-        'combined' : [6.0, 10.0]
+        'value' : [6.0, 10.0]
     })
     pd.testing.assert_frame_equal(combined, expected_combined)
     assert 'combined.dlf' not in store['sim1']

@@ -19,7 +19,7 @@ def _expected_target():
 def test_scalar_objective_accepts_csv_targets_with_auto_delimiter_detection():
     in_dir = Path(__file__).parent / 'test-data' / 'targets'
     expected = _expected_target()
-    outcomes = {'prediction' : expected.rename(columns={'value' : 'NO3'})}
+    outcomes = {'prediction' : expected}
 
     for target_file in in_dir.iterdir():
         if target_file.name.endswith('separated.csv'):
@@ -28,7 +28,6 @@ def test_scalar_objective_accepts_csv_targets_with_auto_delimiter_detection():
                 target_file,
                 'NO3',
                 'prediction',
-                'NO3',
                 mse
             )
             assert objective(outcomes) == {target_file.name : 0}
@@ -42,11 +41,11 @@ def test_scalar_objective_accepts_dataframe_target_and_returns_named_loss():
     outcomes = {
         'prediction' : pd.DataFrame({
             'time' : pd.to_datetime(['2000-01-03', '2000-01-01', '2000-01-02']),
-            'simulated' : [999.0, 1.0, 3.0]
+            'value' : [999.0, 1.0, 3.0]
         })
     }
 
-    objective = ScalarObjective('objective', target, 'target_value', 'prediction', 'simulated', mse)
+    objective = ScalarObjective('objective', target, 'target_value', 'prediction', mse)
 
     assert objective(outcomes) == {'objective' : 0}
 
@@ -58,4 +57,4 @@ def test_scalar_objective_rejects_missing_target_column():
     })
 
     with pytest.raises(ValueError, match='target must contain "missing" column'):
-        ScalarObjective('objective', target, 'missing', 'prediction', 'simulated', mse)
+        ScalarObjective('objective', target, 'missing', 'prediction',  mse)
