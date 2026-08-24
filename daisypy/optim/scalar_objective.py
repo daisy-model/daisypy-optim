@@ -1,7 +1,7 @@
 import pandas as pd
 from daisypy.optim.loss_wrapper import LossWrapper
 from daisypy.optim.objective import Objective
-from daisypy.optim.util import check_dataframes
+from daisypy.optim.util import check_target
 
 class ScalarObjective(Objective):
     # pylint: disable=too-few-public-methods
@@ -34,13 +34,7 @@ class ScalarObjective(Objective):
         self._outcome_name = outcome_name
         if not isinstance(target, pd.DataFrame):
             target = pd.read_csv(target, sep=None, engine='python')
-        check_dataframes(target)
-
-        if not target_col in target.columns:
-            raise ValueError(
-                f'target must contain "{target_col}" column. Got columns {list(target.columns)}'
-            )
-
+        check_target(target, target_col)
         self._target = target[["time", target_col]].rename(columns={target_col : 'value'})
         self._target["time"] = pd.to_datetime(self._target["time"])
         self._loss_fn = LossWrapper(loss_fn) # Wrap it so target and actual are processed correctly

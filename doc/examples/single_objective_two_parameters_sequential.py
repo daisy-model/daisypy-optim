@@ -16,7 +16,8 @@ from daisypy.optim import (
     DefaultLogger,
     OutputSpec,
     OutcomeSpec,
-    Simulation
+    PostProcessor,
+    Simulation,
 )
 
 # We want to optimize the sum of squared distance.
@@ -25,11 +26,12 @@ def ssd(actual, target):
     '''Sum of squared distance loss function'''
     return ((actual - target)**2).sum()
 
-class SquareOutcome:
+class SquareOutcome(PostProcessor):
     # pylint: disable=too-few-public-methods
     """Post-process function that squares an outcome
 
-    See daisypy.optim.post_processor.PostProcessor for more details
+    See daisypy.optim.post_processor.PostProcessor for the interface and
+    daisypy.optim.post_processors.Aggregate for a more complicated exampele.
     """
     def __init__(self, outcome_name):
         """

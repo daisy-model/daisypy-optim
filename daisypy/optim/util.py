@@ -6,8 +6,9 @@ import pandas as pd
 __all__ = [
     'flatten',
     'copy_into',
-    "merge_dataframes",
-    "check_dataframes",
+    "merge_outcomes",
+    "check_outcomes",
+    "check_target",
     "get_single_scalar",
     ]
 
@@ -93,79 +94,95 @@ def copy_into(src, dst_dir):
         shutil.copy(src, dst_dir)
 
 
-def merge_dataframes(*dfs):
-    """Merge a set of DataFrames using left join. If check_dataframes(*dfs) does not throw, then
-    this function produces a valid DataFrame as defined in check_dataframes.
+def check_target(target, target_col):
+    """Check that a target DataFrame is valid. A target is valid if it has a "time" column with
+    unique values and a column named `target_col`
 
     Parameters
     ----------
-    dfs : pandas.DataFrame(s)
-      One or more DataFrames to merge. If only a single DataFrame is provided then this is the
-      identity function.
+    target : pandas.DataFrame
+
+    target_col : str
+
+    Raises
+    ------
+    ValueError if something is wrong with the target
+    """
+    if "time" not in target.columns:
+        raise ValueError("Missing 'time' column")
+    if target_col not in target.columns:
+        raise ValueError(f"No '{target_col}' column")
+    if target["time"].nunique() != len(target):
+        raise ValueError("Time points are not unique")
+
+
+def merge_outcomes(outcomes):
+    """Merge a set of outcomes. Note that the result is not a valid outcome, it is a DataFrame with
+    a column for each outcome.
+
+    Precondition: check_outcomes(outcomes) does not throw.
+
+    Parameters
+    ----------
+    outcomes : { str : pandas.DataFrame(s) }
+      One or more named outcomes to merge.
 
     Returns
     -------
     pandas.DataFrame
+      With columns "time" and a column for each outcome with the name of the outcome
     """
     merged = None
-    for df in dfs:
+    for name, df in outcomes.items():
         if merged is None:
-            merged = df
+            # This returns a copy
+            merged = df.rename(columns={"value" : name})
         else:
             merged = pd.merge(merged, df, on="time", how="left")
+            # merge returns a copy, so we do not need to do a new copy
+            # TODO: check if pandas copy-on-write implies that chaining merge and rename will only
+            # result in one copy.
+            merged.rename(columns={"value" : name}, inplace=True)
     return merged
 
 
-def check_dataframes(*dfs, check_unique_col_names=True):
-    """Check that set of DataFrames are valid and compatible. The point of the check is to ensure
+def check_outcomes(outcomes):
+    """Check that set of outcomes are valid and compatible. The point of the check is to ensure
     that every time point has a unique value and that we do not introduce NA values when merging.
 
-    A DataFrame is valid if it has a "time" column with unique values and at least one other column.
+    A DataFrame is valid if it has a "time" column with unique values and a "value" column
 
-    Two DataFrames A and B are compatible if
+    Two outcomes A and B are compatible if
      - All time points in A are in B
      - All time points in B are in A
-    and if check_unique_col_names
-     - The intersection of A.columns and B.columns is "time"
 
     Parameters
     ----------
-    dfs : pandas.DataFrame(s)
-      One or more DataFrames to check
-
-    check_unique_col_names : bool
-      If True verify that no DataFrames share other column names than "time"
+    outcomes : { str : pandas.DataFrame }
+      One or more outcomes to check
     """
-    if len(dfs) == 0:
-        raise ValueError("No DataFrames")
+    if len(outcomes) == 0:
+        raise ValueError("No outcomes")
 
-    if len(dfs) == 1:
-        _validate_dataframe(dfs[0])
-    else:
-        non_time_cols = set()
-        time = None
-        for df in dfs:
-            if time is None:
-                # Full validate the first DataFrame
-                _validate_dataframe(df)
-                time = df["time"]
-            else:
-                # Skip uniqueness of timepoints because we check that they match
-                _validate_dataframe(df, False)
-                if len(df["time"]) != len(time) or not time.isin(df["time"]).all():
-                    raise ValueError("All DataFrames must have the same time points")
+    time = None
+    for df in outcomes.values():
+        if time is None:
+            # Full validate the first DataFrame
+            _validate_outcome_dataframe(df)
+            time = df["time"]
+        else:
+            # Skip uniqueness of timepoints because we check that they match
+            _validate_outcome_dataframe(df, False)
+            if len(df["time"]) != len(time) or not time.isin(df["time"]).all():
+                raise ValueError("All DataFrames must have the same time points")
 
-            if check_unique_col_names:
-                new_cols = {c for c in df.columns if c != "time"}
-                if len(non_time_cols & new_cols):
-                    raise ValueError("Non time columns must be unique across DataFrames")
-                non_time_cols |= new_cols
-
-def _validate_dataframe(df, check_unique_timepoints=True):
+def _validate_outcome_dataframe(df, check_unique_timepoints=True):
     if "time" not in df.columns:
         raise ValueError("Missing 'time' column")
-    if len(df.columns) < 2:
-        raise ValueError("No value column(s)")
+    if "value" not in df.columns:
+        raise ValueError("No 'value' column")
+    if len(df.columns) != 2:
+        raise ValueError("Outcome DataFrames must have exactly two columns, 'time' and 'value'")
     if check_unique_timepoints:
         if df["time"].nunique() != len(df):
             raise ValueError("Time points are not unique")
