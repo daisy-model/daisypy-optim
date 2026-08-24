@@ -85,36 +85,3 @@ class MockLoss:
 
     def __call__(self, actial, target):
         return self.value
-
-
-class ProblemFailAfterN:
-    '''Problem that fails after the initial evaluation
-    This does not work as expected fir N > 1, probably because each new problem is run with a copy
-    of the initial problem, not a copy of the "latest" problem. It is a test problem, not an
-    implementation problem
-    '''
-    def __init__(self, N, parameters):
-        self.N = N
-        self.parameters = parameters
-        self.objective_fn = Objective("ProblemFailAfterN.objective_fn")
-        self.n = 0
-        self.error = { "sim" : MockError() }
-        self.outcome = {
-            "ProblemFailAfterN.outcome" : pd.DataFrame({
-                'time' : pd.to_datetime(['2000-01-01']),
-                'value' : 123.4,
-            })
-        }
-
-    def __call__(self, parameter_values):
-        '''Evaluate objective and return value and outcomes'''
-        if self.n >= self.N:
-            result = ( {}, {}, self.error )
-        else:
-            result = (
-                { "ProblemFailAfterN.objective" : -self.n },
-                self.outcome,
-                {}
-            )
-        self.n += 1
-        return result
