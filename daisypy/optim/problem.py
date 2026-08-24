@@ -128,4 +128,6 @@ class DaisyOptimizationProblem:
         outcomes = {
             name : output_store.extract(spec) for name, spec in self.outcome_specs.items()
         }
+        for name, p in self.post_processing.items():
+            outcomes[name] = p(outcomes)
         return self.objective_fn(outcomes), outcomes
