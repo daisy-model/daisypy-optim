@@ -15,9 +15,4 @@ from daisypy.optim.static_data import StaticData
 from daisypy.optim.simulation import Simulation
 from daisypy.optim.output_spec import OutputSpec
 from daisypy.optim.visualize import *
-from daisypy.optim.dlf_data_extraction import (
-    extract_from_dlf,
-    DlfDataExtractor,
-    DlfPostProcessor,
-    DlfSum
-)
+from daisypy.optim.data_extraction import extract_from_dlf
