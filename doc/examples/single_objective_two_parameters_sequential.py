@@ -28,7 +28,7 @@ def ssd(actual, target):
 class SquareOutcome:
     # pylint: disable=too-few-public-methods
     """Post-process function that squares an outcome
-    
+
     See daisypy.optim.post_processor.PostProcessor for more details
     """
     def __init__(self, outcome_name):
@@ -56,7 +56,7 @@ class SquareOutcome:
         return pd.DataFrame({"time": df["time"], "value": df["value"]**2})
 
 
-def single_objective_two_parameters_cma(daisy_path):
+def run(daisy_path):
     '''How to optimize parameters for Daisy
 
     0. Define a runner that can run Daisy
@@ -86,6 +86,7 @@ def single_objective_two_parameters_cma(daisy_path):
         "field" : OutputSpec("field_nitrogen.dlf", 'NO3-Denitrification')
     }
 
+    # Define the simulations
     simulations = {
         "sim" : Simulation(file_generators, outputs)
     }
@@ -170,4 +171,4 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('daisy_path', type=str, help='Path to daisy binary')
     args = parser.parse_args()
-    single_objective_two_parameters_cma(args.daisy_path)
+    run(args.daisy_path)
