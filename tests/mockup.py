@@ -3,13 +3,24 @@ from subprocess import CompletedProcess
 import pandas as pd
 from daisypy.optim.file_generator import FileGenerator
 
+class MockError:
+    def __init__(self, returncode=1, msg="FAIL"):
+        self.returncode = returncode
+        self.msg = msg
+
 class MockFileGenerator(FileGenerator):
     '''Mock file generator that always generates the paths it was constructed with'''
-    def __init__(self, paths):
-        self.paths = paths
+    def __init__(self, path):
+        self.path = path
 
     def __call__(self, output_directory, params, tagged=True):
-        return self.paths
+        return self.path
+
+    def relative_out_path(self):
+        return self.path
+
+    def copy_and_update(self, **kwargs):
+        return MockFileGenerator(kwargs.get("path", self.path))
 
 
 class MockRunner:
@@ -23,8 +34,13 @@ class MockRunner:
 
 class MockObjective:
     '''Mock objective always returning a specific value'''
-    def __init__(self, name='mock', value=0):
+    def __init__(self, name="mock", value=0):
         self.name = name
+        self.outcome_name = "MockObjective.outcome"
+        self.target = pd.DataFrame({
+            'time' : pd.to_datetime(['2000-01-01']),
+            'value' : [42]
+        })
         self.value = value
 
     def __call__(self, daisy_output_directory):
@@ -33,12 +49,15 @@ class MockObjective:
 
 class MockProblem:
     '''Problem case for test purposes. Will evaluate an objective by forwarding parameters'''
-    def __init__(self, parameters, objective_fn):
+    def __init__(self, parameters, objective_fn, error=None):
         self.parameters = parameters
         self.objective_fn = objective_fn
+        self.error = {} if error is None else error
 
     def __call__(self, parameter_values):
         '''Evaluate objective and return value and outcomes'''
+        if len(self.error):
+            return ( {}, {}, self.error )
         named_parameters = { p.name : value for p, value in zip(self.parameters, parameter_values) }
         objective_value = self.objective_fn(**named_parameters)
         prediction = pd.DataFrame({
@@ -47,7 +66,8 @@ class MockProblem:
         })
         return (
             { self.objective_fn.name : objective_value },
-            { self.objective_fn.outcome_name : prediction }
+            { self.objective_fn.outcome_name : prediction },
+            { }
         )
 
 class MockDataExtractor:
@@ -65,3 +85,36 @@ class MockLoss:
 
     def __call__(self, actial, target):
         return self.value
+
+
+class ProblemFailAfterN:
+    '''Problem that fails after the initial evaluation
+    This does not work as expected fir N > 1, probably because each new problem is run with a copy
+    of the initial problem, not a copy of the "latest" problem. It is a test problem, not an
+    implementation problem
+    '''
+    def __init__(self, N, parameters):
+        self.N = N
+        self.parameters = parameters
+        self.objective_fn = Objective("ProblemFailAfterN.objective_fn")
+        self.n = 0
+        self.error = { "sim" : MockError() }
+        self.outcome = {
+            "ProblemFailAfterN.outcome" : pd.DataFrame({
+                'time' : pd.to_datetime(['2000-01-01']),
+                'value' : 123.4,
+            })
+        }
+
+    def __call__(self, parameter_values):
+        '''Evaluate objective and return value and outcomes'''
+        if self.n >= self.N:
+            result = ( {}, {}, self.error )
+        else:
+            result = (
+                { "ProblemFailAfterN.objective" : -self.n },
+                self.outcome,
+                {}
+            )
+        self.n += 1
+        return result

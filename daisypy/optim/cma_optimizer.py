@@ -7,7 +7,6 @@ from cma.fitness_transformations import ScaleCoordinates
 from cma.optimization_tools import EvalParallel2
 from daisypy.optim.outcome_logging import log_outcomes
 from daisypy.optim.target_logging import log_targets
-from daisypy.optim.util import get_single_scalar
 
 class DaisyCMAOptimizer:
     """Daisy optimizer using the CMA-ES method from https://github.com/CMA-ES/pycma
@@ -99,13 +98,37 @@ class DaisyCMAOptimizer:
                 for i in range(max_attempts_to_get_feasible):
                     xs = self.optimizer.ask()
                     # objective_values is a list of dicts of length one with a single scalar value
-                    objective_values, outcomes = zip(*eval_all(xs))
-                    fvals = np.array([get_single_scalar(v) for v in objective_values])
+                    fvals = []
+                    outcomes = []
+                    for objective_value, outcome, errors in eval_all(xs):
+                        outcomes.append(outcome)
+                        if len(errors) > 0:
+                            # One or more simulations failed, objective value cannot be trusted
+                            fvals.append(np.nan)
+                            for sim, result in errors.items():
+                                self.logger.warning(
+                                    step=step,
+                                    msg=f"'{sim}' exited with code {result.returncode}"
+                                )
+                        else:
+                            n_fvals = len(objective_value)
+                            if n_fvals != 1:
+                                self.logger.error(
+                                    step=step,
+                                    msg=("Expected single scalar objective, "
+                                         f"got {n_fvals} objectives")
+                                )
+                                raise RuntimeError("Only single scalar objectives supported")
+                            fvals.append(list(objective_value.values())[0])
+
+                    fvals = np.array(fvals)
                     total_f_evals += len(fvals)
                     if np.any(np.isfinite(fvals)):
                         break
                     self.logger.warning(
-                        step=step,msg=f'All are infeasible at attempt {i}', fvals=fvals
+                        step=step,
+                        msg=f'All are infeasible at attempt {i}',
+                        fvals=fvals
                     )
                 for sample_index, (x, fval, outcome) in enumerate(zip(xs, fvals, outcomes)):
                     raw_params = {
@@ -141,6 +164,8 @@ class DaisyCMAOptimizer:
 
                 failed = np.isnan(fvals)
                 if np.all(failed):
+                    if step == 1:
+                        raise RuntimeError("All initial simulations failed")
                     self.logger.error('All attempts failed. Aborting')
                     break
 

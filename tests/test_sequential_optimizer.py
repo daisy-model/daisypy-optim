@@ -1,13 +1,14 @@
 # pylint: disable=relative-beyond-top-level
 import os
 import tempfile
+import pytest
 import pandas as pd
 from daisypy.optim import (
     CategoricalParameter,
     DefaultLogger,
     DaisySequentialOptimizer,
 )
-from .mockup import MockProblem
+from .mockup import MockProblem, MockError, ProblemFailAfterN
 
 class Objective():
     # pylint: disable=too-few-public-methods
@@ -92,3 +93,36 @@ def test_sequential_optimizer(capsys):
     assert result['a']['best'] == 1
     assert result['b']['best'] == 2
     assert result['c']['best'] == 3
+
+
+def test_sequential_optimizer_initial_sim_fails(capsys):
+    '''Test that sequential optimizer handles initial sim failing'''
+    # pylint: disable=too-many-locals
+    parameters = [
+        CategoricalParameter('a', [0,1]),
+        CategoricalParameter('b', [0,1,2]),
+        CategoricalParameter('c', [0,1,2,3]),
+    ]
+
+    problem = MockProblem(parameters, Objective("neg_sum"), error={"sim" : MockError()})
+    with tempfile.TemporaryDirectory() as out_dir:
+        with DefaultLogger(out_dir) as logger:
+            optimizer = DaisySequentialOptimizer(problem, logger)
+            with pytest.raises(RuntimeError, match="Initial simulation failed"):
+                optimizer.optimize()
+
+def test_sequential_optimizer_all_failing_after_initial():
+    '''Test that sequential optimizer handles sims failing after initial'''
+    # pylint: disable=too-many-locals
+    parameters = [
+        CategoricalParameter('a', [0,1]),
+        CategoricalParameter('b', [0,1,2]),
+        CategoricalParameter('c', [0,1,2,3]),
+    ]
+
+    problem = ProblemFailAfterN(1, parameters)
+    with tempfile.TemporaryDirectory() as out_dir:
+        with DefaultLogger(out_dir) as logger:
+            optimizer = DaisySequentialOptimizer(problem, logger)
+            with pytest.raises(RuntimeError, match="All simulations failed"):
+                optimizer.optimize()

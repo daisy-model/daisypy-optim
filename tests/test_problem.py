@@ -1,43 +1,53 @@
-import numpy as np
-from daisypy.optim import DaisyOptimizationProblem, ContinuousParameter, MultiObjective
+from daisypy.optim import (
+    DaisyOptimizationProblem,
+    ContinuousParameter,
+    MultiObjective,
+    Simulation,
+)
 from .mockup import (MockRunner, MockFileGenerator, MockObjective)
 
 
 def test_runner_succeds(tmp_path):
     '''Test that the return value is as expected when the runner succeds'''
-    file_generator = MockFileGenerator({'dai' : ''})
+    file_generators = { "dai" : MockFileGenerator('') }
+    outcome_specs = {}
+    simulations = { "mock-sim" : Simulation(file_generators, outcome_specs) }
+    post_processing = {}
     runner = MockRunner()
     parameters = { 'dai' : [ContinuousParameter('p', 0, (-1, 1))] }
     out_dir = tmp_path
     objective = MockObjective('mock', 123)
 
     problem = DaisyOptimizationProblem(
-        runner, file_generator, objective, parameters, out_dir
+        runner, simulations, outcome_specs, post_processing, objective, parameters, out_dir
     )
-    result = problem([-1])
-    assert result['mock'] == objective.value
-    evaluation = problem.evaluate([-1])
-    assert evaluation.objectives['mock'] == objective.value
-    assert evaluation.predictions == {}
+    objective_value, outcomes, errors = problem([-1])
+    assert objective_value['mock'] == objective.value
+    assert outcomes == {}
+    assert errors == {}
 
 
 def test_runner_fails(tmp_path):
     '''Test that the return value is nan when the runner fails'''
-    file_generator = MockFileGenerator({'dai' : ''})
+    file_generators = { "dai" : MockFileGenerator('') }
+    outcome_specs = {}
+    simulations = { "mock-sim" : Simulation(file_generators, outcome_specs) }
+    post_processing = {}
     runner = MockRunner(returncode=1)
     parameters = { 'dai' : [ContinuousParameter('p', 0, (-1, 1))] }
     out_dir = tmp_path
     objective = MockObjective('mock', 123)
 
     problem = DaisyOptimizationProblem(
-        runner, file_generator, objective, parameters, out_dir
+        runner, simulations, outcome_specs, post_processing, objective, parameters, out_dir
     )
-    result = problem([-1])
-    assert np.isnan(result['mock'])
+
+    errors = problem([-1])[2]
+    assert "mock-sim" in errors and errors["mock-sim"].returncode == 1
 
 def test_multi_objective(tmp_path):
     '''Test that the return value is as expected for multiple objectives'''
-    file_generator = MockFileGenerator({'dai' : ''})
+    file_generator = { "dai" : MockFileGenerator('') }
     runner = MockRunner()
     parameters = { 'dai' : [ContinuousParameter('p', 0, (-1, 1))] }
     out_dir = tmp_path

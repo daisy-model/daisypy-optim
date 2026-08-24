@@ -1,11 +1,14 @@
 # pylint: disable=too-few-public-methods
 '''Test functions from https://en.wikipedia.org/wiki/Test_functions_for_optimization'''
+import pandas as pd
 from daisypy.optim import ContinuousParameter
 
 class BealeFunction:
     '''The BealeFunction'''
     def __init__(self):
         self.name = "Beale"
+        self.target = pd.DataFrame({"time" : [], "value": []})
+        self.outcome_name = "Beale.outcome"
         self.parameters = [
             ContinuousParameter('x', 0, (-4,4)),
             ContinuousParameter('y', 0, (-4,4))

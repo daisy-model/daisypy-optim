@@ -89,9 +89,9 @@ class DaisyOptimizationProblem:
 
         Returns
         -------
-        ({ str : float }, { str : pandas.DataFrame })
-          Tuple of dicts, the firs dict holds named objective values, the second dict holds named
-          outcomes.
+        ({ str : float }, { str : pandas.DataFrame }, { str : CompletedProcess })
+          Triple of dicts, the first dict holds named objective values, the second dict holds named
+          outcomes, the third dicts holds errors for each simulation
         """
         named_parameters = { 'dai' : {} }
         for p, value in zip(self.parameters, parameter_values):
@@ -115,6 +115,8 @@ class DaisyOptimizationProblem:
         '''Run Daisy in ``base_sim_dir`` and evaluate the objective on the produced files.'''
         base_sim_dir = Path(base_sim_dir)
         # We need to run all simulations in the problem before we can evaluate the objective
+
+        errors = {}
         for sim_name, sim in self.simulations.items():
             sim_dir = base_sim_dir / sim_name
             # This will fail if there already is a dir with `sim_name` in the base dir, something
@@ -123,12 +125,11 @@ class DaisyOptimizationProblem:
             sim_file = sim.setup(sim_dir, named_parameters)
             sim_result = self.runner(sim_file, sim_dir)
             if sim_result.returncode != 0:
-                print(f"Simulation '{sim_name}' failed")
-                print(sim_result)
+                errors[sim_name] = sim_result
         output_store = OutputStore(self.simulations)
         outcomes = {
             name : output_store.extract(*spec) for name, spec in self.outcome_specs.items()
         }
         for name, p in self.post_processing.items():
             outcomes[name] = p(outcomes)
-        return self.objective_fn(outcomes), outcomes
+        return self.objective_fn(outcomes), outcomes, errors

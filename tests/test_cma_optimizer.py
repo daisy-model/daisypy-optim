@@ -2,15 +2,32 @@
 import os
 import csv
 import tempfile
+import pytest
 from types import SimpleNamespace
 import numpy as np
 from pytest import approx
 from daisypy.optim import (
     DefaultLogger,
     DaisyCMAOptimizer,
+    ContinuousParameter
 )
-from .mockup import MockProblem
+from .mockup import MockProblem, MockObjective, MockError
 from .test_objectives import beale_function
+
+def test_cma_optimizer_all_fails():
+    parameters = [
+        ContinuousParameter('a', 0, (-1, 1)),
+        ContinuousParameter('b', 0, (-1, 1)),
+        ContinuousParameter('c', 0, (-1, 1)),
+    ]
+
+    problem = MockProblem(parameters, MockObjective(), error={"sim": MockError()})
+    with tempfile.TemporaryDirectory() as out_dir:
+        with DefaultLogger(out_dir) as logger:
+            optimizer = DaisyCMAOptimizer(problem, logger, cma_options = { "maxfevals" : 500 })
+            with pytest.raises(RuntimeError, match="All initial simulations failed"):
+                result = optimizer.optimize()
+
 
 def test_cma_optimizer():
     '''Test that CMA can optimize the Beale function'''

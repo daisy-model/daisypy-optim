@@ -89,7 +89,14 @@ class DaisySequentialOptimizer:
 
         # Compute the initial loss
         self.logger.info('Evaluating initial parameters')
-        objective, outcomes = self.problem([current[name] for name in order])
+        objective, outcomes, errors = self.problem([current[name] for name in order])
+        if len(errors) > 0:
+            for sim, error in errors.items():
+                self.logger.error(
+                    step=step,
+                    msg=f"Simulation '{sim}' failed with exit code {error.returncode}"
+                )
+            raise RuntimeError("Initial simulation failed")
         current_fval = get_single_scalar(objective)
         log_outcomes(self.logger, outcomes, evaluation_id='0:0', step=0)
         if np.isnan(current_fval):
@@ -122,7 +129,19 @@ class DaisySequentialOptimizer:
                 num_failures = 0
                 # executor.map runs the problems in parallel and yields results in order matching
                 # param_sets.
-                for i, (objective, outcomes) in enumerate(executor.map(self.problem, param_sets)):
+                for i, (objective, outcomes, errors) in enumerate(executor.map(self.problem, param_sets)):
+                    if len(errors) > 0:
+                        # One or more simulations failed, so we cannot trust the objective or the
+                        # outcomes. We log the error, increment the error count and continue with
+                        # the next parameter set
+                        for sim, error in errors.items():
+                            self.logger.warning(
+                                step=step,
+                                msg=f"Simulation '{sim}' failed with exit code {error.returncode}"
+                            )
+                        num_failures += 1
+                        continue
+                    # We must test what happens when all fails
                     fval = get_single_scalar(objective)
                     objective_value = { f'metric_{k}' : v for k,v in objective.items() }
                     params = {
@@ -140,6 +159,7 @@ class DaisySequentialOptimizer:
                         self.logger, outcomes, evaluation_id=evaluation_id, step=step
                     )
                     if np.isnan(fval):
+                        # There was no error, but the objective is NaN, so we count it as a failure
                         num_failures += 1
                     elif fval < best:
                         best = fval
