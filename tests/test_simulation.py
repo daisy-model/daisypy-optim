@@ -23,10 +23,11 @@ def test_rebases_environment_for_parent_relative_include(tmp_path, monkeypatch):
                 sub_dir='scenarios/site-1'
             )
         },
+        {},
         [StaticData(static_src, Path('common'))]
     )
 
-    run_path = sim(output_dir, {'dai' : {}})
+    run_path = sim.setup(output_dir, {'dai' : {}})
     copied_static = output_dir / 'common' / 'my-log.dai'
     referenced_static = run_path.parent / include_path
 

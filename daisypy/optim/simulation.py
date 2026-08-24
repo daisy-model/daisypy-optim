@@ -38,7 +38,7 @@ class Simulation:
         file_generators : dict of (str, FileGenerator)
           Named file generators
 
-        outputs : [OutputSpec]
+        outputs : { str : OutputSpec }
 
         static_data : [StaticData] or None
           Each static data path is copied to its relative destination directory.
