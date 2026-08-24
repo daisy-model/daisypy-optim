@@ -61,17 +61,17 @@ def test_sequential_optimizer(capsys):
     '''Test that sequential optimizer finds the optimmum and generates expected output'''
     # pylint: disable=too-many-locals
     expected_samples_log = [
-        'evaluation_id,step,tag,metric_neg_sum,param_a,param_b,param_c',
-        '"1:0",1,"raw",-1.0,1.0,0.0,0.0',
-        '"1:1",1,"raw",-1.0,0.0,1.0,0.0',
-        '"1:2",1,"raw",-2.0,0.0,2.0,0.0',
-        '"1:3",1,"raw",-1.0,0.0,0.0,1.0',
-        '"1:4",1,"raw",-2.0,0.0,0.0,2.0',
-        '"1:5",1,"raw",-3.0,0.0,0.0,3.0',
-        '"2:0",2,"raw",-4.0,1.0,0.0,3.0',
-        '"2:1",2,"raw",-4.0,0.0,1.0,3.0',
-        '"2:2",2,"raw",-5.0,0.0,2.0,3.0',
-        '"3:0",3,"raw",-6.0,1.0,2.0,3.0',
+        'step,index,tag,metric_neg_sum,param_a,param_b,param_c',
+        '1,0,"raw",-1.0,1.0,0.0,0.0',
+        '1,1,"raw",-1.0,0.0,1.0,0.0',
+        '1,2,"raw",-2.0,0.0,2.0,0.0',
+        '1,3,"raw",-1.0,0.0,0.0,1.0',
+        '1,4,"raw",-2.0,0.0,0.0,2.0',
+        '1,5,"raw",-3.0,0.0,0.0,3.0',
+        '2,0,"raw",-4.0,1.0,0.0,3.0',
+        '2,1,"raw",-4.0,0.0,1.0,3.0',
+        '2,2,"raw",-5.0,0.0,2.0,3.0',
+        '3,0,"raw",-6.0,1.0,2.0,3.0',
     ]
     expected_out = '\n'.join([
         'Using at least 11 and at most 15 function evaluations',
@@ -108,9 +108,9 @@ def test_sequential_optimizer(capsys):
                 assert expected == row.strip(), "Samples mismatch"
         with open(os.path.join(out_dir, 'outcomes.csv'), 'r', encoding='utf-8') as in_file:
             outcome_rows = [row.strip() for row in in_file]
-        assert outcome_rows[0] == 'evaluation_id,step,outcome_name,time,predicted_value'
-        assert outcome_rows[1] == '"0:0",0,"outcome","2000-01-01T00:00:00",0'
-        assert outcome_rows[-1] == '"3:0",3,"outcome","2000-01-01T00:00:00",-6.0'
+        assert outcome_rows[0] == 'step,index,outcome_name,time,predicted_value'
+        assert outcome_rows[1] == '0,0,"outcome","2000-01-01T00:00:00",0'
+        assert outcome_rows[-1] == '3,0,"outcome","2000-01-01T00:00:00",-6.0'
         assert len(outcome_rows) == 12
         with open(os.path.join(out_dir, 'targets.csv'), 'r', encoding='utf-8') as in_file:
             target_rows = [row.strip() for row in in_file]

@@ -98,7 +98,7 @@ class DaisySequentialOptimizer:
                 )
             raise RuntimeError("Initial simulation failed")
         current_fval = get_single_scalar(objective)
-        log_outcomes(self.logger, outcomes, evaluation_id='0:0', step=0)
+        log_outcomes(self.logger, outcomes, step=0, index=0)
         if np.isnan(current_fval):
             self.logger.error('Initial parameters failed, aborting')
             raise RuntimeError('Initial parameters failed')
@@ -147,16 +147,15 @@ class DaisySequentialOptimizer:
                     params = {
                         f'param_{name}' : value for name, value in zip(order, param_sets[i])
                     }
-                    evaluation_id = f'{step}:{i}'
                     self.logger.samples(
-                        evaluation_id=evaluation_id,
                         step=step,
+                        index=i,
                         tag="raw",
                         **objective_value,
                         **params
                     )
                     log_outcomes(
-                        self.logger, outcomes, evaluation_id=evaluation_id, step=step
+                        self.logger, outcomes, step=step, index=i
                     )
                     if np.isnan(fval):
                         # There was no error, but the objective is NaN, so we count it as a failure

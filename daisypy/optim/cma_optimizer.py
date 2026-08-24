@@ -140,17 +140,16 @@ class DaisyCMAOptimizer:
                         zip(self.problem.parameters, x)
                     }
                     objective_value = { f'metric_{self.problem.objective_fn.name}' : fval }
-                    evaluation_id = f'{step}:{sample_index}'
                     self.logger.samples(
-                        evaluation_id=evaluation_id,
                         step=step,
+                        index=sample_index,
                         tag="raw",
                         **objective_value,
                         **raw_params
                     )
                     self.logger.samples(
-                        evaluation_id=evaluation_id,
                         step=step,
+                        index=sample_index,
                         tag="standardized",
                         **objective_value,
                         **standardized_params
@@ -158,8 +157,8 @@ class DaisyCMAOptimizer:
                     log_outcomes(
                         self.logger,
                         outcome,
-                        evaluation_id=evaluation_id,
                         step=step,
+                        index=sample_index,
                     )
 
                 failed = np.isnan(fvals)

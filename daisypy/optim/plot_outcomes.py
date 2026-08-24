@@ -12,13 +12,21 @@ def sanitize_name(name):
     '''Return a filesystem-friendly version of a name.'''
     return ''.join(c if c.isalnum() or c in ('-', '_') else '-' for c in name)
 
+def _ensure_step_index_columns(data):
+    '''Return a copy with explicit ``step`` and ``index`` columns.'''
+    data = data.copy()
+    if 'step' in data.columns and 'index' in data.columns:
+        return data
+    raise ValueError("Expected 'step' and 'index' columns")
+
 
 def _prepare_objective_data(data, outcome_name, max_curves=None, targets=None):
     '''Prepare grouped outcome data and run-based coloring metadata.'''
     # pylint: disable=too-many-locals
-    objective_data = data[data['outcome_name'] == outcome_name].copy()
+    objective_data = _ensure_step_index_columns(data)
+    objective_data = objective_data[objective_data['outcome_name'] == outcome_name].copy()
     objective_data['time'] = pd.to_datetime(objective_data['time'])
-    grouped = list(objective_data.groupby('evaluation_id', sort=False))
+    grouped = list(objective_data.groupby(['step', 'index'], sort=False))
     if max_curves is not None:
         grouped = grouped[:max_curves]
     target_data = None
@@ -29,9 +37,7 @@ def _prepare_objective_data(data, outcome_name, max_curves=None, targets=None):
         else:
             target_data['time'] = pd.to_datetime(target_data['time'])
 
-    evaluation_groups = sorted(
-        {int(evaluation_id.split(':', maxsplit=1)[0]) for evaluation_id, _ in grouped}
-    )
+    evaluation_groups = sorted({int(step) for (step, _), _ in grouped})
     min_group = min(evaluation_groups)
     max_group = max(evaluation_groups)
     if min_group == max_group:
@@ -51,9 +57,9 @@ def _prepare_objective_data(data, outcome_name, max_curves=None, targets=None):
     xlim = (min(series.min() for series in x_values), max(series.max() for series in x_values))
     ylim = (min(series.min() for series in y_values), max(series.max() for series in y_values))
     run_groups = {}
-    for evaluation_id, group in grouped:
-        run = int(evaluation_id.split(':', maxsplit=1)[0])
-        run_groups.setdefault(run, []).append((evaluation_id, group))
+    for key, group in grouped:
+        run = int(key[0])
+        run_groups.setdefault(run, []).append((key, group))
     return grouped, run_groups, color_lookup, cmap, norm, xlim, ylim, target_data
 
 
@@ -87,8 +93,8 @@ def plot_objective_curves(data, outcome_name, output_path=None, max_curves=None,
 
     fig, ax = plt.subplots(figsize=(10, 5))
 
-    for evaluation_id, group in grouped:
-        color = color_lookup[int(evaluation_id.split(':', maxsplit=1)[0])]
+    for (step, _), group in grouped:
+        color = color_lookup[int(step)]
         ax.plot(
             group['time'],
             group['predicted_value'],
@@ -132,9 +138,9 @@ def animate_objective_curves(
     )
 
     def draw_run(run, alpha, linestyle='solid', color=None):
-        for evaluation_id, group in run_groups[run]:
+        for (step, _), group in run_groups[run]:
             if color is None:
-                color = color_lookup[int(evaluation_id.split(':', maxsplit=1)[0])]
+                color = color_lookup[int(step)]
             ax.plot(
                 group['time'],
                 group['predicted_value'],
@@ -193,7 +199,7 @@ def main():
     parser.add_argument(
         '--animate',
         action='store_true',
-        help='Create an animation with one frame per run prefix in evaluation_id.',
+        help='Create an animation with one frame per step.',
     )
     parser.add_argument(
         '--fps',

@@ -88,7 +88,6 @@ class DaisyAxOptimizer:
                 for i, (objective, outcomes, errors) in enumerate(
                         executor.map(self.problem, parameter_sets)):
                     trial_index = trial_indices[i]
-                    evaluation_id = f'{step}:{i}'
                     if len(errors) > 0:
                         for sim, error in errors.items():
                             self.logger.warning(
@@ -104,8 +103,8 @@ class DaisyAxOptimizer:
                         _ = get_single_scalar(objective)
 
                     log = {
-                        'evaluation_id' : evaluation_id,
                         'step' : step,
+                        'index' : i,
                         'tag' : 'raw',
                         'trial' : trial_index
                     }
@@ -117,8 +116,8 @@ class DaisyAxOptimizer:
                     log_outcomes(
                         self.logger,
                         outcomes,
-                        evaluation_id=evaluation_id,
                         step=step,
+                        index=i,
                         trial=trial_index,
                     )
                     self.client.complete_trial(trial_index=trial_index, raw_data=objective)

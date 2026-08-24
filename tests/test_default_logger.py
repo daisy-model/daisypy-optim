@@ -14,8 +14,8 @@ def test_default_logger(capsys, tmp_path):
     ]
     expected_samples_path = tmp_path / 'samples.csv'
     expected_outcome = [
-        'evaluation_id,time,predicted_value',
-        '"eval-1","2000-01-01T00:00:00",0.1'
+        'step,index,time,predicted_value',
+        '1,0,"2000-01-01T00:00:00",0.1'
     ]
     expected_outcome_path = tmp_path / 'outcomes.csv'
     expected_target = [
@@ -28,7 +28,7 @@ def test_default_logger(capsys, tmp_path):
         logger.warning('line 1 warning')
         logger.error('line 1 error')
         logger.samples(step=1, tag='a', value=0.1, p1=0, p2=2, p3=4)
-        logger.outcome(evaluation_id='eval-1', time='2000-01-01T00:00:00', predicted_value=0.1)
+        logger.outcome(step=1, index=0, time='2000-01-01T00:00:00', predicted_value=0.1)
         logger.target(objective_name='obj-1', time='2000-01-01T00:00:00', target_value=0.2)
 
     assert os.path.exists(expected_samples_path)
