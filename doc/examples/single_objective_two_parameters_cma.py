@@ -12,7 +12,6 @@ from daisypy.optim import (
     DaisyRunner,
     DefaultLogger,
     OutputSpec,
-    OutcomeSpec,
     PostProcessor,
     Simulation,
 )
@@ -91,10 +90,10 @@ def run(daisy_path):
     }
 
     # After running simulations we collate the outcomes that we are interested in. An outcome is
-    # defined by a name and an OutcomeSpec. The OutcomeSpec uniquely identifies a single column
-    # in one of the simulation outputs.
+    # defined by a name and triplet specifying (simulation, outcome, variable) that uniquely
+    # identifies a single column in one of the simulation outputs.
     outcome_specs = {
-        "NO3-Denit" : OutcomeSpec("sim", "field", "NO3-Denitrification"),
+        "NO3-Denit" : ("sim", "field", "NO3-Denitrification"),
     }
 
     # If needed we can postprocess the outcomes, for example by squaring the values.

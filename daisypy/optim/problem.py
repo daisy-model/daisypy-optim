@@ -29,8 +29,9 @@ class DaisyOptimizationProblem:
         simulations : dict of (str, Simulation)
           A dict of named simulations to run using the same set of parameters
 
-        outcome_specs : {str : {"inputs" : (str, str, [str]), "function" : [pd.Series] -> float}}
-          A dict with named outcomes.
+        outcome_specs : {str : (str, str, str)}
+          A dict defining with named outcomes. Each outcome is defined by a triplet of strings,
+          (simulation, outcome, variable) that uniquely identifies a column in a outcome file
 
         objective_fn : daisypy.optim.Objective
           An objective function that computes one or more named objective values from a dict of
@@ -126,7 +127,7 @@ class DaisyOptimizationProblem:
                 print(sim_result)
         output_store = OutputStore(self.simulations)
         outcomes = {
-            name : output_store.extract(spec) for name, spec in self.outcome_specs.items()
+            name : output_store.extract(*spec) for name, spec in self.outcome_specs.items()
         }
         for name, p in self.post_processing.items():
             outcomes[name] = p(outcomes)

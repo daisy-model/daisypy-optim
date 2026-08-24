@@ -21,19 +21,25 @@ class OutputStore(dict):
                 k : extract_from_dlf(sim.outputs) for k, sim in simulations.items()
             })
 
-    def extract(self, spec):
+    def extract(self, sim, output, var):
         """Get a specific output variable
 
         Parameters
         ----------
-        spec : daisypy.optim.output_spec.OutputSpec
-          Specification of the output to get.
+        sim : str
+        Name of simulation
+
+        output : str
+        Name of output
+
+        var : str
+        Name of variable
 
         Returns
         -------
         pandas.DataFrame with columns "time" and "value"
         """
-        return self[spec.sim][spec.output][["time", spec.var]].rename(columns={spec.var:"value"})
+        return self[sim][output][["time", var]].rename(columns={var:"value"})
 
     def insert(self, sim, output, df):
         """Insert new values in the store

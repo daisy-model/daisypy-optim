@@ -14,7 +14,6 @@ from daisypy.optim.runner import DaisyRunner
 from daisypy.optim.static_data import StaticData
 from daisypy.optim.simulation import Simulation
 from daisypy.optim.output_spec import OutputSpec
-from daisypy.optim.outcome_spec import OutcomeSpec
 from daisypy.optim.visualize import *
 from daisypy.optim.dlf_data_extraction import (
     extract_from_dlf,
