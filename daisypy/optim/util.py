@@ -111,7 +111,7 @@ def check_target(target, target_col):
     if "time" not in target.columns:
         raise ValueError("Missing 'time' column")
     if target_col not in target.columns:
-        raise ValueError(f"No '{target_col}' column")
+        raise ValueError(f"Missing '{target_col}' column")
     if target["time"].nunique() != len(target):
         raise ValueError("Time points are not unique")
 
@@ -180,9 +180,9 @@ def _validate_outcome_dataframe(df, check_unique_timepoints=True):
     if "time" not in df.columns:
         raise ValueError("Missing 'time' column")
     if "value" not in df.columns:
-        raise ValueError("No 'value' column")
+        raise ValueError("Missing 'value' column")
     if len(df.columns) != 2:
-        raise ValueError("Outcome DataFrames must have exactly two columns, 'time' and 'value'")
+        raise ValueError("Outcome DataFrames must have exactly two columns: 'time' and 'value'")
     if check_unique_timepoints:
         if df["time"].nunique() != len(df):
             raise ValueError("Time points are not unique")
