@@ -2,7 +2,6 @@
 from subprocess import CompletedProcess
 import pandas as pd
 from daisypy.optim.file_generator import FileGenerator
-from daisypy.optim.objective_evaluation import ObjectiveEvaluation
 
 class MockFileGenerator(FileGenerator):
     '''Mock file generator that always generates the paths it was constructed with'''
@@ -39,19 +38,16 @@ class MockProblem:
         self.objective_fn = objective_fn
 
     def __call__(self, parameter_values):
-        return self.evaluate(parameter_values).objectives
-
-    def evaluate(self, parameter_values):
-        '''Evaluate objective and return ObjectiveEvaluation'''
+        '''Evaluate objective and return value and outcomes'''
         named_parameters = { p.name : value for p, value in zip(self.parameters, parameter_values) }
         objective_value = self.objective_fn(**named_parameters)
         prediction = pd.DataFrame({
             'time' : pd.to_datetime(['2000-01-01']),
             'value' : [objective_value]
         })
-        return ObjectiveEvaluation(
-            objectives={ 'mock' : objective_value },
-            predictions={ self.objective_fn.name : prediction }
+        return (
+            { self.objective_fn.name : objective_value },
+            { self.objective_fn.outcome_name : prediction }
         )
 
 class MockDataExtractor:

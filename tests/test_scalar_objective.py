@@ -56,5 +56,5 @@ def test_scalar_objective_rejects_missing_target_column():
         'other' : [1.0, 3.0]
     })
 
-    with pytest.raises(ValueError, match='target must contain "missing" column'):
+    with pytest.raises(ValueError, match="Missing 'missing' column"):
         ScalarObjective('objective', target, 'missing', 'prediction',  mse)

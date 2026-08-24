@@ -9,11 +9,12 @@ from daisypy.optim import (
 )
 from .mockup import MockProblem
 
-class Objective:
+class Objective():
     # pylint: disable=too-few-public-methods
-    '''Negative sum of arguments'''
+    '''Negative value of outcome'''
     def __init__(self, name):
         self.name = name
+        self.outcome_name = "outcome"
         self.target = pd.DataFrame({
             'time' : pd.to_datetime(['2000-01-01']),
             'value' : [42]
@@ -70,18 +71,18 @@ def test_sequential_optimizer(capsys):
             result = optimizer.optimize()
         with open(os.path.join(out_dir, 'samples.csv'), 'r', encoding='utf-8') as in_file:
             for expected, row in zip(expected_samples_log, in_file, strict=True):
-                assert expected == row.strip()
+                assert expected == row.strip(), "Samples mismatch"
         with open(os.path.join(out_dir, 'outcomes.csv'), 'r', encoding='utf-8') as in_file:
             outcome_rows = [row.strip() for row in in_file]
-        assert outcome_rows[0] == 'evaluation_id,step,objective_name,time,predicted_value'
-        assert outcome_rows[1] == '"0:0",0,"neg_sum","2000-01-01T00:00:00",0'
-        assert outcome_rows[-1] == '"3:0",3,"neg_sum","2000-01-01T00:00:00",-6.0'
+        assert outcome_rows[0] == 'evaluation_id,step,outcome_name,time,predicted_value'
+        assert outcome_rows[1] == '"0:0",0,"outcome","2000-01-01T00:00:00",0'
+        assert outcome_rows[-1] == '"3:0",3,"outcome","2000-01-01T00:00:00",-6.0'
         assert len(outcome_rows) == 12
         with open(os.path.join(out_dir, 'targets.csv'), 'r', encoding='utf-8') as in_file:
             target_rows = [row.strip() for row in in_file]
         assert target_rows == [
-            'objective_name,time,target_value',
-            '"neg_sum","2000-01-01T00:00:00",42'
+            'objective_name,outcome_name,time,target_value',
+            '"neg_sum","outcome","2000-01-01T00:00:00",42'
         ]
 
     captured = capsys.readouterr()
