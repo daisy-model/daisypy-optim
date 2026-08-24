@@ -1,10 +1,9 @@
 # pylint: disable=too-few-public-methods,R0801
 from concurrent.futures import ProcessPoolExecutor
 import numpy as np
-from .outcome_logging import log_outcomes
-from .parameter import CategoricalParameter
-from .problem import ScalarProblemWrapper
-from .target_logging import log_targets
+from daisypy.optim.outcome_logging import log_outcomes
+from daisypy.optim.parameter import CategoricalParameter
+from daisypy.optim.target_logging import log_targets
 from daisypy.optim.util import get_single_scalar
 
 class DaisySequentialOptimizer:

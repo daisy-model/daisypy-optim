@@ -13,17 +13,17 @@ def sanitize_name(name):
     return ''.join(c if c.isalnum() or c in ('-', '_') else '-' for c in name)
 
 
-def _prepare_objective_data(data, objective_name, max_curves=None, targets=None):
+def _prepare_objective_data(data, outcome_name, max_curves=None, targets=None):
     '''Prepare grouped outcome data and run-based coloring metadata.'''
     # pylint: disable=too-many-locals
-    objective_data = data[data['objective_name'] == objective_name].copy()
+    objective_data = data[data['outcome_name'] == outcome_name].copy()
     objective_data['time'] = pd.to_datetime(objective_data['time'])
     grouped = list(objective_data.groupby('evaluation_id', sort=False))
     if max_curves is not None:
         grouped = grouped[:max_curves]
     target_data = None
     if targets is not None:
-        target_data = targets[targets['objective_name'] == objective_name].copy()
+        target_data = targets[targets['outcome_name'] == outcome_name].copy()
         if len(target_data) == 0:
             target_data = None
         else:
@@ -78,11 +78,11 @@ def _draw_target(ax, target_data):
         )
 
 
-def plot_objective_curves(data, objective_name, output_path=None, max_curves=None, targets=None):
+def plot_objective_curves(data, outcome_name, output_path=None, max_curves=None, targets=None):
     '''Plot all outcome curves for a single objective.'''
     # pylint: disable=too-many-locals
     grouped, _, color_lookup, cmap, norm, xlim, ylim, target_data = _prepare_objective_data(
-        data, objective_name, max_curves=max_curves, targets=targets
+        data, outcome_name, max_curves=max_curves, targets=targets
     )
 
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -98,7 +98,7 @@ def plot_objective_curves(data, objective_name, output_path=None, max_curves=Non
         )
 
     _draw_target(ax, target_data)
-    _style_axes(ax, f'{objective_name} outcome curves ({len(grouped)} evaluations)', xlim, ylim)
+    _style_axes(ax, f'{outcome_name} outcome curves ({len(grouped)} evaluations)', xlim, ylim)
     fig.colorbar(
         cm.ScalarMappable(norm=norm, cmap=cmap),
         ax=ax,
@@ -113,17 +113,17 @@ def plot_objective_curves(data, objective_name, output_path=None, max_curves=Non
 
 
 def animate_objective_curves(
-        data, objective_name, output_path=None, max_curves=None, fps=2, targets=None
+        data, outcome_name, output_path=None, max_curves=None, fps=2, targets=None
 ):
     '''Animate one run per frame, keeping the previous run visible with reduced alpha.'''
     # pylint: disable=too-many-locals, too-many-arguments, too-many-positional-arguments
     _, run_groups, color_lookup, cmap, norm, xlim, ylim, target_data = _prepare_objective_data(
-        data, objective_name, max_curves=max_curves, targets=targets
+        data, outcome_name, max_curves=max_curves, targets=targets
     )
     runs = sorted(run_groups)
 
     fig, ax = plt.subplots(figsize=(10, 5))
-    _style_axes(ax, f'{objective_name} run {runs[0]}', xlim, ylim)
+    _style_axes(ax, f'{outcome_name} run {runs[0]}', xlim, ylim)
     _draw_target(ax, target_data)
     fig.colorbar(
         cm.ScalarMappable(norm=norm, cmap=cmap),
@@ -152,7 +152,7 @@ def animate_objective_curves(
             draw_run(previous_run, alpha=alpha, linestyle='dashed', color='gray')
         draw_run(runs[frame], alpha=1.0)
         _draw_target(ax, target_data)
-        _style_axes(ax, f'{objective_name} run {runs[frame]}', xlim, ylim)
+        _style_axes(ax, f'{outcome_name} run {runs[frame]}', xlim, ylim)
 
     ani = animation.FuncAnimation(
         fig=fig,
@@ -218,24 +218,24 @@ def main():
     targets = pd.read_csv(targets_path) if (
         targets_path is not None and targets_path.exists()
     ) else None
-    objective_names = args.objectives
-    if objective_names is None:
-        objective_names = list(data['objective_name'].drop_duplicates())
+    outcome_names = args.objectives
+    if outcome_names is None:
+        outcome_names = list(data['outcome_name'].drop_duplicates())
 
     animations = []
-    for objective_name in objective_names:
+    for outcome_name in outcome_names:
         output_path = None
         if args.output is not None:
-            if len(objective_names) == 1:
+            if len(outcome_names) == 1:
                 output_path = args.output
             else:
                 output_path = args.output.with_name(
-                    f'{args.output.stem}-{sanitize_name(objective_name)}{args.output.suffix}'
+                    f'{args.output.stem}-{sanitize_name(outcome_name)}{args.output.suffix}'
                 )
         if args.animate:
             ani = animate_objective_curves(
                 data,
-                objective_name=objective_name,
+                outcome_name=outcome_name,
                 output_path=output_path,
                 max_curves=args.max_curves,
                 fps=args.fps,
@@ -246,7 +246,7 @@ def main():
         else:
             plot_objective_curves(
                 data,
-                objective_name=objective_name,
+                outcome_name=outcome_name,
                 output_path=output_path,
                 max_curves=args.max_curves,
                 targets=targets,

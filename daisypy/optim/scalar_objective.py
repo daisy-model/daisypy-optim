@@ -30,8 +30,8 @@ class ScalarObjective(Objective):
           Compute a scalar valued loss
 
         """
-        self.name = name
-        self.outcome_name = outcome_name
+        self._name = name
+        self._outcome_name = outcome_name
         if not isinstance(target, pd.DataFrame):
             target = pd.read_csv(target, sep=None, engine='python')
         check_dataframes(target)
@@ -60,5 +60,20 @@ class ScalarObjective(Objective):
           A dict of length 1 with the key `self.name` mapping to the objective value
         """
         return {
-            self.name : self._loss_fn(actual=outcomes[self.outcome_name], target=self._target)
+            self._name : self._loss_fn(actual=outcomes[self._outcome_name], target=self._target)
         }
+
+    @property
+    def target(self):
+        """The target as a pandas.DataFrame with keys 'time' and 'value'"""
+        return self._target
+
+    @property
+    def name(self):
+        """Name of the objective"""
+        return self._name
+
+    @property
+    def outcome_name(self):
+        """Name of the outcome"""
+        return self._outcome_name

@@ -32,7 +32,7 @@ class DaisyOptimizationProblem:
         outcome_specs : {str : {"inputs" : (str, str, [str]), "function" : [pd.Series] -> float}}
           A dict with named outcomes.
 
-        objective_fn : Callable [{str : pandas.DataFrame}] -> {str : float}
+        objective_fn : daisypy.optim.Objective
           An objective function that computes one or more named objective values from a dict of
           named DataFrames.
 

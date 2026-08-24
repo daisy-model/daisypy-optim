@@ -18,3 +18,21 @@ class Objective(ABC):
         { str : float }
           A dict with named objective values
         """
+
+    @property
+    @abstractmethod
+    def name(self):
+        """The name of the objective
+        """
+
+    @property
+    @abstractmethod
+    def outcome_name(self):
+        """The name of the outcome
+        """
+
+    @property
+    @abstractmethod
+    def target(self):
+        """The target used in the objective
+        """
