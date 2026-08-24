@@ -13,19 +13,22 @@ from daisypy.optim import (
     DefaultLogger,
     OutputSpec,
     OutcomeSpec,
-    Simulation
+    PostProcessor,
+    Simulation,
 )
 
-# We use the multiprocessing module, which uses pickle, so we cannot use local functions
+# We want to optimize the sum of squared distance.
+# We use the multiprocessing module, which uses pickle, so we cannot use local functions.
 def ssd(actual, target):
     '''Sum of squared distance loss function'''
     return ((actual - target)**2).sum()
 
-class SquareOutcome:
+class SquareOutcome(PostProcessor):
     # pylint: disable=too-few-public-methods
     """Post-process function that squares an outcome
 
-    See daisypy.optim.post_processor.PostProcessor for more details
+    See daisypy.optim.post_processor.PostProcessor for the interface and
+    daisypy.optim.post_processors.Aggregate for a more complicated exampele.
     """
     def __init__(self, outcome_name):
         """
@@ -141,12 +144,6 @@ def run(daisy_path):
         data_dir=out_dir / 'data_dir',
         debug=True
     )
-
-    # 5. Setup a logger
-    # We use DefaultLogger that logs parameter distributions and sampled parameters to csv files
-    log_dir = out_dir / 'logs'
-    logger = DefaultLogger(log_dir)
-
 
     # 5. Setup a logger
     # We use DefaultLogger that logs parameter distributions and sampled parameters to csv files
