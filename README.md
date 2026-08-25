@@ -29,12 +29,4 @@ pip install daisypy-optim[ax]
 Note that the Bayesian optimizers pulls in a lot of dependencies.
 
 ## Examples
-There are several examples illustrating how to optimize parameters in various situations. They all share a common structure
-
-1. Setup a `DaisyRunner` that knows how to run Daisy
-2. Setup a `FileGenerator` that can generate `.dai` and `.py`
-3. Define the parameters that should be optimized for
-4. Define the objective that should be optimized
-5. Setup and run an optimizer
-
-See [doc/examples](doc/examples) for an overview of the examples.
+There are several examples illustrating how to optimize parameters in various situations. See [doc/examples](doc/examples) for an overview of the examples.
