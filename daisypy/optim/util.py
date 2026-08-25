@@ -1,5 +1,6 @@
 '''Utility functions'''
 from collections.abc import Sequence
+from string import Formatter
 import shutil
 import pandas as pd
 
@@ -10,6 +11,7 @@ __all__ = [
     "check_outcomes",
     "check_target",
     "get_single_scalar",
+    "StrictFormatter",
     ]
 
 def flatten(xs, f=None):
@@ -210,3 +212,24 @@ def get_single_scalar(mapping):
     if not isinstance(value, (int, float)):
         raise ValueError("Expected a scalar value")
     return value
+
+
+class StrictFormatter(Formatter):
+    """Strict string formatting that fails if not all arguments are used for formatting
+
+    Usage
+    -----
+      formatter = StrictFormatter()
+      formatted = formatter.format(format_string, , /, *args, **kwargs)
+    """
+    def check_unused_args(self, used_args, args, kwargs):
+        """Check if any arguments are unused
+
+        Raises
+        ------
+        ValueError if there are unused arguments
+        """
+        potential_args = set(range(len(args))) | set(kwargs.keys())
+        unused_args = potential_args - used_args
+        if len(unused_args) > 0:
+            raise ValueError(f"There are unusued format arguments: {unused_args}")

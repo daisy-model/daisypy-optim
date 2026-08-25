@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
-from .file_generator import FileGenerator
+from daisypy.optim.file_generator import FileGenerator
+from daisypy.optim.util import StrictFormatter
 
 class PyFileGenerator(FileGenerator):
     """Template based generation of python files using string replacement
@@ -33,6 +34,7 @@ class PyFileGenerator(FileGenerator):
         sub_dir : str or None
           If not None generate files in this subdirectory otherwise generate in root of outdir
         """
+        self._formatter = StrictFormatter()
         self.out_file = out_file
         self.sub_dir = Path("." if sub_dir is None else sub_dir)
         # Verify that it is an actual sub dir. Will throw ValueError if not
@@ -72,7 +74,7 @@ class PyFileGenerator(FileGenerator):
         output_directory = (Path(output_directory) / self.sub_dir).resolve()
         output_directory.mkdir(parents=True, exist_ok=True)
         out_path = output_directory / self.out_file
-        py_string = self.template_text.format(**params)
+        py_string = self._formatter.format(self.template_text, **params)
         with open(out_path, "w", encoding='utf-8') as f:
             f.write(py_string)
         if tagged:

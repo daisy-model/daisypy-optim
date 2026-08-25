@@ -1,9 +1,11 @@
+# pylint: disable=R0801
 import os
 import warnings
 from pathlib import Path
 from daisypy.io import parse_dai, format_dai, filter_dai
 from daisypy.io.dai import Definition, Comment, Identifier
-from .file_generator import FileGenerator
+from daisypy.optim.file_generator import FileGenerator
+from daisypy.optim.util import StrictFormatter
 
 class DaiFileGenerator(FileGenerator):
     """Template based generation of dai files using string replacement
@@ -34,6 +36,7 @@ class DaiFileGenerator(FileGenerator):
         sub_dir : str or None
           If not None generate files in this subdirectory otherwise generate in root of outdir
         """
+        self._formatter = StrictFormatter()
         self.out_file = out_file
         self.sub_dir = Path("." if sub_dir is None else sub_dir)
         # Verify that it is an actual sub dir. Will throw ValueError if not
@@ -84,7 +87,7 @@ class DaiFileGenerator(FileGenerator):
         output_directory = (Path(output_directory) / self.sub_dir).resolve()
         output_directory.mkdir(parents=True, exist_ok=True)
         out_path = output_directory / self.out_file
-        dai_string = self.template_text.format(**params)
+        dai_string = self._formatter.format(self.template_text, **params)
         with open(out_path, "w", encoding='utf-8') as f:
             f.write(dai_string)
         if tagged:

@@ -1,7 +1,7 @@
 # pylint: disable=missing-function-docstring
 import pandas as pd
 import pytest
-from daisypy.optim.util import check_target, check_outcomes, merge_outcomes
+from daisypy.optim.util import StrictFormatter, check_target, check_outcomes, merge_outcomes
 
 
 def test_check_target_valid():
@@ -34,7 +34,7 @@ def test_check_target_non_unique_timepoints():
     })
     with pytest.raises(ValueError, match="Time points are not unique"):
         check_target(df, 'a')
-        
+
 
 def test_check_outcomes_single_valid():
     outcomes = {
@@ -60,8 +60,8 @@ def test_check_outcomes_multiple_valid():
             'value' : [5.0, 6.0],
         })
     }
-    check_outcomes(outcomes)    
-    
+    check_outcomes(outcomes)
+
 def test_check_outcomes_missing_time():
     outcomes = {
         'a' : pd.DataFrame({
@@ -94,8 +94,8 @@ def test_check_outcomes_extra_column():
             ValueError,
             match="Outcome DataFrames must have exactly two columns: 'time' and 'value'"):
         check_outcomes(outcomes)
-        
-    
+
+
 def test_check_outcomes_mismatched_time_points():
     outcomes = {
         'a' : pd.DataFrame({
@@ -124,7 +124,7 @@ def test_merge_outcomes_single_valid():
         "a" : [1.0, 2.0],
     })
     pd.testing.assert_frame_equal(df, expected)
-        
+
 def test_merge_outcomes_multiple_valid():
     outcomes = {
         'a' : pd.DataFrame({
@@ -148,3 +148,12 @@ def test_merge_outcomes_multiple_valid():
         "c" : [5.0, 6.0]
     })
     pd.testing.assert_frame_equal(df, expected)
+
+
+def test_strict_formatter_rejects_unused_arguments():
+    formatter = StrictFormatter()
+
+    assert formatter.format('{a}-{b}', a='left', b='right') == 'left-right'
+
+    with pytest.raises(ValueError, match='unusued format arguments'):
+        formatter.format('{a}', a='left', b='right')
