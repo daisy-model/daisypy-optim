@@ -3,11 +3,11 @@ import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from ax.api.client import Client
-from .ax import daisy_param_to_ax_param
-from .multi_objective import MultiObjective
-from .outcome_logging import log_outcomes
-from .target_logging import log_targets
-from .util import get_single_scalar
+from daisypy.optim.ax import daisy_param_to_ax_param
+from daisypy.optim.multi_objective import MultiObjective
+from daisypy.optim.outcome_logging import log_outcomes
+from daisypy.optim.target_logging import log_targets
+from daisypy.optim.util import get_single_scalar
 
 @dataclass
 class AxResult:
@@ -47,7 +47,7 @@ class DaisyAxOptimizer:
         # TODO: Assumes we minimize
         self.multi_objective = isinstance(problem.objective_fn, MultiObjective)
         if self.multi_objective:
-            objective_str = ','.join([f'-{f.name}' for f in problem.objective_fn.objective_fns])
+            objective_str = ','.join([f'-{f.name}' for f in problem.objective_fn.objectives])
         else:
             objective_str = f'-{problem.objective_fn.name}'
         self.client.configure_optimization(objective=objective_str)

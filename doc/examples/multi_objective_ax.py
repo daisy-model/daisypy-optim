@@ -4,24 +4,27 @@ import argparse
 from pathlib import Path
 import pandas as pd
 from daisypy.optim import (
-    DaiFileGenerator,
-    DlfDataExtractor,
-    ScalarObjective,
-    MultiObjective,
-    DaisyOptimizationProblem,
-    DaisyAxOptimizer,
     ContinuousParameter,
+    DaiFileGenerator,
+    DaisyAxOptimizer,
+    DaisyOptimizationProblem,
     DaisyRunner,
-    DefaultLogger
+    DefaultLogger,
+    MultiObjective,
+    OutputSpec,
+    ScalarObjective,
+    Simulation,
 )
 
 # We use the multiprocessing module, which uses pickle, so we cannot use local functions for loss
 # functions and aggregate functions
+
 def mse(actual, target):
     """Mean squared error"""
     return ((actual - target)**2).mean()
 
-def multi_objective_ax(daisy_path):
+
+def run(daisy_path):
     '''Multi objective optimization using DaisyAxOptimizer'''
     base_dir = Path(__file__).parent
     out_dir = base_dir / 'out' / 'multi-objective-ax'
@@ -31,8 +34,9 @@ def multi_objective_ax(daisy_path):
     runner = DaisyRunner(daisy_path)
 
     # 1. Setup the dai file generator
-    dai_template = data_dir / 'template.dai'
-    dai_file_generator = DaiFileGenerator(template_file_path=dai_template)
+    file_generators = {
+        'dai' : DaiFileGenerator('run.dai', template_file_path=data_dir / 'template.dai')
+    }
 
     # 2. Define the parameters that we will optimize
     # Names of parameters should match the names in the template file
@@ -46,41 +50,50 @@ def multi_objective_ax(daisy_path):
 
     # 3. Define the objective
     # We have three scenarios. These where generated with
-    # Askov    : temp_offset =  0 (366 samples
+    # Askov    : temp_offset =  0 (366 samples)
     # Jyndevad : temp_offset = -2 (307 samples)
     # Foulum   : temp_offset =  2 (215 samples)
-    scenarios = [ 'askov', 'jyndevad', 'foulum' ]
-    targets = { name : pd.read_csv(data_dir / f'target-{name}.csv') for name in scenarios }
-    target_names = { k : 'Leaching' for k in scenarios }
+    scenarios = ['askov', 'jyndevad', 'foulum']
+    targets = {name : pd.read_csv(data_dir / f'target-{name}.csv') for name in scenarios}
 
-    # The logs do not have to be the same
-    log_names = { k : f'{k}/field_nitrogen.dlf' for k in scenarios }
+    outputs = {
+        name : OutputSpec(f'{name}/field_nitrogen.dlf', 'Matrix-Leaching')
+        for name in scenarios
+    }
 
-    # The variables also dont have to be the same
-    variables = { k : 'Matrix-Leaching' for k in scenarios }
+    simulations = {
+        'sim' : Simulation(file_generators, outputs)
+    }
 
-    # And the losses do not have to be the same
-    losses = { k : mse for k in scenarios }
+    outcome_specs = {
+        name : ('sim', name, 'Matrix-Leaching')
+        for name in scenarios
+    }
+
     objective_fns = [
         ScalarObjective(
-            name,
-            DlfDataExtractor({log_names[name] : variables[name]}),
-            targets[name],
-            target_names[name],
-            losses[name]
+            name=name,
+            target=targets[name],
+            target_col='Leaching',
+            outcome_name=name,
+            loss_fn=mse
         ) for name in scenarios
     ]
     objective = MultiObjective('multi', objective_fns)
-
 
     # 4. Wrap everything as an optimization problem
     # Normally we would not set data_dir and we would set debug = False,
     # but here we set them so we can inspect the output.
     # If debug = False, then outputs are deleted as soon as the optimizer is done with them
-    out_data_dir = out_dir / 'data_dir'
-    debug = True
     problem = DaisyOptimizationProblem(
-        runner, dai_file_generator, objective, parameters, out_data_dir, debug
+        runner,
+        simulations,
+        outcome_specs,
+        {},
+        objective,
+        parameters,
+        data_dir=out_dir / 'data_dir',
+        debug=True
     )
 
     # 5. Setup a logger
@@ -90,11 +103,11 @@ def multi_objective_ax(daisy_path):
 
     # 6. Setup an optimizer
     options = {
-        "max_trials" : 25,
-        "max_trials_iteration" : 3
+        'max_trials' : 25,
+        'max_trials_iteration' : 3
     }
     optimizer = DaisyAxOptimizer(problem, logger, options)
-    assert optimizer.multi_objective, "Optimizer is not multi objective"
+    assert optimizer.multi_objective, 'Optimizer is not multi objective'
 
     # 7. Run the optimizer
     results = optimizer.optimize()
@@ -108,9 +121,8 @@ def multi_objective_ax(daisy_path):
         print('--------------------------------------------------------------------------------')
 
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('daisy_path', type=str, help='Path to daisy binary')
     args = parser.parse_args()
-    multi_objective_ax(args.daisy_path)
+    run(args.daisy_path)
