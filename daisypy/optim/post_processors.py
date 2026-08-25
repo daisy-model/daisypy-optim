@@ -39,5 +39,5 @@ class AggregateOutcomes(PostProcessor):
         merged = merge_outcomes(outcomes)
         return pd.DataFrame({
             "time" : merged["time"],
-            "value" : merged.aggregate(self.aggregate_fn, axis="columns")
+            "value" : merged.drop(columns=["time"]).aggregate(self.aggregate_fn, axis="columns")
         })
