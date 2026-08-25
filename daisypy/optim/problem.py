@@ -93,7 +93,7 @@ class DaisyOptimizationProblem:
           Triple of dicts, the first dict holds named objective values, the second dict holds named
           outcomes, the third dicts holds errors for each simulation
         """
-        named_parameters = { 'dai' : {} }
+        named_parameters = { 'runfile' : {} }
         for p, value in zip(self.parameters, parameter_values):
             kind = self.parameter_kind[p.name]
             if kind not in named_parameters:

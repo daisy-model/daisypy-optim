@@ -84,7 +84,7 @@ class DaisyCMAOptimizer:
 
     def optimize(self):
         '''Run the optimizer'''
-        # pylint: disable=too-many-locals
+        # pylint: disable=too-many-locals,too-many-statements
         max_attempts_to_get_feasible = 3
         # TODO: Implement logging + checkpointing every n'th step
         total_f_evals = 0

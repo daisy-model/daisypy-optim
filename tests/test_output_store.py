@@ -1,6 +1,5 @@
 # pylint: disable=missing-function-docstring
 import pandas as pd
-import pytest
 from daisypy.optim.output_store import OutputStore
 
 def test_output_store_insert_and_extract():

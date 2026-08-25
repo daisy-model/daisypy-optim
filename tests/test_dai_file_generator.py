@@ -31,7 +31,9 @@ def test_not_tagged(tmp_path):
 
 def test_sub_dir(tmp_path):
     template_path = Path(__file__).parent / 'templates' / 'template.dai'
-    generator = DaiFileGenerator('linear.dai', template_file_path=template_path, sub_dir='nested/dai')
+    generator = DaiFileGenerator(
+        'linear.dai', template_file_path=template_path, sub_dir='nested/dai'
+    )
     file_path = Path(generator(tmp_path, {'dai' : PARAMS})['dai'])
     assert file_path == tmp_path / 'nested' / 'dai' / 'linear.dai'
     assert file_path.read_text(encoding='utf-8') == EXPECTED

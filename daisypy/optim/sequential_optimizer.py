@@ -68,7 +68,7 @@ class DaisySequentialOptimizer:
 
     def optimize(self):
         '''Run optimization'''
-        # pylint: disable=too-many-locals,too-many-statements
+        # pylint: disable=too-many-locals,too-many-statements,too-many-branches
         # Recall that we are working with categorical parameters, so there is no sampling of new
         # parameters.
         step = 0
@@ -141,7 +141,9 @@ class DaisySequentialOptimizer:
                 num_failures = 0
                 # executor.map runs the problems in parallel and yields results in order matching
                 # param_sets.
-                for i, (objective, outcomes, errors) in enumerate(executor.map(self.problem, param_sets)):
+                for i, (objective, outcomes, errors) in enumerate(
+                        executor.map(self.problem, param_sets)
+                ):
                     if len(errors) > 0:
                         # One or more simulations failed, so we cannot trust the objective or the
                         # outcomes. We log the error, increment the error count and continue with

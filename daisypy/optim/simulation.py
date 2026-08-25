@@ -49,7 +49,7 @@ class Simulation:
         # TODO: We could have a situation where we only want to optimize parameters for a python
         # function. Then it would be nice to have an interface where we just copy the dai file as
         # static data.
-        assert "dai" in file_generators, "There must be a generated dai file"
+        assert "runfile" in file_generators, "There must be a generated runfile"
         self._generators = file_generators
         self.outputs = outputs
         self._static_data = [] if static_data is None else static_data
@@ -103,12 +103,12 @@ class Simulation:
         path to simulation file
         """
         assert params.keys() == self._generators.keys(), \
-            "Keys in params must match generator names exactly"
+            f"Keys in params must match generator names exactly\n\n{list(params.keys())}\n\n{list(self._generators.keys())}"
         output_directory = Path(output_directory)
 
         # Update root dir of outputs
         self.outputs = {
-            k : OutputSpec(o.log, o.var, o._sub_dir, output_directory)
+            k : OutputSpec(o.log, o.var, o.sub_dir, output_directory)
             for k, o in self.outputs.items()
         }
 
@@ -124,4 +124,4 @@ class Simulation:
         for gen_name, gen_params in params.items():
             paths[gen_name] = self._generators[gen_name](output_directory, gen_params, False)
 
-        return paths["dai"]
+        return paths["runfile"]

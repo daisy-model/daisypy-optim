@@ -1,4 +1,4 @@
-# pylint: disable=relative-beyond-top-level
+# pylint: disable=relative-beyond-top-level,invalid-name,too-few-public-methods,super-init-not-called
 import os
 import tempfile
 import pytest
@@ -12,7 +12,6 @@ from daisypy.optim import (
 from .mockup import MockProblem, MockError
 
 class Objective(ScalarObjective):
-    # pylint: disable=too-few-public-methods
     '''Negative value of outcome'''
     def __init__(self, name):
         self.name = name
@@ -27,7 +26,7 @@ class Objective(ScalarObjective):
 
 class ProblemFailAfterN:
     '''Problem that fails after the initial evaluation
-    This does not work as expected fir N > 1, probably because each new problem is run with a copy
+    This does not work as expected for N > 1, probably because each new problem is run with a copy
     of the initial problem, not a copy of the "latest" problem. It is a test problem, not an
     implementation problem
     '''
@@ -130,7 +129,7 @@ def test_sequential_optimizer(capsys):
     assert result['c']['best'] == 3
 
 
-def test_sequential_optimizer_initial_sim_fails(capsys):
+def test_sequential_optimizer_initial_sim_fails():
     '''Test that sequential optimizer handles initial sim failing'''
     # pylint: disable=too-many-locals
     parameters = [

@@ -1,3 +1,4 @@
+# pylint: disable=use-implicit-booleaness-not-comparison
 from daisypy.optim import (
     DaisyOptimizationProblem,
     ContinuousParameter,
@@ -32,7 +33,7 @@ def test_runner_fails(tmp_path):
     '''Test that the return value is nan when the runner fails'''
     file_generators = { "dai" : MockFileGenerator('') }
     output_specs = {}
-    simulations = { "mock-sim" : Simulation(file_generators, output_specs) }    
+    simulations = { "mock-sim" : Simulation(file_generators, output_specs) }
     outcome_specs = {}
     post_processing = {}
     runner = MockRunner(returncode=1)
@@ -53,7 +54,7 @@ def test_multi_objective(tmp_path):
     output_specs = {}
     simulations = { "mock-sim" : Simulation(file_generators, output_specs) }
     outcome_specs = {}
-    post_processing = {}    
+    post_processing = {}
     runner = MockRunner()
     parameters = { 'dai' : [ContinuousParameter('p', 0, (-1, 1))] }
     out_dir = tmp_path

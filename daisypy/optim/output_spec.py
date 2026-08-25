@@ -35,13 +35,13 @@ class OutputSpec:
         """
         self.log = Path(log)
         self.var = var if isinstance(var, list) else [var]
-        self._sub_dir = Path("." if sub_dir is None else sub_dir)
+        self.sub_dir = Path("." if sub_dir is None else sub_dir)
         self._root = Path("/" if root is None else root)
         assert not self.log.is_absolute(), "log MUST be a relative path"
-        assert not self._sub_dir.is_absolute(), "sub_dir MUST be a relative path"
+        assert not self.sub_dir.is_absolute(), "sub_dir MUST be a relative path"
         # Verify that the sub_dir path is not pointing to a directory above, e.g. a/../../"
         # In that case Path. relative_to will throw a ValueError when walk_up=False
-        self._sub_dir.resolve().relative_to(Path.cwd(), walk_up=False)
+        self.sub_dir.resolve().relative_to(Path.cwd(), walk_up=False)
         assert self._root.is_absolute(), "root MUST be absolute"
 
     def path(self):
@@ -51,7 +51,7 @@ class OutputSpec:
         -------
         Path
         """
-        return self._root / self._sub_dir / self.log
+        return self._root / self.sub_dir / self.log
 
     def __repr__(self):
         return repr((self.path(), self.var))

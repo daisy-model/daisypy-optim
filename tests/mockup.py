@@ -5,6 +5,7 @@ from daisypy.optim.file_generator import FileGenerator
 from daisypy.optim import ScalarObjective
 
 class MockError:
+    """Mock error looking like a CompletedProcess"""
     def __init__(self, returncode=1, msg="FAIL"):
         self.returncode = returncode
         self.msg = msg
@@ -36,6 +37,7 @@ class MockRunner:
 class MockObjective(ScalarObjective):
     '''Mock objective always returning a specific value'''
     def __init__(self, name="mock", value=0):
+        # pylint: disable=super-init-not-called
         self.name = name
         self.outcome_name = "MockObjective.outcome"
         self.target = pd.DataFrame({
