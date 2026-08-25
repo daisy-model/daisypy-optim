@@ -10,8 +10,9 @@ from .mockup import (MockRunner, MockFileGenerator, MockObjective)
 def test_runner_succeds(tmp_path):
     '''Test that the return value is as expected when the runner succeds'''
     file_generators = { "dai" : MockFileGenerator('') }
+    output_specs = {}
+    simulations = { "mock-sim" : Simulation(file_generators, output_specs) }
     outcome_specs = {}
-    simulations = { "mock-sim" : Simulation(file_generators, outcome_specs) }
     post_processing = {}
     runner = MockRunner()
     parameters = { 'dai' : [ContinuousParameter('p', 0, (-1, 1))] }
@@ -30,8 +31,9 @@ def test_runner_succeds(tmp_path):
 def test_runner_fails(tmp_path):
     '''Test that the return value is nan when the runner fails'''
     file_generators = { "dai" : MockFileGenerator('') }
+    output_specs = {}
+    simulations = { "mock-sim" : Simulation(file_generators, output_specs) }    
     outcome_specs = {}
-    simulations = { "mock-sim" : Simulation(file_generators, outcome_specs) }
     post_processing = {}
     runner = MockRunner(returncode=1)
     parameters = { 'dai' : [ContinuousParameter('p', 0, (-1, 1))] }
@@ -47,7 +49,11 @@ def test_runner_fails(tmp_path):
 
 def test_multi_objective(tmp_path):
     '''Test that the return value is as expected for multiple objectives'''
-    file_generator = { "dai" : MockFileGenerator('') }
+    file_generators = { "dai" : MockFileGenerator('') }
+    output_specs = {}
+    simulations = { "mock-sim" : Simulation(file_generators, output_specs) }
+    outcome_specs = {}
+    post_processing = {}    
     runner = MockRunner()
     parameters = { 'dai' : [ContinuousParameter('p', 0, (-1, 1))] }
     out_dir = tmp_path
@@ -55,8 +61,8 @@ def test_multi_objective(tmp_path):
     objective = MultiObjective('multi', objectives)
 
     problem = DaisyOptimizationProblem(
-        runner, file_generator, objective, parameters, out_dir
+        runner, simulations, outcome_specs, post_processing, objective, parameters, out_dir
     )
-    result = problem([0])
+    objective_values = problem([0])[0]
     for obj in objectives:
-        assert result[obj.name] == obj.value
+        assert objective_values[obj.name] == obj.value

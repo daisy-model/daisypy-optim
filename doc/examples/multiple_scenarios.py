@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from daisypy.optim import (
-    AggregateObjective,
+    MultiObjective,
     ContinuousParameter,
     DaiFileGenerator,
     DaisyOptimizationProblem,
@@ -127,7 +127,7 @@ def run(daisy_path):
     # var_weights /= var_weights.sum()
 
     aggregate_fn = WeightedAverage(weights)
-    objective = AggregateObjective('aggregated', objective_fns, aggregate_fn)
+    objective = MultiObjective('aggregated', objective_fns, aggregate_fn)
 
     # 4. Wrap everything as an optimization problem
     # Normally we would not set data_dir and we would set debug = False,

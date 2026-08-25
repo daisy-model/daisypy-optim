@@ -1,86 +1,58 @@
-from collections.abc import Sequence
-from .objective_evaluation import ObjectiveEvaluation
-from .util import flatten
+from daisypy.optim.objective import Objective
 
-class MultiObjective(Sequence):
-    '''Objective that computes several objectives.'''
+class MultiObjective(Objective):
+    # pylint: disable=too-few-public-methods
+    '''Simple wrapper for computing multiple objectives.
 
-    def __init__(self, name, objective_fns):
+    Attributes
+    ----------
+    name : str
+      Name of objective
+
+    objectives : [daispy.optim.objective.Objective]
+      List of objectives to compute
+    '''
+
+    def __init__(self, name, objectives, aggregate_fn=None):
         '''
         Parameters
         ----------
-        name : str
-          Name of objective
+        objectives : [daispy.optim.objective.Objective]
+          List of objectives. Each objective is passed the outcomes and is expected to return named
+          scalar objective value(s). Names are assumed unique.
 
-        objective_fns : list of Callable[[str], float]
-          List of objective functions. Each objective function is passed the
-          path to a daisy output directory and is expected to return a named scalar objective,
-          optionally via an ``evaluate`` method that also exposes predictions.
+        aggregate_fn : Callable[[dict of [str, float]], float] or None
+          Optional function that aggregates the computed objectives. It should map a dict of named
+          objective values to a single scalar.
         '''
         self.name = name
-        self.objective_fns = objective_fns
+        self.objectives = objectives
+        self._aggregate_fn = aggregate_fn
 
-    def __call__(self, daisy_output_directory):
-        """Compute only the scalar objective map."""
-        return self.evaluate(daisy_output_directory).objectives
-
-    def evaluate(self, daisy_output_directory):
-        '''Compute the objectives and collect extracted predictions.
+    def __call__(self, outcomes):
+        """Compute all objectives and aggregate if an aggregation function was provided
 
         Parameters
         ----------
-        daisy_output_directory : str
-          Path to daisy ouput directory that is used when calling the objective functions
+        outcomes : { str : pandas.DataFrame }
+          A dict of named DataFrames. Each DataFrame has a "time" column with unique timestamps and
+          a "value" column with values.
 
         Returns
         -------
-        ObjectiveEvaluation
-          Structured result containing all scalar objectives and any predictions exposed by the
-          child objective functions.
-        '''
-        objectives = {}
-        predictions = {}
-        for objective_fn in self.objective_fns:
-            if hasattr(objective_fn, 'evaluate'):
-                evaluation = objective_fn.evaluate(daisy_output_directory)
-            else:
-                evaluation = ObjectiveEvaluation(objectives=objective_fn(daisy_output_directory))
-            objectives.update(evaluation.objectives)
-            predictions.update(evaluation.predictions)
-        return ObjectiveEvaluation(objectives=objectives, predictions=predictions)
+        { str : float }
+          A dict with named objective values
 
-    def __getitem__(self, index):
-        return self.objective_fns[index]
-
-    def __len__(self):
-        return len(self.objective_fns)
-
-    @property
-    def variable_name(self):
-        '''Names of variables used in aggregated objectives
-
-        Returns
-        -------
-        list of str
-        '''
-        return flatten(self.objective_fns, lambda x : x.variable_name)
-
-    @property
-    def target(self):
-        '''Targets used on aggregated objectives
-
-        Returns
-        -------
-        list of pandas.DataFrame
-        '''
-        return flatten(self.objective_fns, lambda x : x.target)
-
-    @property
-    def log_name(self):
-        '''Names of Daisy log files used in aggregated objectives
-
-        Returns
-        -------
-        list of str
-        '''
-        return flatten(self.objective_fns, lambda x : x.log_name)
+        Raises
+        ------
+        ValueError if objective value names are not unique
+        """
+        objective_values = {}
+        for objective in self.objectives:
+            for k, v in objective(outcomes).items():
+                if k in objective_values:
+                    raise ValueError(f"Objective names must be unique: '{k}'")
+                objective_values[k] = v
+        if self._aggregate_fn is not None:
+            return { self.name : self._aggregate_fn(objective_values) }
+        return objective_values
