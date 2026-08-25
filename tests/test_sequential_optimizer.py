@@ -7,10 +7,11 @@ from daisypy.optim import (
     CategoricalParameter,
     DefaultLogger,
     DaisySequentialOptimizer,
+    ScalarObjective
 )
 from .mockup import MockProblem, MockError
 
-class Objective():
+class Objective(ScalarObjective):
     # pylint: disable=too-few-public-methods
     '''Negative value of outcome'''
     def __init__(self, name):
@@ -62,6 +63,7 @@ def test_sequential_optimizer(capsys):
     # pylint: disable=too-many-locals
     expected_samples_log = [
         'step,index,tag,metric_neg_sum,param_a,param_b,param_c',
+        '0,0,"raw",0,0,0,0',
         '1,0,"raw",-1.0,1.0,0.0,0.0',
         '1,1,"raw",-1.0,0.0,1.0,0.0',
         '1,2,"raw",-2.0,0.0,2.0,0.0',

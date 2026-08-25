@@ -2,6 +2,7 @@
 from subprocess import CompletedProcess
 import pandas as pd
 from daisypy.optim.file_generator import FileGenerator
+from daisypy.optim import ScalarObjective
 
 class MockError:
     def __init__(self, returncode=1, msg="FAIL"):
@@ -32,7 +33,7 @@ class MockRunner:
     def __call__(self, dai_file, output_directory):
         return CompletedProcess(self.args, self.returncode)
 
-class MockObjective:
+class MockObjective(ScalarObjective):
     '''Mock objective always returning a specific value'''
     def __init__(self, name="mock", value=0):
         self.name = name

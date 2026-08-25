@@ -98,6 +98,18 @@ class DaisySequentialOptimizer:
                 )
             raise RuntimeError("Initial simulation failed")
         current_fval = get_single_scalar(objective)
+        # Log samples
+        objective_value = { f'metric_{k}' : v for k,v in objective.items() }
+        params = {
+            f'param_{name}' : current[name] for name in order
+        }
+        self.logger.samples(
+            step=0,
+            index=0,
+            tag="raw",
+            **objective_value,
+            **params
+        )
         log_outcomes(self.logger, outcomes, step=0, index=0)
         if np.isnan(current_fval):
             self.logger.error('Initial parameters failed, aborting')
