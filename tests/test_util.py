@@ -155,5 +155,5 @@ def test_strict_formatter_rejects_unused_arguments():
 
     assert formatter.format('{a}-{b}', a='left', b='right') == 'left-right'
 
-    with pytest.raises(ValueError, match='unusued format arguments'):
+    with pytest.raises(ValueError, match='unused format arguments'):
         formatter.format('{a}', a='left', b='right')

@@ -220,7 +220,7 @@ class StrictFormatter(Formatter):
     Usage
     -----
       formatter = StrictFormatter()
-      formatted = formatter.format(format_string, , /, *args, **kwargs)
+      formatted = formatter.format(format_string, /, *args, **kwargs)
     """
     def check_unused_args(self, used_args, args, kwargs):
         """Check if any arguments are unused
@@ -232,4 +232,4 @@ class StrictFormatter(Formatter):
         potential_args = set(range(len(args))) | set(kwargs.keys())
         unused_args = potential_args - used_args
         if len(unused_args) > 0:
-            raise ValueError(f"There are unusued format arguments: {unused_args}")
+            raise ValueError(f"There are unused format arguments: {unused_args}")
