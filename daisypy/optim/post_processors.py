@@ -35,8 +35,12 @@ class AggregateOutcomes(PostProcessor):
         -------
         pandas.DataFrame with columns "time" and "value"
         """
-        check_outcomes(outcomes)
-        merged = merge_outcomes(outcomes)
+        try:
+            outcomes_subset = { k : outcomes[k] for k in self.outcome_names }
+        except KeyError as e:
+            raise ValueError(f"`outcomes` does not contain '{e.args[0]}'") from e
+        check_outcomes(outcomes_subset)
+        merged = merge_outcomes(outcomes_subset)
         return pd.DataFrame({
             "time" : merged["time"],
             "value" : merged.drop(columns=["time"]).aggregate(self.aggregate_fn, axis="columns")

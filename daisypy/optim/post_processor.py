@@ -13,7 +13,7 @@ class PostProcessor(ABC):
         outcomes : { str : pandas.DataFrame }
           Dict of named outcomes. Each DataFrame has columns "time" and "value". It is the
           responsibility of the implementer to ensure that any operation on dataframes makes
-          sense. For exampl, that outcomes with different time stamps are not merged
+          sense. For example, that outcomes with different time stamps are not merged
           unintentionally.
 
         Returns
