@@ -58,15 +58,20 @@ class OutputStore(dict):
           in df may be in the existing DataFrame.
         """
         if not "time" in df:
-            raise ValueError("df MUST have a 'time' column")
+            raise ValueError("`df` MUST have a 'time' column")
+        if len(df) != df["time"].nunique():
+            raise ValueError("`df` MUST have unique timepoints")
         if not sim in self:
             self[sim] = { output : df }
         elif not output in self[sim]:
             self[sim][output] = df
         else:
             existing = self[sim][output]
-            if len(df) != len(existing) or not df["time"].isin(existing["time"]).all():
+            if len(df) != len(existing) or not existing["time"].isin(df["time"]).all():
                 raise ValueError(
-                    f"Time points in `df` do not match existing timepoints in {sim}/{output}"
+                    f"Timepoints in `df` do not match existing timepoints in '{sim}/{output}'"
                 )
+            col_overlap = set(existing.columns) & set(df.columns) - {"time"}
+            if len(col_overlap) != 0:
+                raise ValueError(f"Column(s) {col_overlap} already exists")
             self[sim][output] = pd.merge(existing, df, on="time")
