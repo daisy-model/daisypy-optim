@@ -35,5 +35,5 @@ class FileGenerator(ABC):
 
         Returns
         -------
-        The new new FileGenerator
+        The new FileGenerator
         """

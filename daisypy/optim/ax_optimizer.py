@@ -45,7 +45,8 @@ class DaisyAxOptimizer:
         self.client.configure_experiment(parameters=ax_parameters)
 
         # TODO: Assumes we minimize
-        self.multi_objective = isinstance(problem.objective_fn, MultiObjective)
+        self.multi_objective = (isinstance(problem.objective_fn, MultiObjective) and
+                                problem.objective_fn.aggregate_fn is None)
         if self.multi_objective:
             objective_str = ','.join([f'-{f.name}' for f in problem.objective_fn.objectives])
         else:

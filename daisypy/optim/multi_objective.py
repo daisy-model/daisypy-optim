@@ -27,7 +27,7 @@ class MultiObjective(Objective):
         '''
         self.name = name
         self.objectives = objectives
-        self._aggregate_fn = aggregate_fn
+        self.aggregate_fn = aggregate_fn
 
     def __call__(self, outcomes):
         """Compute all objectives and aggregate if an aggregation function was provided
@@ -53,6 +53,6 @@ class MultiObjective(Objective):
                 if k in objective_values:
                     raise ValueError(f"Objective names must be unique: '{k}'")
                 objective_values[k] = v
-        if self._aggregate_fn is not None:
-            return { self.name : self._aggregate_fn(objective_values) }
+        if self.aggregate_fn is not None:
+            return { self.name : self.aggregate_fn(objective_values) }
         return objective_values
