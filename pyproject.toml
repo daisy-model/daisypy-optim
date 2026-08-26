@@ -11,7 +11,7 @@ authors = [
   { name="Silas Nyboe Ørting", email="silas@di.ku.dk" },
 ]
 description = "Optimization framework for Daisy"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = "GPL-3.0-or-later"
 classifiers = [
     "Programming Language :: Python :: 3"
@@ -27,7 +27,6 @@ dynamic = ["version"]
 readme = "README.md"
 
 [project.scripts]
-daisypy_optim_create = "daisypy.optim.create:main"
 daisypy_optim_plot_outcomes = "daisypy.optim.plot_outcomes:main"
 daisypy_optim_plot_samples = "daisypy.optim.plot_samples:main"
 

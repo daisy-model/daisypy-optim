@@ -1,10 +1,10 @@
 # pylint: disable=too-few-public-methods,R0801
 from concurrent.futures import ProcessPoolExecutor
 import numpy as np
-from .outcome_logging import log_outcomes
-from .parameter import CategoricalParameter
-from .problem import EvaluationProblemWrapper, ScalarProblemWrapper
-from .target_logging import log_targets
+from daisypy.optim.outcome_logging import log_outcomes
+from daisypy.optim.parameter import CategoricalParameter
+from daisypy.optim.target_logging import log_targets
+from daisypy.optim.util import get_single_scalar
 
 class DaisySequentialOptimizer:
     """Daisy optimizer using a sequential approach
@@ -29,9 +29,7 @@ class DaisySequentialOptimizer:
         """
         if options is None:
             options = {}
-        self.objective_name = problem.objective_fn.name
         self.problem = problem
-        self.evaluator = EvaluationProblemWrapper(problem)
         self.logger = logger
         self.number_of_processes = number_of_processes
 
@@ -70,7 +68,7 @@ class DaisySequentialOptimizer:
 
     def optimize(self):
         '''Run optimization'''
-        # pylint: disable=too-many-locals,too-many-statements
+        # pylint: disable=too-many-locals,too-many-statements,too-many-branches
         # Recall that we are working with categorical parameters, so there is no sampling of new
         # parameters.
         step = 0
@@ -91,9 +89,28 @@ class DaisySequentialOptimizer:
 
         # Compute the initial loss
         self.logger.info('Evaluating initial parameters')
-        current_evaluation = self.problem.evaluate([current[name] for name in order])
-        current_fval = ScalarProblemWrapper.objective_value_from_map(current_evaluation.objectives)
-        log_outcomes(self.logger, current_evaluation, evaluation_id='0:0', step=0)
+        objective, outcomes, errors = self.problem([current[name] for name in order])
+        if len(errors) > 0:
+            for sim, error in errors.items():
+                self.logger.error(
+                    step=step,
+                    msg=f"Simulation '{sim}' failed with exit code {error.returncode}"
+                )
+            raise RuntimeError("Initial simulation failed")
+        current_fval = get_single_scalar(objective)
+        # Log samples
+        objective_value = { f'metric_{k}' : v for k,v in objective.items() }
+        params = {
+            f'param_{name}' : current[name] for name in order
+        }
+        self.logger.samples(
+            step=0,
+            index=0,
+            tag="raw",
+            **objective_value,
+            **params
+        )
+        log_outcomes(self.logger, outcomes, step=0, index=0)
         if np.isnan(current_fval):
             self.logger.error('Initial parameters failed, aborting')
             raise RuntimeError('Initial parameters failed')
@@ -124,24 +141,38 @@ class DaisySequentialOptimizer:
                 num_failures = 0
                 # executor.map runs the problems in parallel and yields results in order matching
                 # param_sets.
-                for i, evaluation in enumerate(executor.map(self.evaluator, param_sets)):
-                    fval = ScalarProblemWrapper.objective_value_from_map(evaluation.objectives)
-                    objective_value = { f'metric_{self.objective_name}' : fval }
+                for i, (objective, outcomes, errors) in enumerate(
+                        executor.map(self.problem, param_sets)
+                ):
+                    if len(errors) > 0:
+                        # One or more simulations failed, so we cannot trust the objective or the
+                        # outcomes. We log the error, increment the error count and continue with
+                        # the next parameter set
+                        for sim, error in errors.items():
+                            self.logger.warning(
+                                step=step,
+                                msg=f"Simulation '{sim}' failed with exit code {error.returncode}"
+                            )
+                        num_failures += 1
+                        continue
+                    # We must test what happens when all fails
+                    fval = get_single_scalar(objective)
+                    objective_value = { f'metric_{k}' : v for k,v in objective.items() }
                     params = {
                         f'param_{name}' : value for name, value in zip(order, param_sets[i])
                     }
-                    evaluation_id = f'{step}:{i}'
                     self.logger.samples(
-                        evaluation_id=evaluation_id,
                         step=step,
+                        index=i,
                         tag="raw",
                         **objective_value,
                         **params
                     )
                     log_outcomes(
-                        self.logger, evaluation, evaluation_id=evaluation_id, step=step
+                        self.logger, outcomes, step=step, index=i
                     )
                     if np.isnan(fval):
+                        # There was no error, but the objective is NaN, so we count it as a failure
                         num_failures += 1
                     elif fval < best:
                         best = fval

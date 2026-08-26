@@ -7,8 +7,8 @@ class LossWrapper:
         """
         Parameters
         ----------
-        loss_fn : callable : (actual, target) -> loss
-          actual and target are numpy.ndarray of shape (n,)
+        loss_fn : Callable[[numpy.ndarray, numpy.ndarray], float]
+          loss_fn is called as `loss_fn(actual=..., target=...)`
         """
         self.loss_fn = loss_fn
 
@@ -54,4 +54,7 @@ class LossWrapper:
             on='time',
             suffixes=('_target', '_actual')
         )
-        return self.loss_fn(merged['value_actual'].to_numpy(), merged['value_target'].to_numpy())
+        return self.loss_fn(
+            actual=merged['value_actual'].to_numpy(),
+            target=merged['value_target'].to_numpy()
+        )

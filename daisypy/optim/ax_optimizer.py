@@ -3,11 +3,11 @@ import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from ax.api.client import Client
-from .ax import daisy_param_to_ax_param
-from .multi_objective import MultiObjective
-from .outcome_logging import log_outcomes
-from .problem import EvaluationProblemWrapper
-from .target_logging import log_targets
+from daisypy.optim.ax import daisy_param_to_ax_param
+from daisypy.optim.multi_objective import MultiObjective
+from daisypy.optim.outcome_logging import log_outcomes
+from daisypy.optim.target_logging import log_targets
+from daisypy.optim.util import get_single_scalar
 
 @dataclass
 class AxResult:
@@ -27,7 +27,6 @@ class DaisyAxOptimizer:
         options : dict
         """
         self.problem = problem
-        self.evaluator = EvaluationProblemWrapper(problem)
         self.logger = logger
         if number_of_processes is None:
             self.number_of_processes = multiprocessing.cpu_count()
@@ -46,9 +45,10 @@ class DaisyAxOptimizer:
         self.client.configure_experiment(parameters=ax_parameters)
 
         # TODO: Assumes we minimize
-        self.multi_objective = isinstance(problem.objective_fn, MultiObjective)
+        self.multi_objective = (isinstance(problem.objective_fn, MultiObjective) and
+                                problem.objective_fn.aggregate_fn is None)
         if self.multi_objective:
-            objective_str = ','.join([f'-{f.name}' for f in problem.objective_fn.objective_fns])
+            objective_str = ','.join([f'-{f.name}' for f in problem.objective_fn.objectives])
         else:
             objective_str = f'-{problem.objective_fn.name}'
         self.client.configure_optimization(objective=objective_str)
@@ -66,9 +66,11 @@ class DaisyAxOptimizer:
         num_trials = 0
         max_trials = self.options['max_trials']
         max_trials_iteration = self.options['max_trials_iteration']
+        step = 0
         log_targets(self.logger, self.problem.objective_fn)
         with ProcessPoolExecutor(self.number_of_processes) as executor:
             while num_trials < self.options['max_trials']:
+                step += 1
                 max_trials_this_iteration = min(max_trials_iteration, max_trials - num_trials)
                 trials = self.client.get_next_trials(max_trials=max_trials_this_iteration)
                 trial_indices = []
@@ -84,21 +86,42 @@ class DaisyAxOptimizer:
                     parameter_sets.append(params)
 
                 # Run simulations in parallel
-                for i, evaluation in enumerate(executor.map(self.evaluator, parameter_sets)):
-                    result = evaluation.objectives
-                    log = { 'evaluation_id' : str(trial_indices[i]), 'trial' : trial_indices[i] }
+                for i, (objective, outcomes, errors) in enumerate(
+                        executor.map(self.problem, parameter_sets)):
+                    trial_index = trial_indices[i]
+                    if len(errors) > 0:
+                        for sim, error in errors.items():
+                            self.logger.warning(
+                                step=step,
+                                trial=trial_index,
+                                msg=f"Simulation '{sim}' failed with exit code {error.returncode}"
+                            )
+                        self.client.mark_trial_failed(trial_index=trial_index)
+                        continue
+
+                    if not self.multi_objective:
+                        # Verify that we have a single scalar objective
+                        _ = get_single_scalar(objective)
+
+                    log = {
+                        'step' : step,
+                        'index' : i,
+                        'tag' : 'raw',
+                        'trial' : trial_index
+                    }
                     for name, value in named_parameter_sets[i].items():
                         log[f'param_{name}'] = value
-                    for name, value in result.items():
+                    for name, value in objective.items():
                         log[f'metric_{name}'] = value
                     self.logger.samples(**log)
                     log_outcomes(
                         self.logger,
-                        evaluation,
-                        evaluation_id=str(trial_indices[i]),
-                        trial=trial_indices[i],
+                        outcomes,
+                        step=step,
+                        index=i,
+                        trial=trial_index,
                     )
-                    self.client.complete_trial(trial_index=trial_indices[i], raw_data=result)
+                    self.client.complete_trial(trial_index=trial_index, raw_data=objective)
                 num_trials += len(trials)
 
         if self.multi_objective:

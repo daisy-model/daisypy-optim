@@ -5,9 +5,8 @@ import numpy as np
 import cma
 from cma.fitness_transformations import ScaleCoordinates
 from cma.optimization_tools import EvalParallel2
-from .outcome_logging import log_outcomes
-from .problem import EvaluationProblemWrapper, ScalarProblemWrapper
-from .target_logging import log_targets
+from daisypy.optim.outcome_logging import log_outcomes
+from daisypy.optim.target_logging import log_targets
 
 class DaisyCMAOptimizer:
     """Daisy optimizer using the CMA-ES method from https://github.com/CMA-ES/pycma
@@ -46,7 +45,7 @@ class DaisyCMAOptimizer:
             upper.append(param.valid_range[1])
             x0.append(param.initial_value)
         self.objective = ScaleCoordinates(
-            EvaluationProblemWrapper(problem), lower=lower, upper=upper, from_lower_upper=(-1,1)
+            problem, lower=lower, upper=upper, from_lower_upper=(-1,1)
         )
 
         # Map the initial values to optimization domain
@@ -85,7 +84,7 @@ class DaisyCMAOptimizer:
 
     def optimize(self):
         '''Run the optimizer'''
-        # pylint: disable=too-many-locals
+        # pylint: disable=too-many-locals,too-many-statements
         max_attempts_to_get_feasible = 3
         # TODO: Implement logging + checkpointing every n'th step
         total_f_evals = 0
@@ -98,18 +97,40 @@ class DaisyCMAOptimizer:
                 # Try a couple of times if we dont get at least one non nan value
                 for i in range(max_attempts_to_get_feasible):
                     xs = self.optimizer.ask()
-                    evaluations = list(eval_all(xs))
-                    fvals = np.array([
-                        ScalarProblemWrapper.objective_value_from_map(evaluation.objectives)
-                        for evaluation in evaluations
-                    ])
+                    # objective_values is a list of dicts of length one with a single scalar value
+                    fvals = []
+                    outcomes = []
+                    for objective_value, outcome, errors in eval_all(xs):
+                        outcomes.append(outcome)
+                        if len(errors) > 0:
+                            # One or more simulations failed, objective value cannot be trusted
+                            fvals.append(np.nan)
+                            for sim, result in errors.items():
+                                self.logger.warning(
+                                    step=step,
+                                    msg=f"'{sim}' exited with code {result.returncode}"
+                                )
+                        else:
+                            n_fvals = len(objective_value)
+                            if n_fvals != 1:
+                                self.logger.error(
+                                    step=step,
+                                    msg=("Expected single scalar objective, "
+                                         f"got {n_fvals} objectives")
+                                )
+                                raise RuntimeError("Only single scalar objectives supported")
+                            fvals.append(list(objective_value.values())[0])
+
+                    fvals = np.array(fvals)
                     total_f_evals += len(fvals)
                     if np.any(np.isfinite(fvals)):
                         break
                     self.logger.warning(
-                        step=step,msg=f'All are infeasible at attempt {i}', fvals=fvals
+                        step=step,
+                        msg=f'All are infeasible at attempt {i}',
+                        fvals=fvals
                     )
-                for sample_index, (x, fval, evaluation) in enumerate(zip(xs, fvals, evaluations)):
+                for sample_index, (x, fval, outcome) in enumerate(zip(xs, fvals, outcomes)):
                     raw_params = {
                         f'param_{p.name}' : value  for p, value in
                         zip(self.problem.parameters, self.objective.transform(x))
@@ -119,30 +140,31 @@ class DaisyCMAOptimizer:
                         zip(self.problem.parameters, x)
                     }
                     objective_value = { f'metric_{self.problem.objective_fn.name}' : fval }
-                    evaluation_id = f'{step}:{sample_index}'
                     self.logger.samples(
-                        evaluation_id=evaluation_id,
                         step=step,
+                        index=sample_index,
                         tag="raw",
                         **objective_value,
                         **raw_params
                     )
                     self.logger.samples(
-                        evaluation_id=evaluation_id,
                         step=step,
+                        index=sample_index,
                         tag="standardized",
                         **objective_value,
                         **standardized_params
                     )
                     log_outcomes(
                         self.logger,
-                        evaluation,
-                        evaluation_id=evaluation_id,
+                        outcome,
                         step=step,
+                        index=sample_index,
                     )
 
                 failed = np.isnan(fvals)
                 if np.all(failed):
+                    if step == 1:
+                        raise RuntimeError("All initial simulations failed")
                     self.logger.error('All attempts failed. Aborting')
                     break
 

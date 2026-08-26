@@ -8,22 +8,56 @@ from pathlib import Path
 import pandas as pd
 from daisypy.optim import (
     DaiFileGenerator,
-    DlfDataExtractor,
     DaisySequentialOptimizer,
     ScalarObjective,
     DaisyOptimizationProblem,
     ContinuousParameter,
     DaisyRunner,
-    DefaultLogger
+    DefaultLogger,
+    OutputSpec,
+    PostProcessor,
+    Simulation,
 )
 
 # We want to optimize the sum of squared distance.
 # We use the multiprocessing module, which uses pickle, so we cannot use local functions.
 def ssd(actual, target):
-    '''Sum of squared distance'''
+    '''Sum of squared distance loss function'''
     return ((actual - target)**2).sum()
 
-def single_objective_two_parameters_cma(daisy_path, daisy_home):
+class SquareOutcome(PostProcessor):
+    # pylint: disable=too-few-public-methods
+    """Post-process function that squares an outcome
+
+    See daisypy.optim.post_processor.PostProcessor for the interface and
+    daisypy.optim.post_processors.AggregateOutcomes for a more complicated example.
+    """
+    def __init__(self, outcome_name):
+        """
+        Parameters
+        ----------
+        outcome_name : str
+          Name of outcome to square
+        """
+        self.outcome_name = outcome_name
+
+    def __call__(self, outcomes):
+        """
+        Parameters
+        ----------
+        outcomes : { str : pandas.DataFrame }
+          Dict with named DataFrames. Must have the key `self.outcome_name`
+
+        Returns
+        -------
+        pandas.DataFrame with columns 'time' and 'value' where 'value' column contains the squared
+        outcome.
+        """
+        df = outcomes[self.outcome_name]
+        return pd.DataFrame({"time": df["time"], "value": df["value"]**2})
+
+
+def run(daisy_path):
     '''How to optimize parameters for Daisy
 
     0. Define a runner that can run Daisy
@@ -41,52 +75,78 @@ def single_objective_two_parameters_cma(daisy_path, daisy_home):
     data_dir = base_dir / 'example-data'
 
     # 0. Define a runner that can run Daisy
-    runner = DaisyRunner(daisy_path, daisy_home)
+    runner = DaisyRunner(daisy_path)
 
-    # 1. Setup the dai file generator
-    dai_template = data_dir / 'template.dai'
-    dai_file_generator = DaiFileGenerator(template_file_path=dai_template)
+    # 1. Setup the runfile generator
+    file_generators = {
+        "runfile" : DaiFileGenerator("run.dai", template_file_path=data_dir / "template.dai")
+    }
+
+    # Define the simulations outputs.
+    outputs = {
+        "field" : OutputSpec("field_nitrogen.dlf", 'NO3-Denitrification')
+    }
+
+    # Define the simulations
+    simulations = {
+        "sim" : Simulation(file_generators, outputs)
+    }
+
+    # After running simulations we collate the outcomes that we are interested in. An outcome is
+    # defined by a name and triplet specifying (simulation, outcome, variable) that uniquely
+    # identifies a single column in one of the simulation outputs.
+    outcome_specs = {
+        "NO3-Denit" : ("sim", "field", "NO3-Denitrification"),
+    }
+
+    # If needed we can postprocess the outcomes, for example by squaring the values.
+    # The post processing functions are passed a dict with all outcomes
+    post_processing = {
+        "NO3-Denit_squared" : SquareOutcome("NO3-Denit")
+    }
+
+    target = pd.read_csv(data_dir / 'measured-field-nitrogen.csv')
+    target["time"] = pd.to_datetime(target[['year', 'month', 'day', 'hour']])
+
+    objective_fn = ScalarObjective(
+        name="NO3_Error", # Can be anything
+        target=target,
+        target_col="NO3-Denitrification", # Must match name in file
+        outcome_name="NO3-Denit", # Must match what is in outcomes
+        loss_fn=ssd # Function with signature (actual : np.ndarray, target : np.ndarray) -> float
+    )
 
     # 2. Define the parameters that we will optimize
     # Names of parameters should match the names in the template file
-    parameters = [
-        ContinuousParameter(
-            name='K_aquitard',
-            initial_value=0.2,
-            valid_range=(0.1, 0.7)
-        ),
-        ContinuousParameter(
-            name='Z_aquitard',
-            initial_value=200,
-            valid_range=(150, 250)
-        ),
-    ]
-
-    # 3. Define the objective
-    # We need a target, a loss function and the name of the variable and dlf file
-    # The target must be a dataframe with a "time" column
-    target = pd.read_csv(data_dir / 'measured-field-nitrogen.csv')
-    target["time"] = pd.to_datetime(target[['year', 'month', 'day', 'hour']])
-    target_name = "NO3-Denitrification"
-
-    # The loss function can be any python function mapping a pair of numpy.arrays to a scalar
-    loss_fn = ssd
-
-    # We need a DlfDataExtractor that can extract the variable we are optimizing for
-    data_extractor = DlfDataExtractor({
-        'field_nitrogen.dlf' : 'NO3-Denitrification'
-    })
-    objective_fn = ScalarObjective("NO3_Error", data_extractor, target, target_name, loss_fn)
+    parameters = {
+        "runfile" : [
+            ContinuousParameter(
+                name='K_aquitard',
+                initial_value=0.2,
+                valid_range=(0.1, 0.7)
+            ),
+            ContinuousParameter(
+                name='Z_aquitard',
+                initial_value=200,
+                valid_range=(150, 250)
+            ),
+        ],
+    }
 
 
     # 4. Wrap everything as an optimization problem
     # Normally we would not set data_dir and we would set debug = False,
     # but here we set them so we can inspect the output.
     # If debug = False, then outputs are deleted as soon as the optimizer is done with them
-    out_data_dir = out_dir / 'data_dir'
-    debug = True
     problem = DaisyOptimizationProblem(
-        runner, dai_file_generator, objective_fn, parameters, out_data_dir, debug
+        runner,
+        simulations,
+        outcome_specs,
+        post_processing,
+        objective_fn,
+        parameters,
+        data_dir=out_dir / 'data_dir',
+        debug=True
     )
 
     # 5. Setup a logger
@@ -95,11 +155,9 @@ def single_objective_two_parameters_cma(daisy_path, daisy_home):
     logger = DefaultLogger(log_dir)
 
     # 6. Setup an optimizer
-    # We choose cma. You should try sequential as well.
-    # For cma we should always explicitly set the maximum number of function evaluations AKA the
-    # maximum number of times we will run Daisy. We set it very low
+    # We use the sequential optimizer.
     options = {
-        "num_samples" : 18
+        "num_samples" : 18 # The number of samples to generate from each parameter
     }
     optimizer = DaisySequentialOptimizer(problem, logger, options)
 
@@ -115,7 +173,5 @@ def single_objective_two_parameters_cma(daisy_path, daisy_home):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('daisy_path', type=str, help='Path to daisy binary')
-    parser.add_argument('--daisy_home', type=str, default=None,
-                        help='Path to daisy home directory containing lib/ and sample/')
     args = parser.parse_args()
-    single_objective_two_parameters_cma(args.daisy_path, args.daisy_home)
+    run(args.daisy_path)

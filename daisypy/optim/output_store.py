@@ -1,0 +1,77 @@
+import pandas as pd
+from daisypy.optim.data_extraction import extract_from_dlf
+
+class OutputStore(dict):
+    """An output store is an extended dict that holds outputs from a Daisy simulation
+
+    Outputs are stored as pandas.DataFrame, one DataFrame for each simulation/output combination.
+    """
+
+    def __init__(self, simulations=None):
+        """
+        Parameters
+        ----------
+        simulations : { str : Simulation } or None
+          Dict of named simulations
+        """
+        if simulations is None:
+            super().__init__({})
+        else:
+            super().__init__({
+                k : extract_from_dlf(sim.outputs) for k, sim in simulations.items()
+            })
+
+    def extract(self, sim, output, var):
+        """Get a specific output variable
+
+        Parameters
+        ----------
+        sim : str
+        Name of simulation
+
+        output : str
+        Name of output
+
+        var : str
+        Name of variable
+
+        Returns
+        -------
+        pandas.DataFrame with columns "time" and "value"
+        """
+        return self[sim][output][["time", var]].rename(columns={var:"value"})
+
+    def insert(self, sim, output, df):
+        """Insert new values in the store
+
+        Parameters
+        ----------
+        sim : str
+          Name of simulation to store value under. May be new or existing
+
+        output : str
+          Name of output to store value under. May be new or existing.
+
+        df : pandas.DataFrame
+          Values to store. Must have column "time".
+          If sim/output already contains a DataFrame then the timepoints must match and no column
+          in df may be in the existing DataFrame.
+        """
+        if not "time" in df:
+            raise ValueError("`df` MUST have a 'time' column")
+        if len(df) != df["time"].nunique():
+            raise ValueError("`df` MUST have unique timepoints")
+        if not sim in self:
+            self[sim] = { output : df }
+        elif not output in self[sim]:
+            self[sim][output] = df
+        else:
+            existing = self[sim][output]
+            if len(df) != len(existing) or not existing["time"].isin(df["time"]).all():
+                raise ValueError(
+                    f"Timepoints in `df` do not match existing timepoints in '{sim}/{output}'"
+                )
+            col_overlap = set(existing.columns) & set(df.columns) - {"time"}
+            if len(col_overlap) != 0:
+                raise ValueError(f"Column(s) {col_overlap} already exists")
+            self[sim][output] = pd.merge(existing, df, on="time")

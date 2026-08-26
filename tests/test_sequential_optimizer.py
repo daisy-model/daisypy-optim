@@ -1,19 +1,21 @@
-# pylint: disable=relative-beyond-top-level
+# pylint: disable=relative-beyond-top-level,invalid-name,too-few-public-methods,super-init-not-called
 import os
 import tempfile
+import pytest
 import pandas as pd
 from daisypy.optim import (
     CategoricalParameter,
     DefaultLogger,
     DaisySequentialOptimizer,
+    ScalarObjective
 )
-from .mockup import MockProblem
+from .mockup import MockProblem, MockError
 
-class Objective:
-    # pylint: disable=too-few-public-methods
-    '''Negative sum of arguments'''
+class Objective(ScalarObjective):
+    '''Negative value of outcome'''
     def __init__(self, name):
         self.name = name
+        self.outcome_name = "outcome"
         self.target = pd.DataFrame({
             'time' : pd.to_datetime(['2000-01-01']),
             'value' : [42]
@@ -22,21 +24,55 @@ class Objective:
     def __call__(self, a, b, c):
         return - (a + b + c)
 
+class ProblemFailAfterN:
+    '''Problem that fails after the initial evaluation
+    This does not work as expected for N > 1, probably because each new problem is run with a copy
+    of the initial problem, not a copy of the "latest" problem. It is a test problem, not an
+    implementation problem
+    '''
+    def __init__(self, N, parameters):
+        self.N = N
+        self.parameters = parameters
+        self.objective_fn = Objective("ProblemFailAfterN.objective_fn")
+        self.n = 0
+        self.error = { "sim" : MockError() }
+        self.outcome = {
+            "ProblemFailAfterN.outcome" : pd.DataFrame({
+                'time' : pd.to_datetime(['2000-01-01']),
+                'value' : 123.4,
+            })
+        }
+
+    def __call__(self, parameter_values):
+        '''Evaluate objective and return value and outcomes'''
+        if self.n >= self.N:
+            result = ( {}, {}, self.error )
+        else:
+            result = (
+                { "ProblemFailAfterN.objective" : -self.n },
+                self.outcome,
+                {}
+            )
+        self.n += 1
+        return result
+
+
 def test_sequential_optimizer(capsys):
     '''Test that sequential optimizer finds the optimmum and generates expected output'''
     # pylint: disable=too-many-locals
     expected_samples_log = [
-        'evaluation_id,step,tag,metric_neg_sum,param_a,param_b,param_c',
-        '"1:0",1,"raw",-1.0,1.0,0.0,0.0',
-        '"1:1",1,"raw",-1.0,0.0,1.0,0.0',
-        '"1:2",1,"raw",-2.0,0.0,2.0,0.0',
-        '"1:3",1,"raw",-1.0,0.0,0.0,1.0',
-        '"1:4",1,"raw",-2.0,0.0,0.0,2.0',
-        '"1:5",1,"raw",-3.0,0.0,0.0,3.0',
-        '"2:0",2,"raw",-4.0,1.0,0.0,3.0',
-        '"2:1",2,"raw",-4.0,0.0,1.0,3.0',
-        '"2:2",2,"raw",-5.0,0.0,2.0,3.0',
-        '"3:0",3,"raw",-6.0,1.0,2.0,3.0',
+        'step,index,tag,metric_neg_sum,param_a,param_b,param_c',
+        '0,0,"raw",0,0,0,0',
+        '1,0,"raw",-1.0,1.0,0.0,0.0',
+        '1,1,"raw",-1.0,0.0,1.0,0.0',
+        '1,2,"raw",-2.0,0.0,2.0,0.0',
+        '1,3,"raw",-1.0,0.0,0.0,1.0',
+        '1,4,"raw",-2.0,0.0,0.0,2.0',
+        '1,5,"raw",-3.0,0.0,0.0,3.0',
+        '2,0,"raw",-4.0,1.0,0.0,3.0',
+        '2,1,"raw",-4.0,0.0,1.0,3.0',
+        '2,2,"raw",-5.0,0.0,2.0,3.0',
+        '3,0,"raw",-6.0,1.0,2.0,3.0',
     ]
     expected_out = '\n'.join([
         'Using at least 11 and at most 15 function evaluations',
@@ -70,18 +106,18 @@ def test_sequential_optimizer(capsys):
             result = optimizer.optimize()
         with open(os.path.join(out_dir, 'samples.csv'), 'r', encoding='utf-8') as in_file:
             for expected, row in zip(expected_samples_log, in_file, strict=True):
-                assert expected == row.strip()
+                assert expected == row.strip(), "Samples mismatch"
         with open(os.path.join(out_dir, 'outcomes.csv'), 'r', encoding='utf-8') as in_file:
             outcome_rows = [row.strip() for row in in_file]
-        assert outcome_rows[0] == 'evaluation_id,step,objective_name,time,predicted_value'
-        assert outcome_rows[1] == '"0:0",0,"neg_sum","2000-01-01T00:00:00",0'
-        assert outcome_rows[-1] == '"3:0",3,"neg_sum","2000-01-01T00:00:00",-6.0'
+        assert outcome_rows[0] == 'step,index,outcome_name,time,predicted_value'
+        assert outcome_rows[1] == '0,0,"outcome","2000-01-01T00:00:00",0'
+        assert outcome_rows[-1] == '3,0,"outcome","2000-01-01T00:00:00",-6.0'
         assert len(outcome_rows) == 12
         with open(os.path.join(out_dir, 'targets.csv'), 'r', encoding='utf-8') as in_file:
             target_rows = [row.strip() for row in in_file]
         assert target_rows == [
-            'objective_name,time,target_value',
-            '"neg_sum","2000-01-01T00:00:00",42'
+            'objective_name,outcome_name,time,target_value',
+            '"neg_sum","outcome","2000-01-01T00:00:00",42'
         ]
 
     captured = capsys.readouterr()
@@ -91,3 +127,36 @@ def test_sequential_optimizer(capsys):
     assert result['a']['best'] == 1
     assert result['b']['best'] == 2
     assert result['c']['best'] == 3
+
+
+def test_sequential_optimizer_initial_sim_fails():
+    '''Test that sequential optimizer handles initial sim failing'''
+    # pylint: disable=too-many-locals
+    parameters = [
+        CategoricalParameter('a', [0,1]),
+        CategoricalParameter('b', [0,1,2]),
+        CategoricalParameter('c', [0,1,2,3]),
+    ]
+
+    problem = MockProblem(parameters, Objective("neg_sum"), error={"sim" : MockError()})
+    with tempfile.TemporaryDirectory() as out_dir:
+        with DefaultLogger(out_dir) as logger:
+            optimizer = DaisySequentialOptimizer(problem, logger)
+            with pytest.raises(RuntimeError, match="Initial simulation failed"):
+                optimizer.optimize()
+
+def test_sequential_optimizer_all_failing_after_initial():
+    '''Test that sequential optimizer handles sims failing after initial'''
+    # pylint: disable=too-many-locals
+    parameters = [
+        CategoricalParameter('a', [0,1]),
+        CategoricalParameter('b', [0,1,2]),
+        CategoricalParameter('c', [0,1,2,3]),
+    ]
+
+    problem = ProblemFailAfterN(1, parameters)
+    with tempfile.TemporaryDirectory() as out_dir:
+        with DefaultLogger(out_dir) as logger:
+            optimizer = DaisySequentialOptimizer(problem, logger)
+            with pytest.raises(RuntimeError, match="All simulations failed"):
+                optimizer.optimize()
