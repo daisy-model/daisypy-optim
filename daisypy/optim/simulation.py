@@ -64,15 +64,14 @@ class Simulation:
     def _update_paths(self):
         # Compute the path tree by assuming the current working dir is the root of all relative
         # paths
-        if len(self._static_data) == 0:
-            # Nothing to do when there is no static data
-            return
-
         # We need both static paths and generated paths
         abs_paths = (
             [s.dst.resolve() for s in self._static_data] +
             [Path(g.relative_out_path()).resolve() for g in self._generators.values()]
         )
+        # Add the current dir as well to ensure we keep the desired directory layout when no files
+        # are in the root. For example, when only runfile specified and it has a sub_dir
+        abs_paths.append(Path(".").resolve())
         root = os.path.commonpath(abs_paths)
         self._static_data = [
             StaticData(s.src, s.dst.resolve().relative_to(root)) for s in self._static_data
@@ -107,7 +106,7 @@ class Simulation:
         Raises
         -------
         ValueError if keys in params no not match generators names exactly.
-        
+
         Returns
         -------
         path to simulation file
