@@ -92,27 +92,3 @@ class PyFileGenerator(FileGenerator):
             kwargs.get("template_file_path", None),
             kwargs.get("sub_dir", self.sub_dir)
         )
-
-    def serialize(self):
-        '''Serializable representation of this PyFileGenerator
-
-        Returns
-        -------
-        dict of (str, str)
-        '''
-        return {
-            'template_text' : self.template_text,
-            'out_file' : self.out_file
-        }
-
-    @staticmethod
-    def unzerialize(dict_repr):
-        '''Create a PyFileGenerator from a serialized representation
-
-        Parameters
-        ----------
-        dict_repr: dict of (str, str)
-          dict with keys 'template_text' and 'out_file'
-        '''
-        return PyFileGenerator(template_text=dict_repr['template_text'],
-                                out_file=dict_repr['out_file'])

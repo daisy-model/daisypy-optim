@@ -44,29 +44,3 @@ class DaisyRunner:
             dai_file
         ]
         return subprocess.run(args, check=False)
-
-
-    def serialize(self):
-        """Serialize this DaisyRunner object
-
-        Returns
-        -------
-        dict of (parameter name, parameter value) pairs
-        """
-        return {
-            'daisy_bin' : self.daisy_bin,
-            'daisy_home' : os.environ.get('DAISYHOME', None)
-        }
-
-    @staticmethod
-    def unzerialize(dict_repr):
-        """Unserialize a DaisyRunner
-
-        Parameters
-        ----------
-        dict_repr : dict of (str, str)
-          Must contain
-            daisy_bin : path to daisy binary
-            daisy_home : path to daisy home
-        """
-        return DaisyRunner(dict_repr['daisy_bin'], dict_repr['daisy_home'])

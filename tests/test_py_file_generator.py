@@ -41,19 +41,6 @@ def test_copy_and_update(tmp_path):
     assert generator.relative_out_path() == 'nested/py/testing.py'
     assert file_path.read_text(encoding='utf-8') == 'value = 3'
 
-def test_serialize_roundtrip(tmp_path):
-    generator = PyFileGenerator('testing.py', template_text='value = {value}')
-    serialized = generator.serialize()
-    copied = PyFileGenerator.unzerialize(serialized)
-    file_path = Path(copied(tmp_path, {'py' : {'value' : 4}})['py'])
-    assert serialized == {
-        'template_text' : 'value = {value}',
-        'out_file' : 'testing.py'
-    }
-    assert isinstance(copied, PyFileGenerator)
-    assert copied.relative_out_path() == './testing.py'
-    assert file_path.read_text(encoding='utf-8') == 'value = 4'
-
 def test_no_params(tmp_path):
     template = "x = {{ 'a' : 1 }}"
     expected = "x = { 'a' : 1 }"
