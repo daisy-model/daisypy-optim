@@ -26,4 +26,5 @@ class StaticData:
         """
         self.src = Path(src).resolve()
         self.dst = Path(dst)
-        assert not self.dst.is_absolute(), "dst_dir MUST be a relative path"
+        if self.dst.is_absolute():
+            raise ValueError("dst_dir MUST be a relative path")
