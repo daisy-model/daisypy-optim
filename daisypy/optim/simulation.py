@@ -74,7 +74,7 @@ class Simulation:
             [Path(g.relative_out_path()).resolve() for g in self._generators.values()]
         )
         root = os.path.commonpath(abs_paths)
-        self.static_data = [
+        self._static_data = [
             StaticData(s.src, s.dst.resolve().relative_to(root)) for s in self._static_data
         ]
 
