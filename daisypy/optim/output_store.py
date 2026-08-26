@@ -65,7 +65,7 @@ class OutputStore(dict):
             self[sim][output] = df
         else:
             existing = self[sim][output]
-            if len(df) != len(existing) or not df["time"].isin(existing["time"]):
+            if len(df) != len(existing) or not df["time"].isin(existing["time"]).all():
                 raise ValueError(
                     f"Time points in `df` do not match existing timepoints in {sim}/{output}"
                 )
