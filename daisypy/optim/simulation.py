@@ -98,12 +98,17 @@ class Simulation:
           Dictionary of parameters. Keys MUST match generator names.
           Keys in nested dictionaries MUST match the corresponding generators parameters
 
+        Raises
+        -------
+        ValueError if keys in params no not match generators names exactly.
+        
         Returns
         -------
         path to simulation file
         """
-        assert params.keys() == self._generators.keys(), \
-            f"Keys in params must match generator names exactly\n\n{list(params.keys())}\n\n{list(self._generators.keys())}"
+        if not params.keys() == self._generators.keys():
+            raise ValueError("Keys in params must match generator names exactly\n\n"
+                             f"{list(params.keys())}\n\n{list(self._generators.keys())}")
         output_directory = Path(output_directory)
 
         # Update root dir of outputs
