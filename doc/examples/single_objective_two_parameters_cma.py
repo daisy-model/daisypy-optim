@@ -27,7 +27,7 @@ class SquareOutcome(PostProcessor):
     """Post-process function that squares an outcome
 
     See daisypy.optim.post_processor.PostProcessor for the interface and
-    daisypy.optim.post_processors.Aggregate for a more complicated exampele.
+    daisypy.optim.post_processors.AggregateOutcomes for a more complicated example.
     """
     def __init__(self, outcome_name):
         """

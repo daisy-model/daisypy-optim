@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 
 class DaisyRunner:
+    # pylint: disable=too-few-public-methods
     """Class that knows how to run daisy"""
 
     def __init__(self, daisy_bin, daisy_home=None):

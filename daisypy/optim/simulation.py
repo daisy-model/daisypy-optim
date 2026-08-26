@@ -22,7 +22,7 @@ class Simulation:
 
     Relative paths that are at the parent ("../") or further up are handled by computing the full
     file tree and rooting it at the temporary directory. This means that the actual simulation
-    file and the corresponding outputs are not necesarily in the base directory.
+    file and the corresponding outputs are not necessarily in the base directory.
 
     Attributes
     ----------

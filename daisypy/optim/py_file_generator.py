@@ -82,7 +82,7 @@ class PyFileGenerator(FileGenerator):
         return out_path
 
     def relative_out_path(self):
-        """Return thee relative path the generated py files will be written to"""
+        """Return the relative path the generated py files will be written to"""
         return os.path.join(self.sub_dir, self.out_file)
 
     def copy_and_update(self, **kwargs):

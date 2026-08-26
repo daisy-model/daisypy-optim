@@ -29,7 +29,7 @@ class ScalarObjective(Objective):
 
         target : Pathlike OR pandas.DataFrame
           Either a path to csv file with the target or a DataFrame with the target
-          The target DataFrame must have a "time" column with unique timestamps and atleast one
+          The target DataFrame must have a "time" column with unique timestamps and at least one
           other column.
 
         target_col : str
