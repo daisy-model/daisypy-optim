@@ -15,7 +15,7 @@ class MockFileGenerator(FileGenerator):
     def __init__(self, path):
         self.path = path
 
-    def __call__(self, output_directory, params, tagged=True):
+    def __call__(self, output_directory, params):
         return self.path
 
     def relative_out_path(self):
