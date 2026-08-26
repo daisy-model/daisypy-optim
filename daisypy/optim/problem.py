@@ -102,13 +102,7 @@ class DaisyOptimizationProblem:
                 named_parameters[kind][p.name] = value
 
         # If we debug then we dont want the directory to be deleted after use
-        # From python 3.12 we can pass delete=False to TemporaryDirectory, but prior to that we need
-        # to use mkdtemp.
-        if self.debug:
-            sim_dir = tempfile.mkdtemp(dir=self.data_dir)
-            return self._run(sim_dir, named_parameters)
-
-        with tempfile.TemporaryDirectory(dir=self.data_dir) as sim_dir:
+        with tempfile.TemporaryDirectory(dir=self.data_dir, delete=not self.debug) as sim_dir:
             return self._run(sim_dir, named_parameters)
 
     def _run(self, base_sim_dir, named_parameters):
