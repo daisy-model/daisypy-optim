@@ -27,7 +27,6 @@ dynamic = ["version"]
 readme = "README.md"
 
 [project.scripts]
-daisypy_optim_create = "daisypy.optim.create:main"
 daisypy_optim_plot_outcomes = "daisypy.optim.plot_outcomes:main"
 daisypy_optim_plot_samples = "daisypy.optim.plot_samples:main"
 
