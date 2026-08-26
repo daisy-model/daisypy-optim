@@ -20,13 +20,13 @@ def test_tagged(tmp_path):
     '''Test that generated dai file is as expected'''
     template_path = Path(__file__).parent / 'templates' / 'template.dai'
     generator = DaiFileGenerator('linear.dai', template_file_path=template_path)
-    file_path = Path(generator(tmp_path, {'dai' : PARAMS})['dai'])
+    file_path = Path(generator(tmp_path, PARAMS))
     assert file_path.read_text(encoding='utf-8') == EXPECTED
 
-def test_not_tagged(tmp_path):
+def test_generate_from_plain_params(tmp_path):
     template_path = Path(__file__).parent / 'templates' / 'template.dai'
     generator = DaiFileGenerator('linear.dai', template_file_path=template_path)
-    file_path = Path(generator(tmp_path, PARAMS, tagged=False))
+    file_path = Path(generator(tmp_path, PARAMS))
     assert file_path.read_text(encoding='utf-8') == EXPECTED
 
 def test_sub_dir(tmp_path):
@@ -34,7 +34,7 @@ def test_sub_dir(tmp_path):
     generator = DaiFileGenerator(
         'linear.dai', template_file_path=template_path, sub_dir='nested/dai'
     )
-    file_path = Path(generator(tmp_path, {'dai' : PARAMS})['dai'])
+    file_path = Path(generator(tmp_path, PARAMS))
     assert file_path == tmp_path / 'nested' / 'dai' / 'linear.dai'
     assert file_path.read_text(encoding='utf-8') == EXPECTED
 
@@ -45,7 +45,7 @@ def test_relative_out_path():
 def test_copy_and_update(tmp_path):
     generator = DaiFileGenerator('linear.dai', template_text='(run {value})', sub_dir='nested/dai')
     copied = generator.copy_and_update(out_file='copied.dai', sub_dir='updated')
-    file_path = Path(copied(tmp_path, {'dai' : {'value' : 'test'} })['dai'])
+    file_path = Path(copied(tmp_path, {'value' : 'test'}))
     assert isinstance(copied, DaiFileGenerator)
     assert copied is not generator
     assert copied.template_text == generator.template_text
@@ -57,9 +57,7 @@ def test_no_params(tmp_path):
     template = '(defprogram print_it write\n  (what "${{v1}}"))'
     expected = '(defprogram print_it write\n  (what "${v1}"))'
     generator = DaiFileGenerator('linear.dai', template_text=template)
-    file_path = Path(generator(tmp_path, {}, tagged=False))
-    assert file_path.read_text(encoding='utf-8') == expected
-    file_path = Path(generator(tmp_path, {'dai' : {}})['dai'])
+    file_path = Path(generator(tmp_path, {}))
     assert file_path.read_text(encoding='utf-8') == expected
 
 SPAWN_PARALLEL = """(defprogram p1 spawn (parallel 10))"""

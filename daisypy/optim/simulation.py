@@ -132,6 +132,6 @@ class Simulation:
         # Generate dynamic files
         paths = {}
         for gen_name, gen_params in params.items():
-            paths[gen_name] = self._generators[gen_name](output_directory, gen_params, False)
+            paths[gen_name] = self._generators[gen_name](output_directory, gen_params)
 
         return paths["runfile"]

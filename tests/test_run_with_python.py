@@ -22,7 +22,7 @@ def test_run_with_python(tmp_path):
 
     # Assume we are on linux and daisy is installed
     runner = DaisyRunner('daisy')
-    files = { k : g(tmp_path, params[k], tagged=False) for k, g in generators.items() }
+    files = { k : g(tmp_path, params[k]) for k, g in generators.items() }
     dai_file = files['dai']
     result = runner(dai_file, str(tmp_path))
     assert result.returncode == 0
@@ -59,7 +59,7 @@ def test_run_with_several_python_files(tmp_path):
 
     # Assume we are on linux and daisy is installed
     runner = DaisyRunner('daisy')
-    files = { k : g(tmp_path, params[k], tagged=False) for k, g in generators.items() }
+    files = { k : g(tmp_path, params[k]) for k, g in generators.items() }
     dai_file = files['dai']
     result = runner(dai_file, str(tmp_path))
     assert result.returncode == 0
