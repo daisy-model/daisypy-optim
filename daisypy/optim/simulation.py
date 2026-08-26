@@ -36,7 +36,8 @@ class Simulation:
         Parameters
         ----------
         file_generators : dict of (str, FileGenerator)
-          Named file generators
+          Named file generators. There MUST be a file generator named 'runfile' that generates the
+          main simulation file passed to Daisy.
 
         outputs : { str : OutputSpec }
 
@@ -44,12 +45,17 @@ class Simulation:
           Each static data path is copied to its relative destination directory.
           Paths can be files or directories. If a directory, then the entire directory is copied
           to the destination directory. If you wish to copy only the contents of the directory you
-          will have to specify each file manually,
+          will have to specify each file manually.
+
+        Raises
+        ------
+        ValueError if there is not a file generator named 'runfile'
         """
         # TODO: We could have a situation where we only want to optimize parameters for a python
         # function. Then it would be nice to have an interface where we just copy the dai file as
         # static data.
-        assert "runfile" in file_generators, "There must be a generated runfile"
+        if "runfile" not in file_generators:
+            raise ValueError("There must be a generated 'runfile'")
         self._generators = file_generators
         self.outputs = outputs
         self._static_data = [] if static_data is None else static_data

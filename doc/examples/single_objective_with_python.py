@@ -28,7 +28,7 @@ def run(daisy_path):
     data_dir = base_dir / 'example-data' / 'python-chemical-reaction'
     file_generators = {
         'py' : PyFileGenerator('daisy-react.py', template_file_path=data_dir / 'daisy-react.py'),
-        'dai' : DaiFileGenerator('run.dai', template_file_path=data_dir / 'test-pyreact.dai'),
+        'runfile' : DaiFileGenerator('run.dai', template_file_path=data_dir / 'test-pyreact.dai'),
     }
 
     outputs = {
@@ -45,7 +45,7 @@ def run(daisy_path):
 
     parameters = {
         'py' : [ ContinuousParameter('param', 0.24, (0.01, 0.5)) ],
-        'dai' : [ ContinuousParameter('clay', 5, (1, 10)) ],
+        'runfile' : [ ContinuousParameter('clay', 5, (1, 10)) ],
     }
 
     runner = DaisyRunner(daisy_path)

@@ -1,5 +1,6 @@
 # pylint: disable=missing-function-docstring
 from pathlib import Path
+import pytest
 from daisypy.optim import DaiFileGenerator, Simulation, StaticData
 
 
@@ -17,7 +18,7 @@ def test_rebases_environment_for_parent_relative_include(tmp_path, monkeypatch):
     include_path = '../../common/my-log.dai'
     sim = Simulation(
         {
-            'dai' : DaiFileGenerator(
+            'runfile' : DaiFileGenerator(
                 'run.dai',
                 template_text=f'(input file "{include_path}")',
                 sub_dir='scenarios/site-1'
@@ -27,7 +28,7 @@ def test_rebases_environment_for_parent_relative_include(tmp_path, monkeypatch):
         [StaticData(static_src, Path('common'))]
     )
 
-    run_path = sim.setup(output_dir, {'dai' : {}})
+    run_path = sim.setup(output_dir, {'runfile' : {}})
     copied_static = output_dir / 'common' / 'my-log.dai'
     referenced_static = run_path.parent / include_path
 
@@ -36,3 +37,10 @@ def test_rebases_environment_for_parent_relative_include(tmp_path, monkeypatch):
     assert include_path in run_path.read_text(encoding='utf-8')
     assert referenced_static.exists()
     assert referenced_static.read_text(encoding='utf-8') == '(dummy static file)'
+
+
+def test_simulation_raises_when_missing_runfile():
+    with pytest.raises(ValueError, match="There must be a generated 'runfile'"):
+        Simulation({
+            'dai' : DaiFileGenerator('run.dai', template_text='(input file "path")'),
+        }, {})

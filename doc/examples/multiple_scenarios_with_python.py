@@ -59,7 +59,7 @@ def run(daisy_path):
     # 1. Setup the file generators
     file_generators = {
         'py' : PyFileGenerator('daisy-react.py', template_file_path=py_data_dir / 'daisy-react.py'),
-        'dai' : DaiFileGenerator(
+        'runfile' : DaiFileGenerator(
             'run.dai', template_file_path=dai_data_dir / 'template-python-reaction.dai'
         ),
     }
@@ -67,7 +67,7 @@ def run(daisy_path):
     # 2. Define the parameters that we will optimize
     # Names of parameters should match the names in the template files
     parameters = {
-        'dai' : [
+        'runfile' : [
             ContinuousParameter(
                 name='temp_offset',
                 initial_value=0,

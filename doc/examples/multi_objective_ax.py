@@ -33,20 +33,22 @@ def run(daisy_path):
     # 0. Define a runner that can run Daisy
     runner = DaisyRunner(daisy_path)
 
-    # 1. Setup the dai file generator
+    # 1. Setup the runfile generator
     file_generators = {
-        'dai' : DaiFileGenerator('run.dai', template_file_path=data_dir / 'template.dai')
+        'runfile' : DaiFileGenerator('run.dai', template_file_path=data_dir / 'template.dai')
     }
 
     # 2. Define the parameters that we will optimize
     # Names of parameters should match the names in the template file
-    parameters = [
-        ContinuousParameter(
-            name='temp_offset',
-            initial_value=0,
-            valid_range=(-2, 2)
-        ),
-    ]
+    parameters = {
+        'runfile' : [
+            ContinuousParameter(
+                name='temp_offset',
+                initial_value=0,
+                valid_range=(-2, 2)
+            ),
+        ],
+    }
 
     # 3. Define the objective
     # We have three scenarios. These where generated with

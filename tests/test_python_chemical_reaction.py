@@ -20,7 +20,7 @@ def test_python_chemical_reaction(tmp_path):
     data_dir = Path(__file__).parent / 'test-data' / 'python-chemical-reaction'
     file_generators = {
         'py' : PyFileGenerator('daisy-react.py', template_file_path=data_dir / 'daisy-react.py'),
-        'dai' : DaiFileGenerator('run.dai', template_file_path=data_dir / 'test-pyreact.dai'),
+        'runfile' : DaiFileGenerator('run.dai', template_file_path=data_dir / 'test-pyreact.dai'),
     }
 
     outputs = {
@@ -38,7 +38,7 @@ def test_python_chemical_reaction(tmp_path):
 
     parameters = {
         'py' : [ CategoricalParameter('param', [0.24, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]) ],
-        'dai' : [],
+        'runfile' : [],
     }
 
     # Assume we are on linux and daisy is installed

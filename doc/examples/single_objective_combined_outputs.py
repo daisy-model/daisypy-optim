@@ -50,7 +50,7 @@ def run(daisy_path):
     out_dir = base_dir / 'out' / 'single-objective-combined-outputs'
     data_dir = base_dir / 'example-data' / 'combined-outputs'
     file_generators = {
-        'dai' : DaiFileGenerator('run.dai', template_file_path=data_dir / 'template.dai'),
+        'runfile' : DaiFileGenerator('run.dai', template_file_path=data_dir / 'template.dai'),
     }
 
     outputs = {
@@ -73,7 +73,7 @@ def run(daisy_path):
     }
 
     parameters = {
-        'dai' : [
+        'runfile' : [
             ContinuousParameter('fertilize_weight_1', 20, (0, 200)),
             ContinuousParameter('fertilize_weight_2', 20, (0, 200))
         ],

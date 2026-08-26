@@ -74,9 +74,9 @@ def run(daisy_path):
     # 0. Define a runner that can run Daisy
     runner = DaisyRunner(daisy_path)
 
-    # 1. Setup the dai file generator
+    # 1. Setup the runfile generator
     file_generators = {
-        "dai" : DaiFileGenerator("run.dai", template_file_path=data_dir / "template.dai")
+        "runfile" : DaiFileGenerator("run.dai", template_file_path=data_dir / "template.dai")
     }
 
     # Define the simulations outputs.
@@ -104,18 +104,20 @@ def run(daisy_path):
 
     # 2. Define the parameters that we will optimize
     # Names of parameters should match the names in the template file
-    parameters = [
-        ContinuousParameter(
-            name='K_aquitard',
-            initial_value=0.2,
-            valid_range=(0.1, 0.7)
-        ),
-        ContinuousParameter(
-            name='Z_aquitard',
-            initial_value=200,
-            valid_range=(150, 250)
-        ),
-    ]
+    parameters = {
+        "runfile" : [
+            ContinuousParameter(
+                name='K_aquitard',
+                initial_value=0.2,
+                valid_range=(0.1, 0.7)
+            ),
+            ContinuousParameter(
+                name='Z_aquitard',
+                initial_value=200,
+                valid_range=(150, 250)
+            ),
+        ],
+    }
     # 3. Define the objective
     target = pd.read_csv(data_dir / 'measured-field-nitrogen.csv')
     target["time"] = pd.to_datetime(target[['year', 'month', 'day', 'hour']])
