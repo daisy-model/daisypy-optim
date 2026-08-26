@@ -57,13 +57,16 @@ class OutputStore(dict):
           If sim/output already contains a DataFrame then the timepoints must match and no column
           in df may be in the existing DataFrame.
         """
-        assert "time" in df, "df MUST have a 'time' column"
+        if not "time" in df:
+            raise ValueError("df MUST have a 'time' column")
         if not sim in self:
             self[sim] = { output : df }
         elif not output in self[sim]:
             self[sim][output] = df
         else:
-            for c in df.columns:
-                if c != "time":
-                    assert c not in self[sim][output].columns, f"{c} is already in {sim}/{output}"
-            self[sim][output] = pd.merge(self[sim][output], df, on="time", validate="1:1")
+            existing = self[sim][output]
+            if len(df) != len(existing) or not df["time"].isin(existing["time"]):
+                raise ValueError(
+                    f"Time points in `df` do not match existing timepoints in {sim}/{output}"
+                )
+            self[sim][output] = pd.merge(existing, df, on="time")
