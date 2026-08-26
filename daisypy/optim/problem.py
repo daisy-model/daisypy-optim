@@ -37,8 +37,8 @@ class DaisyOptimizationProblem:
           An objective function that computes one or more named objective values from a dict of
           named DataFrames.
 
-        parameters : [DaisyParameter] OR dict of (str, [DaisyParameter])
-          Parameters to optimize. If a list it is assumed that all parameters are for the 'dai' file
+        parameters : dict of (str, [DaisyParameter])
+          Parameters to optimize. Mapping from parameter groups, e.g. "runfile" to specifications
 
         data_dir : str
           If not None then temporary directories will be created in this directory. Otherwise, they
@@ -53,8 +53,6 @@ class DaisyOptimizationProblem:
         self.post_processing = post_processing
         self.objective_fn = objective_fn
         self.parameter_kind = {}
-        if not isinstance(parameters, dict):
-            parameters = { 'dai' : parameters }
 
         # Convert dict of parameters to a list of parameters and verify that there are no name
         # clashes.

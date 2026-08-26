@@ -84,7 +84,7 @@ class Simulation:
             # extracts the path to the parent
             sub_dir = Path(g.relative_out_path()).resolve().relative_to(root).parent
             generators[g_name] = g.copy_and_update(sub_dir=sub_dir)
-            if g_name == "dai":
+            if g_name == "runfile":
                 # Update the outputs so their paths are relative to simulation root
                 self.outputs = {
                     k : OutputSpec(o.log, o.var, sub_dir) for k, o in self.outputs.items()
