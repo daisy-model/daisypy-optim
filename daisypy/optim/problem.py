@@ -118,6 +118,8 @@ class DaisyOptimizationProblem:
             sim_result = self.runner(sim_file, sim_dir)
             if sim_result.returncode != 0:
                 errors[sim_name] = sim_result
+        if len(errors) > 0:
+            return {}, {}, errors
         output_store = OutputStore(self.simulations)
         outcomes = {
             name : output_store.extract(*spec) for name, spec in self.outcome_specs.items()
