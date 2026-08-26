@@ -36,7 +36,7 @@ class OutputSpec:
         self.log = Path(log)
         self.var = var if isinstance(var, list) else [var]
         self.sub_dir = Path("." if sub_dir is None else sub_dir)
-        self._root = Path("/" if root is None else root)
+        self._root = Path("." if root is None else root).resolve()
         if self.log.is_absolute():
             raise ValueError("log MUST be a relative path")
         if self.sub_dir.is_absolute():
@@ -44,8 +44,6 @@ class OutputSpec:
         # Verify that the sub_dir path is not pointing to a directory above, e.g. a/../../"
         # In that case Path. relative_to will throw a ValueError when walk_up=False
         self.sub_dir.resolve().relative_to(Path.cwd(), walk_up=False)
-        if not self._root.is_absolute():
-            raise ValueError("root MUST be absolute")
 
     def path(self):
         """Get the absolute path to the log file
