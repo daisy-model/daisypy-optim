@@ -12,8 +12,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+# pylint: disable=wrong-import-position
 from daisypy.optim.csv_log import CsvLog
 from daisypy.optim.plot_samples import run as run_plot_samples
+# pylint: enable=wrong-import-position
 
 
 def _make_standardized(values, centre, scale):
@@ -115,13 +117,13 @@ def main():
     parser.add_argument(
         '--poll-interval',
         type=float,
-        default=0.2,
+        default=1,
         help='Seconds between plot refresh checks.',
     )
     parser.add_argument(
         '--write-interval',
         type=float,
-        default=0.75,
+        default=2,
         help='Seconds between new optimization-like sample batches.',
     )
     parser.add_argument(
@@ -141,18 +143,6 @@ def main():
         type=Path,
         default=None,
         help='Optional output image path forwarded to plot_samples.',
-    )
-    parser.add_argument(
-        '--width-scale',
-        type=float,
-        default=1.0,
-        help='Factor to scale plot width.',
-    )
-    parser.add_argument(
-        '--height-scale',
-        type=float,
-        default=1.0,
-        help='Factor to scale plot height.',
     )
     args = parser.parse_args()
 
@@ -189,8 +179,6 @@ def main():
             standardized=args.standardized,
             output_path=args.output,
             poll_interval=args.poll_interval,
-            width_scale=args.width_scale,
-            height_scale=args.height_scale,
         )
     finally:
         stop_event.set()
@@ -210,7 +198,7 @@ def _writer_entrypoint(args, ready_event, stop_event, failure):
             stop_event,
             args.standardized,
         )
-    except Exception as exc: # pragma: no cover - manual test path
+    except Exception as exc: # pylint: disable=broad-exception-caught
         failure.append(exc)
         ready_event.set()
 

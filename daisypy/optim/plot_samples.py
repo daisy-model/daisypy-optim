@@ -11,11 +11,7 @@ plt.rcParams["figure.raise_window"]=False
 def run(log_dir,
         standardized=False,
         output_path=None,
-        poll_interval=1.0,
-        *,
-        width_scale=1.0,
-        height_scale=1.0):
-    # pylint: disable=too-many-arguments
+        poll_interval=1.0):
     '''Monitor a samples log and keep the sample plots updated until interrupted.'''
     log_dir = Path(log_dir)
     samples_path = log_dir / 'samples.csv'
@@ -36,8 +32,6 @@ def run(log_dir,
                     df,
                     standardized,
                     figures=figures,
-                    width_scale=width_scale,
-                    height_scale=height_scale
                 )
                 if output_path is not None:
                     save_figures(figures, output_path)
@@ -79,7 +73,7 @@ def save_figures(figures, output_path):
         )
 
 
-def plot_samples(df, standardized, figures=None, width_scale=1.0, height_scale=1.0):
+def plot_samples(df, standardized, figures=None):
     '''Create or update sample plots from a samples.csv DataFrame.'''
     # pylint: disable=too-many-statements, too-many-locals
     tag = "standardized" if standardized else "raw"
@@ -94,7 +88,7 @@ def plot_samples(df, standardized, figures=None, width_scale=1.0, height_scale=1
     nplots = len(params)
     nrows = math.floor(math.sqrt(nplots))
     ncols = math.ceil(nplots / nrows)
-    figsize = (width_scale * (2 + 7 * ncols), height_scale * (7 * nrows))
+    default_figsize = (2 + 7 * ncols, 7 * nrows)
 
     cmap = plt.colormaps['viridis']
     # pylint: disable=nested-min-max
@@ -113,10 +107,12 @@ def plot_samples(df, standardized, figures=None, width_scale=1.0, height_scale=1
             state['params'] == tuple(params) and
             state['shape'] == (nrows, ncols)
         )
-
         if not reusable:
             if fig is not None:
+                figsize = fig.get_size_inches()
                 plt.close(fig)
+            else:
+                figsize = default_figsize
             fig = plt.figure(figsize=figsize, layout="constrained")
             axs = fig.subplots(
                 nrows,
@@ -164,7 +160,6 @@ def plot_samples(df, standardized, figures=None, width_scale=1.0, height_scale=1
             }
             fig._daisypy_state = state  # pylint: disable=protected-access
         else:
-            fig.set_size_inches(figsize, forward=True)
             state['mappable'].set_norm(norm)
             state['mappable'].set_cmap(cmap)
             state['colorbar'].update_normal(state['mappable'])
@@ -204,20 +199,12 @@ def main():
         default=15.0,
         help='Seconds between checks for updates to samples.csv.',
     )
-    parser.add_argument(
-        '--width-scale', type=float, default=1.0, help='Factor to scale width of plot >=0'
-    )
-    parser.add_argument(
-        '--height-scale', type=float, default=1.0, help='Factor to scale height of plot >=0'
-    )
     args = parser.parse_args()
     run(
         args.log_dir,
         args.standardized,
         args.output,
         args.poll_interval,
-        width_scale=args.width_scale,
-        height_scale=args.height_scale
     )
 
 
