@@ -8,7 +8,14 @@ import matplotlib.pyplot as plt
 
 plt.rcParams["figure.raise_window"]=False
 
-def run(log_dir, standardized=False, output_path=None, poll_interval=1.0):
+def run(log_dir,
+        standardized=False,
+        output_path=None,
+        poll_interval=1.0,
+        *,
+        width_scale=1.0,
+        height_scale=1.0):
+    # pylint: disable=too-many-arguments
     '''Monitor a samples log and keep the sample plots updated until interrupted.'''
     log_dir = Path(log_dir)
     samples_path = log_dir / 'samples.csv'
@@ -25,7 +32,13 @@ def run(log_dir, standardized=False, output_path=None, poll_interval=1.0):
             if current_state != previous_state:
                 previous_state = current_state
                 df = pd.read_csv(samples_path)
-                figures = plot_samples(df, standardized, figures=figures)
+                figures = plot_samples(
+                    df,
+                    standardized,
+                    figures=figures,
+                    width_scale=width_scale,
+                    height_scale=height_scale
+                )
                 if output_path is not None:
                     save_figures(figures, output_path)
 
@@ -66,7 +79,7 @@ def save_figures(figures, output_path):
         )
 
 
-def plot_samples(df, standardized, figures=None):
+def plot_samples(df, standardized, figures=None, width_scale=1.0, height_scale=1.0):
     '''Create or update sample plots from a samples.csv DataFrame.'''
     # pylint: disable=too-many-statements, too-many-locals
     tag = "standardized" if standardized else "raw"
@@ -81,7 +94,7 @@ def plot_samples(df, standardized, figures=None):
     nplots = len(params)
     nrows = math.floor(math.sqrt(nplots))
     ncols = math.ceil(nplots / nrows)
-    figsize = (2 + 7 * ncols, 7 * nrows)
+    figsize = (width_scale * (2 + 7 * ncols), height_scale * (7 * nrows))
 
     cmap = plt.colormaps['viridis']
     # pylint: disable=nested-min-max
@@ -162,7 +175,7 @@ def plot_samples(df, standardized, figures=None):
                 scatter.set_norm(norm)
                 scatter.set_cmap(cmap)
 
-        fig.suptitle(f"Sampled parameters vs {suffix}")
+        fig.suptitle(f"Marginal disitribution of sampled parameters vs Objective ({suffix})")
         fig.canvas.draw_idle()
         figures.append((fig, suffix))
     for fig in existing_figures.values():
@@ -191,8 +204,21 @@ def main():
         default=15.0,
         help='Seconds between checks for updates to samples.csv.',
     )
+    parser.add_argument(
+        '--width-scale', type=float, default=1.0, help='Factor to scale width of plot >=0'
+    )
+    parser.add_argument(
+        '--height-scale', type=float, default=1.0, help='Factor to scale height of plot >=0'
+    )
     args = parser.parse_args()
-    run(args.log_dir, args.standardized, args.output, args.poll_interval)
+    run(
+        args.log_dir,
+        args.standardized,
+        args.output,
+        args.poll_interval,
+        width_scale=args.width_scale,
+        height_scale=args.height_scale
+    )
 
 
 if __name__ == '__main__':
