@@ -26,6 +26,11 @@ _TITLE_STYLE = {
     'fontWeight' : '600',
     'letterSpacing' : '0.01em',
 }
+_PATH_STYLE = {
+    'marginBottom' : '8px',
+    'fontSize' : '12px',
+    'color' : '#6c737a',
+}
 _STATUS_STYLE = {
     'marginBottom' : '8px',
     'fontSize' : '12px',
@@ -96,6 +101,12 @@ _BUTTON_STYLE = {
     'borderRadius' : '6px',
     'fontSize' : '12px',
 }
+_ICON_BUTTON_STYLE = {
+    **_BUTTON_STYLE,
+    'width' : '32px',
+    'padding' : '0',
+    'fontSize' : '13px',
+}
 _STATUS_ITEM_STYLE = {
     'display' : 'inline-flex',
     'alignItems' : 'center',
@@ -117,6 +128,20 @@ _GRAPH_STYLE = {
     'backgroundColor' : '#ffffff',
     'border' : '1px solid #d8dde3',
     'borderRadius' : '8px',
+}
+_UTILITY_BAR_STYLE = {
+    'display' : 'flex',
+    'justifyContent' : 'flex-start',
+    'alignItems' : 'end',
+    'gap' : '12px',
+    'flexWrap' : 'wrap',
+    'marginBottom' : '6px',
+}
+_REFRESH_CONTROL_STYLE = {
+    'display' : 'flex',
+    'alignItems' : 'flex-end',
+    'gap' : '8px',
+    'flexWrap' : 'nowrap',
 }
 
 
@@ -194,14 +219,49 @@ def _outcomes_controls():
     ], style=_CONTROLS_STYLE)
 
 
-def _layout():
+def _refresh_controls():
     return html.Div([
-        html.H1('monitor', style=_TITLE_STYLE),
+        html.Button(
+            '⏸',
+            id='refresh-toggle',
+            n_clicks=0,
+            title='pause refresh',
+            style=_ICON_BUTTON_STYLE,
+        ),
+        html.Div([
+            html.Label('refresh rate (s)', style=_LABEL_STYLE),
+            dcc.Input(
+                id='refresh-rate',
+                type='number',
+                min=0.1,
+                step='any',
+                value=1.0,
+                persistence=True,
+                persistence_type='local',
+                style={
+                    'height' : '32px',
+                    'width' : '66px',
+                    'padding' : '0 8px',
+                    'border' : '1px solid #d0d7de',
+                    'borderRadius' : '6px',
+                    'backgroundColor' : '#ffffff',
+                    'color' : '#2f3437',
+                    'fontSize' : '13px',
+                },
+            ),
+        ], style={**_FIELD_STYLE, 'minWidth' : '128px'}),
+    ], style=_REFRESH_CONTROL_STYLE)
+
+
+def _layout(log_dir):
+    return html.Div([
+        html.H1('Daisy calibration monitor', style=_TITLE_STYLE),
+        html.Div(f'log dir: {log_dir}', style=_PATH_STYLE),
         html.Div(id='status-message', style=_STATUS_STYLE),
-        dcc.Interval(id='refresh-timer', interval=1000, n_intervals=0),
+        html.Div([_refresh_controls()], style=_UTILITY_BAR_STYLE),
+        dcc.Interval(id='refresh-timer', interval=1000, n_intervals=0, disabled=False),
         dcc.Store(id='samples-view-state'),
         dcc.Store(id='outcomes-view-state'),
-        # TODO: Add a compact refresh-rate control in the UI.
         # TODO: Add auto-zoom to the last N steps.
         dcc.Tabs(id='view-tabs', value='samples', persistence=True, persistence_type='local',
                  children=[
@@ -358,6 +418,12 @@ def _integer_ticks(min_value, max_value):
         min_value + round(i * step_count / (tick_count - 1))
         for i in range(tick_count)
     })
+
+
+def _normalize_refresh_seconds(refresh_seconds):
+    if refresh_seconds is None:
+        return 1.0
+    return max(float(refresh_seconds), 0.1)
 
 
 def _default_samples_metric(samples, tag, current_value):
@@ -550,18 +616,43 @@ def create_app(log_dir, refresh_interval_ms):
 
     app = Dash(__name__, update_title=None)
     app.title = 'daisypy-optim monitor'
-    app.layout = _layout()
-    app.layout.children[2].interval = refresh_interval_ms
+    app.layout = _layout(log_dir)
+    app.layout.children[4].interval = refresh_interval_ms
+
+    @app.callback(
+        Output('refresh-timer', 'interval'),
+        Input('refresh-rate', 'value'),
+    )
+    def update_refresh_rate(refresh_seconds):
+        return int(_normalize_refresh_seconds(refresh_seconds) * 1000)
+
+    @app.callback(
+        Output('refresh-timer', 'disabled'),
+        Output('refresh-toggle', 'children'),
+        Output('refresh-toggle', 'title'),
+        Input('refresh-toggle', 'n_clicks'),
+    )
+    def toggle_refresh(n_clicks):
+        disabled = n_clicks % 2 == 1
+        if disabled:
+            return True, '▶', 'start refresh'
+        return False, '⏸', 'pause refresh'
 
     @app.callback(
         Output('status-message', 'children'),
         Input('refresh-timer', 'n_intervals'),
+        Input('refresh-rate', 'value'),
+        Input('refresh-timer', 'disabled'),
     )
-    def update_status(_):
+    def update_status(_, refresh_seconds, refresh_disabled):
+        refresh_seconds = _normalize_refresh_seconds(refresh_seconds)
         return [
             _status_item('samples', samples_path.exists()),
             _status_item('outcomes', outcomes_path.exists()),
             _status_item('targets', targets_path.exists()),
+            html.Span(
+                f'refresh: {"stopped" if refresh_disabled else f"{refresh_seconds:g} s"}'
+            ),
             html.Span(_last_updated_text([samples_path, outcomes_path, targets_path])),
         ]
 
