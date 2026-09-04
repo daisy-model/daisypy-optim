@@ -143,6 +143,12 @@ _REFRESH_CONTROL_STYLE = {
     'gap' : '8px',
     'flexWrap' : 'nowrap',
 }
+_CHECKBOX_ROW_STYLE = {
+    'display' : 'flex',
+    'alignItems' : 'center',
+    'gap' : '8px',
+    'height' : '32px',
+}
 
 
 def _sanitize_name(name):
@@ -201,6 +207,41 @@ def _samples_controls():
                 style={'fontSize' : '13px'},
             ),
         ], style={**_FIELD_STYLE, 'width' : '280px'}),
+        html.Div([
+            html.Label('auto zoom', style=_LABEL_STYLE),
+            html.Div([
+                dcc.Checklist(
+                    id='samples-auto-zoom-enabled',
+                    options=[{'label' : 'last', 'value' : 'enabled'}],
+                    value=[],
+                    inline=True,
+                    persistence=True,
+                    persistence_type='local',
+                    style={'fontSize' : '13px'},
+                ),
+                dcc.Input(
+                    id='samples-auto-zoom-steps',
+                    type='number',
+                    min=1,
+                    step=1,
+                    value=10,
+                    disabled=True,
+                    persistence=True,
+                    persistence_type='local',
+                    style={
+                        'height' : '32px',
+                        'width' : '66px',
+                        'padding' : '0 8px',
+                        'border' : '1px solid #d0d7de',
+                        'borderRadius' : '6px',
+                        'backgroundColor' : '#ffffff',
+                        'color' : '#2f3437',
+                        'fontSize' : '13px',
+                    },
+                ),
+                html.Span('steps', style={'fontSize' : '12px', 'color' : '#4d545b'}),
+            ], style=_CHECKBOX_ROW_STYLE),
+        ], style={**_FIELD_STYLE, 'minWidth' : '220px'}),
     ], style=_CONTROLS_STYLE)
 
 
@@ -216,6 +257,41 @@ def _outcomes_controls():
                 style={'fontSize' : '13px'},
             ),
         ], style={**_FIELD_STYLE, 'width' : '280px'}),
+        html.Div([
+            html.Label('auto zoom', style=_LABEL_STYLE),
+            html.Div([
+                dcc.Checklist(
+                    id='outcomes-auto-zoom-enabled',
+                    options=[{'label' : 'last', 'value' : 'enabled'}],
+                    value=[],
+                    inline=True,
+                    persistence=True,
+                    persistence_type='local',
+                    style={'fontSize' : '13px'},
+                ),
+                dcc.Input(
+                    id='outcomes-auto-zoom-steps',
+                    type='number',
+                    min=1,
+                    step=1,
+                    value=10,
+                    disabled=True,
+                    persistence=True,
+                    persistence_type='local',
+                    style={
+                        'height' : '32px',
+                        'width' : '66px',
+                        'padding' : '0 8px',
+                        'border' : '1px solid #d0d7de',
+                        'borderRadius' : '6px',
+                        'backgroundColor' : '#ffffff',
+                        'color' : '#2f3437',
+                        'fontSize' : '13px',
+                    },
+                ),
+                html.Span('steps', style={'fontSize' : '12px', 'color' : '#4d545b'}),
+            ], style=_CHECKBOX_ROW_STYLE),
+        ], style={**_FIELD_STYLE, 'minWidth' : '220px'}),
     ], style=_CONTROLS_STYLE)
 
 
@@ -262,7 +338,6 @@ def _layout(log_dir):
         dcc.Interval(id='refresh-timer', interval=1000, n_intervals=0, disabled=False),
         dcc.Store(id='samples-view-state'),
         dcc.Store(id='outcomes-view-state'),
-        # TODO: Add auto-zoom to the last N steps.
         dcc.Tabs(id='view-tabs', value='samples', persistence=True, persistence_type='local',
                  children=[
             dcc.Tab(
@@ -426,6 +501,52 @@ def _normalize_refresh_seconds(refresh_seconds):
     return max(float(refresh_seconds), 0.1)
 
 
+def _normalize_step_count(step_count):
+    if step_count is None:
+        return 10
+    return max(int(step_count), 1)
+
+
+def _auto_zoom_enabled(value):
+    return value is not None and 'enabled' in value
+
+
+def _select_last_steps(data, step_count):
+    if 'step' not in data.columns or len(data) == 0:
+        return data
+    steps = sorted(pd.Series(data['step']).dropna().unique())
+    if len(steps) == 0:
+        return data
+    selected_steps = steps[-_normalize_step_count(step_count):]
+    return data[data['step'].isin(selected_steps)]
+
+
+def _numeric_range(values):
+    values = pd.Series(values).dropna()
+    if len(values) == 0:
+        return None
+    lower = float(values.min())
+    upper = float(values.max())
+    if lower == upper:
+        padding = max(abs(lower) * 0.05, 1e-6)
+    else:
+        padding = (upper - lower) * 0.05
+    return [lower - padding, upper + padding]
+
+
+def _datetime_range(values):
+    values = pd.to_datetime(pd.Series(values).dropna())
+    if len(values) == 0:
+        return None
+    lower = values.min()
+    upper = values.max()
+    if lower == upper:
+        padding = pd.Timedelta(seconds=1)
+    else:
+        padding = (upper - lower) / 20
+    return [lower - padding, upper + padding]
+
+
 def _default_samples_metric(samples, tag, current_value):
     tagged = samples[samples['tag'] == tag]
     metrics = [col for col in tagged.columns if col.startswith('metric_')]
@@ -445,7 +566,7 @@ def _default_outcome_name(outcomes, current_value):
     return outcome_names[0], outcome_names
 
 
-def _samples_figure(samples, tag, metric):
+def _samples_figure(samples, tag, metric, auto_zoom, auto_zoom_steps):
     tagged = samples[samples['tag'] == tag].copy()
     params = [col for col in tagged.columns if col.startswith('param_')]
     if len(tagged) == 0 or metric is None or len(params) == 0:
@@ -487,6 +608,22 @@ def _samples_figure(samples, tag, metric):
             fig.update_yaxes(title_text=metric[7:], row=row, col=col)
     if tag == 'standardized':
         fig.update_xaxes(matches='x')
+    if auto_zoom:
+        recent = _select_last_steps(tagged, auto_zoom_steps)
+        y_range = _numeric_range(recent[metric])
+        if y_range is not None:
+            fig.update_yaxes(range=y_range, autorange=False)
+        if tag == 'standardized':
+            x_range = _numeric_range(pd.concat([recent[param] for param in params]))
+            if x_range is not None:
+                fig.update_xaxes(range=x_range, autorange=False)
+        else:
+            for position, param in enumerate(params):
+                row = position // cols + 1
+                col = position % cols + 1
+                x_range = _numeric_range(recent[param])
+                if x_range is not None:
+                    fig.update_xaxes(range=x_range, autorange=False, row=row, col=col)
 
     fig.update_layout(
         template='plotly_white',
@@ -500,7 +637,7 @@ def _samples_figure(samples, tag, metric):
             'cmin' : tagged['step'].min(),
             'cmax' : max(tagged['step'].min() + 1, tagged['step'].max()),
             'colorbar' : {
-                'title' : {'text' : 'run', 'font' : {'size' : 12}},
+                'title' : {'text' : 'step', 'font' : {'size' : 12}},
                 'tickfont' : {'size' : 11},
                 'thickness' : 14,
                 'len' : 0.82,
@@ -516,7 +653,7 @@ def _samples_figure(samples, tag, metric):
     return fig
 
 
-def _outcomes_figure(outcomes, targets, outcome_name):
+def _outcomes_figure(outcomes, targets, outcome_name, auto_zoom, auto_zoom_steps):
     selected = outcomes[outcomes['outcome_name'] == outcome_name].copy()
     if len(selected) == 0:
         return _empty_figure('no outcomes')
@@ -570,6 +707,14 @@ def _outcomes_figure(outcomes, targets, outcome_name):
                 showlegend=True,
                 hovertemplate='target<br>time=%{x}<br>value=%{y}<extra></extra>',
             ))
+    if auto_zoom:
+        recent = _select_last_steps(selected, auto_zoom_steps)
+        x_range = _datetime_range(recent['time'])
+        if x_range is not None:
+            fig.update_xaxes(range=x_range, autorange=False)
+        y_range = _numeric_range(recent['predicted_value'])
+        if y_range is not None:
+            fig.update_yaxes(range=y_range, autorange=False)
 
     fig.update_layout(
         template='plotly_white',
@@ -583,7 +728,7 @@ def _outcomes_figure(outcomes, targets, outcome_name):
             'cmin' : min_step,
             'cmax' : max(min_step + 1, max_step),
             'colorbar' : {
-                'title' : {'text' : 'run', 'font' : {'size' : 12}},
+                'title' : {'text' : 'step', 'font' : {'size' : 12}},
                 'tickfont' : {'size' : 11},
                 'thickness' : 14,
                 'len' : 0.82,
@@ -625,6 +770,20 @@ def create_app(log_dir, refresh_interval_ms):
     )
     def update_refresh_rate(refresh_seconds):
         return int(_normalize_refresh_seconds(refresh_seconds) * 1000)
+
+    @app.callback(
+        Output('samples-auto-zoom-steps', 'disabled'),
+        Input('samples-auto-zoom-enabled', 'value'),
+    )
+    def update_samples_auto_zoom_disabled(auto_zoom):
+        return not _auto_zoom_enabled(auto_zoom)
+
+    @app.callback(
+        Output('outcomes-auto-zoom-steps', 'disabled'),
+        Input('outcomes-auto-zoom-enabled', 'value'),
+    )
+    def update_outcomes_auto_zoom_disabled(auto_zoom):
+        return not _auto_zoom_enabled(auto_zoom)
 
     @app.callback(
         Output('refresh-timer', 'disabled'),
@@ -684,15 +843,19 @@ def create_app(log_dir, refresh_interval_ms):
         Input('samples-tag', 'value'),
         Input('samples-metric', 'value'),
         Input('samples-view-state', 'data'),
+        Input('samples-auto-zoom-enabled', 'value'),
+        Input('samples-auto-zoom-steps', 'value'),
     )
-    def update_samples_graph(_, tag, metric, relayout_data):
+    def update_samples_graph(_, tag, metric, relayout_data, auto_zoom, auto_zoom_steps):
         samples = _read_csv(samples_path)
         if samples is None:
             return _empty_figure('no samples')
         if 'tag' not in samples.columns:
             return _empty_figure('invalid samples')
-        figure = _samples_figure(samples, tag, metric)
-        _apply_relayout(figure, relayout_data)
+        auto_zoom = _auto_zoom_enabled(auto_zoom)
+        figure = _samples_figure(samples, tag, metric, auto_zoom, auto_zoom_steps)
+        if not auto_zoom:
+            _apply_relayout(figure, relayout_data)
         return figure
 
     @app.callback(
@@ -721,8 +884,10 @@ def create_app(log_dir, refresh_interval_ms):
         Input('refresh-timer', 'n_intervals'),
         Input('outcomes-name', 'value'),
         Input('outcomes-view-state', 'data'),
+        Input('outcomes-auto-zoom-enabled', 'value'),
+        Input('outcomes-auto-zoom-steps', 'value'),
     )
-    def update_outcomes_graph(_, outcome_name, relayout_data):
+    def update_outcomes_graph(_, outcome_name, relayout_data, auto_zoom, auto_zoom_steps):
         outcomes = _read_csv(outcomes_path)
         if outcomes is None:
             return _empty_figure('no outcomes')
@@ -731,8 +896,12 @@ def create_app(log_dir, refresh_interval_ms):
         if outcome_name is None:
             return _empty_figure('no outcomes')
         targets = _read_csv(targets_path)
-        figure = _outcomes_figure(outcomes, targets, outcome_name)
-        _apply_relayout(figure, relayout_data)
+        auto_zoom = _auto_zoom_enabled(auto_zoom)
+        figure = _outcomes_figure(
+            outcomes, targets, outcome_name, auto_zoom, auto_zoom_steps
+        )
+        if not auto_zoom:
+            _apply_relayout(figure, relayout_data)
         return figure
 
     return app
