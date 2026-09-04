@@ -5,7 +5,7 @@ import threading
 import webbrowser
 from pathlib import Path
 
-from dash import Dash, Input, Output, State, ctx, dcc, html, no_update
+from dash import Dash, Input, Output, State, dcc, html
 import pandas as pd
 import plotly.colors
 import plotly.graph_objects as go
@@ -176,7 +176,6 @@ def _samples_controls():
                 style={'fontSize' : '13px'},
             ),
         ], style={**_FIELD_STYLE, 'width' : '280px'}),
-        html.Button('reset view', id='samples-reset', n_clicks=0, style=_BUTTON_STYLE),
     ], style=_CONTROLS_STYLE)
 
 
@@ -192,7 +191,6 @@ def _outcomes_controls():
                 style={'fontSize' : '13px'},
             ),
         ], style={**_FIELD_STYLE, 'width' : '280px'}),
-        html.Button('reset view', id='outcomes-reset', n_clicks=0, style=_BUTTON_STYLE),
     ], style=_CONTROLS_STYLE)
 
 
@@ -347,7 +345,7 @@ def _default_outcome_name(outcomes, current_value):
     return outcome_names[0], outcome_names
 
 
-def _samples_figure(samples, tag, metric, reset_count):
+def _samples_figure(samples, tag, metric):
     tagged = samples[samples['tag'] == tag].copy()
     params = [col for col in tagged.columns if col.startswith('param_')]
     if len(tagged) == 0 or metric is None or len(params) == 0:
@@ -411,12 +409,12 @@ def _samples_figure(samples, tag, metric, reset_count):
                 ),
             },
         },
-        uirevision=f'samples:{tag}:{metric}:{reset_count}',
+        uirevision=f'samples:{tag}:{metric}',
     )
     return fig
 
 
-def _outcomes_figure(outcomes, targets, outcome_name, reset_count):
+def _outcomes_figure(outcomes, targets, outcome_name):
     selected = outcomes[outcomes['outcome_name'] == outcome_name].copy()
     if len(selected) == 0:
         return _empty_figure('no outcomes')
@@ -502,7 +500,7 @@ def _outcomes_figure(outcomes, targets, outcome_name, reset_count):
             'borderwidth' : 1,
             'font' : {'size' : 11, 'color' : '#57606a'},
         },
-        uirevision=f'outcomes:{outcome_name}:{reset_count}',
+        uirevision=f'outcomes:{outcome_name}',
     )
     return fig
 
@@ -548,33 +546,26 @@ def create_app(log_dir, refresh_interval_ms):
     @app.callback(
         Output('samples-view-state', 'data'),
         Input('samples-graph', 'relayoutData'),
-        Input('samples-reset', 'n_clicks'),
         State('samples-view-state', 'data'),
     )
-    def update_samples_view_state(relayout_data, _, current_state):
-        if ctx.triggered_id == 'samples-reset':
-            return None
-        if ctx.triggered_id == 'samples-graph':
-            return _merge_relayout_state(current_state, relayout_data)
-        return no_update
+    def update_samples_view_state(relayout_data, current_state):
+        return _merge_relayout_state(current_state, relayout_data)
 
     @app.callback(
         Output('samples-graph', 'figure'),
         Input('refresh-timer', 'n_intervals'),
         Input('samples-tag', 'value'),
         Input('samples-metric', 'value'),
-        Input('samples-reset', 'n_clicks'),
         Input('samples-view-state', 'data'),
     )
-    def update_samples_graph(_, tag, metric, reset_count, relayout_data):
+    def update_samples_graph(_, tag, metric, relayout_data):
         samples = _read_csv(samples_path)
         if samples is None:
             return _empty_figure('no samples')
         if 'tag' not in samples.columns:
             return _empty_figure('invalid samples')
-        figure = _samples_figure(samples, tag, metric, reset_count)
-        if ctx.triggered_id != 'samples-reset':
-            _apply_relayout(figure, relayout_data)
+        figure = _samples_figure(samples, tag, metric)
+        _apply_relayout(figure, relayout_data)
         return figure
 
     @app.callback(
@@ -593,24 +584,18 @@ def create_app(log_dir, refresh_interval_ms):
     @app.callback(
         Output('outcomes-view-state', 'data'),
         Input('outcomes-graph', 'relayoutData'),
-        Input('outcomes-reset', 'n_clicks'),
         State('outcomes-view-state', 'data'),
     )
-    def update_outcomes_view_state(relayout_data, _, current_state):
-        if ctx.triggered_id == 'outcomes-reset':
-            return None
-        if ctx.triggered_id == 'outcomes-graph':
-            return _merge_relayout_state(current_state, relayout_data)
-        return no_update
+    def update_outcomes_view_state(relayout_data, current_state):
+        return _merge_relayout_state(current_state, relayout_data)
 
     @app.callback(
         Output('outcomes-graph', 'figure'),
         Input('refresh-timer', 'n_intervals'),
         Input('outcomes-name', 'value'),
-        Input('outcomes-reset', 'n_clicks'),
         Input('outcomes-view-state', 'data'),
     )
-    def update_outcomes_graph(_, outcome_name, reset_count, relayout_data):
+    def update_outcomes_graph(_, outcome_name, relayout_data):
         outcomes = _read_csv(outcomes_path)
         if outcomes is None:
             return _empty_figure('no outcomes')
@@ -619,9 +604,8 @@ def create_app(log_dir, refresh_interval_ms):
         if outcome_name is None:
             return _empty_figure('no outcomes')
         targets = _read_csv(targets_path)
-        figure = _outcomes_figure(outcomes, targets, outcome_name, reset_count)
-        if ctx.triggered_id != 'outcomes-reset':
-            _apply_relayout(figure, relayout_data)
+        figure = _outcomes_figure(outcomes, targets, outcome_name)
+        _apply_relayout(figure, relayout_data)
         return figure
 
     return app
