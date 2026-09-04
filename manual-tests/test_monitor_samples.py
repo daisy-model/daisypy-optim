@@ -17,7 +17,8 @@ from daisypy.optim.monitor import create_app, run_app
 
 
 def _make_standardized(values, centre, scale):
-    return (values - centre) / scale
+    standardized = (values - centre) / scale
+    return np.clip(standardized, -1.0, 1.0)
 
 
 def _generate_step_samples(rng, centre, scale, optimum):
@@ -65,7 +66,7 @@ def _write_targets(log):
         )
 
 
-def _write_live_samples(log_dir, write_interval, ready_event, stop_event, include_standardized):
+def _write_live_samples(log_dir, write_interval, ready_event, stop_event):
     samples_path = Path(log_dir) / 'samples.csv'
     outcomes_path = Path(log_dir) / 'outcomes.csv'
     targets_path = Path(log_dir) / 'targets.csv'
@@ -119,15 +120,14 @@ def _write_live_samples(log_dir, write_interval, ready_event, stop_event, includ
                     param_x=sample[0],
                     param_y=sample[1],
                 )
-                if include_standardized:
-                    sample_log.log(
-                        step=step,
-                        index=index,
-                        tag='standardized',
-                        metric_loss=loss,
-                        param_x=sample_standardized[0],
-                        param_y=sample_standardized[1],
-                    )
+                sample_log.log(
+                    step=step,
+                    index=index,
+                    tag='standardized',
+                    metric_loss=loss,
+                    param_x=sample_standardized[0],
+                    param_y=sample_standardized[1],
+                )
                 _write_outcome(outcome_log, step, index, loss, sample)
             if step == 0:
                 ready_event.set()
@@ -143,7 +143,6 @@ def _writer_entrypoint(args, ready_event, stop_event, failure):
             args.write_interval,
             ready_event,
             stop_event,
-            args.standardized,
         )
     except Exception as exc: # pylint: disable=broad-exception-caught
         failure.append(exc)
@@ -184,12 +183,6 @@ def main():
         type=float,
         default=2.0,
         help='Seconds between new optimization-like sample batches.',
-    )
-    parser.add_argument(
-        '--standardized',
-        action='store_true',
-        default=False,
-        help='Also write standardized sample rows.',
     )
     parser.add_argument(
         '--no-open-browser',

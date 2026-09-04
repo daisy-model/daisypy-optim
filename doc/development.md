@@ -43,7 +43,6 @@ Useful options:
     python manual-tests/test_plot_samples.py --write-interval 0.25
     python manual-tests/test_plot_samples.py --duration 10
     python manual-tests/test_monitor_samples.py --write-interval 0.25
-    python manual-tests/test_monitor_samples.py --standardized
     python manual-tests/test_monitor_samples.py --verbose
     python manual-tests/test_monitor_samples.py --no-open-browser
 

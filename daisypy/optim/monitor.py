@@ -30,6 +30,10 @@ _STATUS_STYLE = {
     'marginBottom' : '8px',
     'fontSize' : '12px',
     'color' : '#6c737a',
+    'display' : 'flex',
+    'gap' : '10px',
+    'alignItems' : 'center',
+    'flexWrap' : 'wrap',
 }
 _TABS_STYLE = {
     'height' : '36px',
@@ -84,13 +88,29 @@ _LABEL_STYLE = {
     'color' : '#4d545b',
 }
 _BUTTON_STYLE = {
-    'height' : '36px',
-    'padding' : '0 12px',
+    'height' : '32px',
+    'padding' : '0 10px',
     'border' : '1px solid #d0d7de',
-    'backgroundColor' : '#f6f8fa',
-    'color' : '#2f3437',
+    'backgroundColor' : '#f8f9fa',
+    'color' : '#57606a',
     'borderRadius' : '6px',
-    'fontSize' : '13px',
+    'fontSize' : '12px',
+}
+_STATUS_ITEM_STYLE = {
+    'display' : 'inline-flex',
+    'alignItems' : 'center',
+    'gap' : '5px',
+}
+_STATUS_DOT_STYLE = {
+    'display' : 'inline-block',
+    'width' : '7px',
+    'height' : '7px',
+    'borderRadius' : '50%',
+    'backgroundColor' : '#8c959f',
+}
+_STATUS_DOT_MISSING_STYLE = {
+    **_STATUS_DOT_STYLE,
+    'backgroundColor' : '#d0d7de',
 }
 _GRAPH_STYLE = {
     'height' : '84vh',
@@ -110,6 +130,25 @@ def _read_csv(path):
     return pd.read_csv(path)
 
 
+def _status_item(name, exists):
+    return html.Span([
+        html.Span(
+            style=_STATUS_DOT_STYLE if exists else _STATUS_DOT_MISSING_STYLE
+        ),
+        html.Span(f'{name}: {"present" if exists else "missing"}'),
+    ], style=_STATUS_ITEM_STYLE)
+
+
+def _last_updated_text(paths):
+    timestamps = [path.stat().st_mtime for path in paths if path.exists()]
+    if len(timestamps) == 0:
+        return 'updated: --'
+    return (
+        'updated: '
+        + pd.Timestamp(max(timestamps), unit='s').strftime('%Y-%m-%d %H:%M:%S')
+    )
+
+
 def _samples_controls():
     return html.Div([
         html.Div([
@@ -122,12 +161,20 @@ def _samples_controls():
                 ],
                 value='raw',
                 clearable=False,
+                persistence=True,
+                persistence_type='local',
                 style={'fontSize' : '13px'},
             ),
         ], style={**_FIELD_STYLE, 'width' : '180px'}),
         html.Div([
             html.Label('metric', style=_LABEL_STYLE),
-            dcc.Dropdown(id='samples-metric', clearable=False, style={'fontSize' : '13px'}),
+            dcc.Dropdown(
+                id='samples-metric',
+                clearable=False,
+                persistence=True,
+                persistence_type='local',
+                style={'fontSize' : '13px'},
+            ),
         ], style={**_FIELD_STYLE, 'width' : '280px'}),
         html.Button('reset view', id='samples-reset', n_clicks=0, style=_BUTTON_STYLE),
     ], style=_CONTROLS_STYLE)
@@ -137,7 +184,13 @@ def _outcomes_controls():
     return html.Div([
         html.Div([
             html.Label('outcome', style=_LABEL_STYLE),
-            dcc.Dropdown(id='outcomes-name', clearable=False, style={'fontSize' : '13px'}),
+            dcc.Dropdown(
+                id='outcomes-name',
+                clearable=False,
+                persistence=True,
+                persistence_type='local',
+                style={'fontSize' : '13px'},
+            ),
         ], style={**_FIELD_STYLE, 'width' : '280px'}),
         html.Button('reset view', id='outcomes-reset', n_clicks=0, style=_BUTTON_STYLE),
     ], style=_CONTROLS_STYLE)
@@ -145,14 +198,17 @@ def _outcomes_controls():
 
 def _layout():
     return html.Div([
-        html.H1('Daisy calibration monitor', style=_TITLE_STYLE),
+        html.H1('monitor', style=_TITLE_STYLE),
         html.Div(id='status-message', style=_STATUS_STYLE),
         dcc.Interval(id='refresh-timer', interval=1000, n_intervals=0),
         dcc.Store(id='samples-view-state'),
         dcc.Store(id='outcomes-view-state'),
-        dcc.Tabs(id='view-tabs', value='samples', children=[
+        # TODO: Add a compact refresh-rate control in the UI.
+        # TODO: Add auto-zoom to the last N steps.
+        dcc.Tabs(id='view-tabs', value='samples', persistence=True, persistence_type='local',
+                 children=[
             dcc.Tab(
-                label='Samples',
+                label='samples',
                 value='samples',
                 style=_TAB_STYLE,
                 selected_style=_TAB_SELECTED_STYLE,
@@ -164,7 +220,7 @@ def _layout():
                 ],
             ),
             dcc.Tab(
-                label='Outcomes',
+                label='outcomes',
                 value='outcomes',
                 style=_TAB_STYLE,
                 selected_style=_TAB_SELECTED_STYLE,
@@ -198,6 +254,7 @@ def _empty_figure(message):
             'x' : 0.5,
             'y' : 0.5,
             'showarrow' : False,
+            'font' : {'size' : 14, 'color' : '#6c737a'},
         }],
     )
     return fig
@@ -257,7 +314,18 @@ def _sample_color(step, min_step, max_step):
 
 
 def _integer_ticks(min_value, max_value):
-    return list(range(int(min_value), int(max_value) + 1))
+    min_value = int(min_value)
+    max_value = int(max_value)
+    if max_value <= min_value:
+        return [min_value, max_value]
+    step_count = max_value - min_value
+    if step_count <= 4:
+        return list(range(min_value, max_value + 1))
+    tick_count = min(5, step_count + 1)
+    return sorted({
+        min_value + round(i * step_count / (tick_count - 1))
+        for i in range(tick_count)
+    })
 
 
 def _default_samples_metric(samples, tag, current_value):
@@ -283,7 +351,7 @@ def _samples_figure(samples, tag, metric, reset_count):
     tagged = samples[samples['tag'] == tag].copy()
     params = [col for col in tagged.columns if col.startswith('param_')]
     if len(tagged) == 0 or metric is None or len(params) == 0:
-        return _empty_figure(f'No sample data for tag "{tag}"')
+        return _empty_figure('no samples')
 
     rows = max(1, int(len(params) ** 0.5))
     cols = (len(params) + rows - 1) // rows
@@ -292,7 +360,7 @@ def _samples_figure(samples, tag, metric, reset_count):
         cols=cols,
         subplot_titles=[param[6:] for param in params],
         shared_yaxes=True,
-        shared_xaxes=False,
+        shared_xaxes=(tag == 'standardized'),
     )
     for position, param in enumerate(params):
         row = position // cols + 1
@@ -326,7 +394,7 @@ def _samples_figure(samples, tag, metric, reset_count):
         plot_bgcolor='#ffffff',
         font={'color' : '#2f3437'},
         margin={'l' : 56, 'r' : 24, 't' : 52, 'b' : 44},
-        title=f'samples: {metric[7:]}',
+        title=f'samples / {metric[7:]}',
         coloraxis={
             'colorscale' : 'Viridis',
             'cmin' : tagged['step'].min(),
@@ -351,7 +419,7 @@ def _samples_figure(samples, tag, metric, reset_count):
 def _outcomes_figure(outcomes, targets, outcome_name, reset_count):
     selected = outcomes[outcomes['outcome_name'] == outcome_name].copy()
     if len(selected) == 0:
-        return _empty_figure(f'No outcome data for "{outcome_name}"')
+        return _empty_figure('no outcomes')
 
     selected['time'] = pd.to_datetime(selected['time'])
     grouped = list(selected.groupby(['step', 'index'], sort=False))
@@ -375,6 +443,19 @@ def _outcomes_figure(outcomes, targets, outcome_name, reset_count):
                 f'step={step}<br>index={index}<br>time=%{{x}}<br>predicted=%{{y}}<extra></extra>'
             ),
         ))
+    fig.add_trace(go.Scatter(
+        x=[selected['time'].iloc[0]],
+        y=[selected['predicted_value'].iloc[0]],
+        mode='markers',
+        marker={
+            'size' : 0.1,
+            'opacity' : 0,
+            'color' : [min_step],
+            'coloraxis' : 'coloraxis',
+        },
+        showlegend=False,
+        hoverinfo='skip',
+    ))
 
     if targets is not None and 'outcome_name' in targets.columns:
         target_data = targets[targets['outcome_name'] == outcome_name].copy()
@@ -386,6 +467,7 @@ def _outcomes_figure(outcomes, targets, outcome_name, reset_count):
                 mode='markers',
                 marker={'color' : 'red', 'size' : 8},
                 name='target',
+                showlegend=True,
                 hovertemplate='target<br>time=%{x}<br>value=%{y}<extra></extra>',
             ))
 
@@ -395,9 +477,31 @@ def _outcomes_figure(outcomes, targets, outcome_name, reset_count):
         plot_bgcolor='#ffffff',
         font={'color' : '#2f3437'},
         margin={'l' : 56, 'r' : 24, 't' : 52, 'b' : 44},
-        title=f'outcomes: {outcome_name}',
+        title=f'outcomes / {outcome_name}',
+        coloraxis={
+            'colorscale' : 'Viridis',
+            'cmin' : min_step,
+            'cmax' : max(min_step + 1, max_step),
+            'colorbar' : {
+                'title' : {'text' : 'run', 'font' : {'size' : 12}},
+                'tickfont' : {'size' : 11},
+                'thickness' : 14,
+                'len' : 0.82,
+                'tickmode' : 'array',
+                'tickvals' : _integer_ticks(min_step, max(min_step + 1, max_step)),
+            },
+        },
         xaxis_title='time',
         yaxis_title='predicted value',
+        legend={
+            'x' : 1.0,
+            'xanchor' : 'right',
+            'y' : 1.0,
+            'bgcolor' : 'rgba(255,255,255,0.85)',
+            'bordercolor' : '#d8dde3',
+            'borderwidth' : 1,
+            'font' : {'size' : 11, 'color' : '#57606a'},
+        },
         uirevision=f'outcomes:{outcome_name}:{reset_count}',
     )
     return fig
@@ -420,12 +524,12 @@ def create_app(log_dir, refresh_interval_ms):
         Input('refresh-timer', 'n_intervals'),
     )
     def update_status(_):
-        messages = [
-            f'samples: {"present" if samples_path.exists() else "missing"}',
-            f'outcomes: {"present" if outcomes_path.exists() else "missing"}',
-            f'targets: {"present" if targets_path.exists() else "missing"}',
+        return [
+            _status_item('samples', samples_path.exists()),
+            _status_item('outcomes', outcomes_path.exists()),
+            _status_item('targets', targets_path.exists()),
+            html.Span(_last_updated_text([samples_path, outcomes_path, targets_path])),
         ]
-        return ' | '.join(messages)
 
     @app.callback(
         Output('samples-metric', 'options'),
@@ -465,9 +569,9 @@ def create_app(log_dir, refresh_interval_ms):
     def update_samples_graph(_, tag, metric, reset_count, relayout_data):
         samples = _read_csv(samples_path)
         if samples is None:
-            return _empty_figure(f'Missing {samples_path.name}')
+            return _empty_figure('no samples')
         if 'tag' not in samples.columns:
-            return _empty_figure(f'{samples_path.name} must contain a tag column')
+            return _empty_figure('invalid samples')
         figure = _samples_figure(samples, tag, metric, reset_count)
         if ctx.triggered_id != 'samples-reset':
             _apply_relayout(figure, relayout_data)
@@ -509,11 +613,11 @@ def create_app(log_dir, refresh_interval_ms):
     def update_outcomes_graph(_, outcome_name, reset_count, relayout_data):
         outcomes = _read_csv(outcomes_path)
         if outcomes is None:
-            return _empty_figure(f'Missing {outcomes_path.name}')
+            return _empty_figure('no outcomes')
         if 'outcome_name' not in outcomes.columns:
-            return _empty_figure(f'{outcomes_path.name} must contain an outcome_name column')
+            return _empty_figure('invalid outcomes')
         if outcome_name is None:
-            return _empty_figure(f'No outcomes found in {outcomes_path.name}')
+            return _empty_figure('no outcomes')
         targets = _read_csv(targets_path)
         figure = _outcomes_figure(outcomes, targets, outcome_name, reset_count)
         if ctx.triggered_id != 'outcomes-reset':
