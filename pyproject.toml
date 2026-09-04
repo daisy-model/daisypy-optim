@@ -22,7 +22,8 @@ dependencies = [
     "daisypy-io>=0.2.0",
     "matplotlib",
     "dash",
-    "plotly"
+    "plotly",
+    "waitress"
 ]
 
 dynamic = ["version"]

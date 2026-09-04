@@ -10,6 +10,7 @@ import pandas as pd
 import plotly.colors
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from waitress import serve
 
 
 def _sanitize_name(name):
@@ -435,16 +436,13 @@ def run_app(app, host, port, *, open_browser=True, verbose=False):
         threading.Timer(0.5, webbrowser.open, args=(url,)).start()
     print(f'Monitor available at {url}')
     if not verbose:
-        logging.getLogger('werkzeug').setLevel(logging.ERROR)
+        logging.getLogger('waitress').setLevel(logging.ERROR)
         app.server.logger.setLevel(logging.ERROR)
-    app.run(
+    serve(
+        app.server,
         host=host,
         port=port,
-        debug=False,
-        dev_tools_ui=False,
-        dev_tools_props_check=False,
-        dev_tools_hot_reload=False,
-        dev_tools_silence_routes_logging=not verbose,
+        _quiet=not verbose,
     )
 
 
