@@ -20,25 +20,23 @@ _PAGE_STYLE = {
         '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif'
     ),
 }
-_TITLE_STYLE = {
-    'margin' : '0 0 8px 0',
-    'fontSize' : '18px',
-    'fontWeight' : '600',
-    'letterSpacing' : '0.01em',
-}
 _PATH_STYLE = {
-    'marginBottom' : '8px',
     'fontSize' : '12px',
     'color' : '#6c737a',
+    'whiteSpace' : 'nowrap',
+    'overflow' : 'hidden',
+    'textOverflow' : 'ellipsis',
 }
 _STATUS_STYLE = {
-    'marginBottom' : '8px',
+    'marginTop' : '8px',
     'fontSize' : '12px',
     'color' : '#6c737a',
     'display' : 'flex',
     'gap' : '10px',
     'alignItems' : 'center',
     'flexWrap' : 'wrap',
+    'paddingTop' : '6px',
+    'borderTop' : '1px solid #d8dde3',
 }
 _TABS_STYLE = {
     'height' : '36px',
@@ -117,14 +115,14 @@ _STATUS_DOT_STYLE = {
     'width' : '7px',
     'height' : '7px',
     'borderRadius' : '50%',
-    'backgroundColor' : '#8c959f',
+    'backgroundColor' : '#6a9c78',
 }
 _STATUS_DOT_MISSING_STYLE = {
     **_STATUS_DOT_STYLE,
-    'backgroundColor' : '#d0d7de',
+    'backgroundColor' : '#b26a6a',
 }
 _GRAPH_STYLE = {
-    'height' : '84vh',
+    'height' : '82vh',
     'backgroundColor' : '#ffffff',
     'border' : '1px solid #d8dde3',
     'borderRadius' : '8px',
@@ -148,6 +146,16 @@ _CHECKBOX_ROW_STYLE = {
     'alignItems' : 'center',
     'gap' : '8px',
     'height' : '32px',
+}
+_CHECKBOX_LABEL_STYLE = {
+    'display' : 'flex',
+    'alignItems' : 'center',
+    'gap' : '3px',
+}
+_INLINE_CONTROL_STYLE = {
+    'display' : 'flex',
+    'alignItems' : 'center',
+    'gap' : '8px',
 }
 
 
@@ -183,7 +191,7 @@ def _last_updated_text(paths):
 def _samples_controls():
     return html.Div([
         html.Div([
-            html.Label('tag', style=_LABEL_STYLE),
+            html.Span('tag', style=_LABEL_STYLE),
             dcc.Dropdown(
                 id='samples-tag',
                 options=[
@@ -194,124 +202,114 @@ def _samples_controls():
                 clearable=False,
                 persistence=True,
                 persistence_type='local',
-                style={'fontSize' : '13px'},
+                style={'fontSize' : '13px', 'width' : '100px'},
             ),
-        ], style={**_FIELD_STYLE, 'width' : '180px'}),
+        ], style=_INLINE_CONTROL_STYLE),
         html.Div([
-            html.Label('metric', style=_LABEL_STYLE),
+            html.Span('metric', style=_LABEL_STYLE),
             dcc.Dropdown(
                 id='samples-metric',
                 clearable=False,
                 persistence=True,
                 persistence_type='local',
-                style={'fontSize' : '13px'},
+                style={'fontSize' : '13px', 'width' : '100px'},
             ),
-        ], style={**_FIELD_STYLE, 'width' : '280px'}),
+        ], style=_INLINE_CONTROL_STYLE),
         html.Div([
-            html.Label('auto zoom', style=_LABEL_STYLE),
             html.Div([
                 dcc.Checklist(
                     id='samples-auto-zoom-enabled',
-                    options=[{'label' : 'last', 'value' : 'enabled'}],
+                    options=[{'label' : '', 'value' : 'enabled'}],
                     value=[],
                     inline=True,
                     persistence=True,
                     persistence_type='local',
-                    style={'fontSize' : '13px'},
-                ),
-                dcc.Input(
-                    id='samples-auto-zoom-steps',
-                    type='number',
-                    min=1,
-                    step=1,
-                    value=10,
-                    disabled=True,
-                    persistence=True,
-                    persistence_type='local',
                     style={
-                        'height' : '32px',
-                        'width' : '66px',
-                        'padding' : '0 8px',
-                        'border' : '1px solid #d0d7de',
-                        'borderRadius' : '6px',
-                        'backgroundColor' : '#ffffff',
-                        'color' : '#2f3437',
-                        'fontSize' : '13px',
+                        'display' : 'flex',
+                        'alignItems' : 'center',
+                        'margin' : '0',
+                    },
+                    labelStyle={
+                        'display' : 'inline-flex',
+                        'alignItems' : 'center',
+                        'margin' : '0',
+                    },
+                    inputStyle={
+                        'margin' : '0',
                     },
                 ),
-                html.Span('steps', style={'fontSize' : '12px', 'color' : '#4d545b'}),
-            ], style=_CHECKBOX_ROW_STYLE),
-        ], style={**_FIELD_STYLE, 'minWidth' : '220px'}),
+                html.Span('auto zoom to last', style=_LABEL_STYLE),
+            ], style=_CHECKBOX_LABEL_STYLE),
+            dcc.Input(
+                id='samples-auto-zoom-steps',
+                type='number',
+                min=1,
+                step=1,
+                value=10,
+                disabled=True,
+                persistence=True,
+                persistence_type='local',
+                style={
+                    'height' : '22px',
+                    'width' : '40px',
+                    'padding' : '0',
+                    'margin' : '0',
+                    'border' : '1px solid #d0d7de',
+                    'borderRadius' : '6px',
+                    'backgroundColor' : '#ffffff',
+                    'color' : '#2f3437',
+                    'fontSize' : '13px',
+                },
+            ),
+            html.Span('steps', style={'fontSize' : '12px', 'color' : '#4d545b'}),
+        ], style=_CHECKBOX_ROW_STYLE),
     ], style=_CONTROLS_STYLE)
 
 
 def _outcomes_controls():
     return html.Div([
         html.Div([
-            html.Label('outcome', style=_LABEL_STYLE),
+            html.Span('outcome', style=_LABEL_STYLE),
             dcc.Dropdown(
                 id='outcomes-name',
                 clearable=False,
                 persistence=True,
                 persistence_type='local',
-                style={'fontSize' : '13px'},
+                style={'fontSize' : '13px', 'width' : '280px'},
             ),
-        ], style={**_FIELD_STYLE, 'width' : '280px'}),
+        ], style=_INLINE_CONTROL_STYLE),
         html.Div([
-            html.Label('auto zoom', style=_LABEL_STYLE),
             html.Div([
                 dcc.Checklist(
                     id='outcomes-auto-zoom-enabled',
-                    options=[{'label' : 'last', 'value' : 'enabled'}],
+                    options=[{'label' : '', 'value' : 'enabled'}],
                     value=[],
                     inline=True,
                     persistence=True,
                     persistence_type='local',
-                    style={'fontSize' : '13px'},
-                ),
-                dcc.Input(
-                    id='outcomes-auto-zoom-steps',
-                    type='number',
-                    min=1,
-                    step=1,
-                    value=10,
-                    disabled=True,
-                    persistence=True,
-                    persistence_type='local',
                     style={
-                        'height' : '32px',
-                        'width' : '66px',
-                        'padding' : '0 8px',
-                        'border' : '1px solid #d0d7de',
-                        'borderRadius' : '6px',
-                        'backgroundColor' : '#ffffff',
-                        'color' : '#2f3437',
-                        'fontSize' : '13px',
+                        'display' : 'flex',
+                        'alignItems' : 'center',
+                        'margin' : '0',
+                    },
+                    labelStyle={
+                        'display' : 'inline-flex',
+                        'alignItems' : 'center',
+                        'margin' : '0',
+                    },
+                    inputStyle={
+                        'margin' : '0',
                     },
                 ),
-                html.Span('steps', style={'fontSize' : '12px', 'color' : '#4d545b'}),
-            ], style=_CHECKBOX_ROW_STYLE),
-        ], style={**_FIELD_STYLE, 'minWidth' : '220px'}),
-    ], style=_CONTROLS_STYLE)
-
-
-def _refresh_controls():
-    return html.Div([
-        html.Button(
-            '⏸',
-            id='refresh-toggle',
-            n_clicks=0,
-            title='pause refresh',
-            style=_ICON_BUTTON_STYLE,
-        ),
-        html.Div([
-            html.Label('refresh rate (s)', style=_LABEL_STYLE),
+                html.Span('auto zoom to last', style=_LABEL_STYLE),
+            ], style=_CHECKBOX_LABEL_STYLE),
             dcc.Input(
-                id='refresh-rate',
+                id='outcomes-auto-zoom-steps',
                 type='number',
-                min=0.1,
-                step='any',
-                value=1.0,
+                min=1,
+                step=1,
+                value=10,
+                disabled=True,
                 persistence=True,
                 persistence_type='local',
                 style={
@@ -325,15 +323,49 @@ def _refresh_controls():
                     'fontSize' : '13px',
                 },
             ),
-        ], style={**_FIELD_STYLE, 'minWidth' : '128px'}),
+            html.Span('steps', style={'fontSize' : '12px', 'color' : '#4d545b'}),
+        ], style=_CHECKBOX_ROW_STYLE),
+    ], style=_CONTROLS_STYLE)
+
+
+def _refresh_controls():
+    return html.Div([
+        html.Button(
+            '⏸',
+            id='refresh-toggle',
+            n_clicks=0,
+            title='pause refresh',
+            style=_ICON_BUTTON_STYLE,
+        ),
+        html.Div([
+            html.Span('refresh every', style=_LABEL_STYLE),
+            dcc.Input(
+                id='refresh-rate',
+                type='number',
+                min=0.1,
+                step='any',
+                value=1.0,
+                persistence=True,
+                persistence_type='local',
+                style={
+                    'height' : '22px',
+                    'width' : '40px',
+                    'padding' : '0',
+                    'margin' : '5px 5px 5px 5px',
+                    'border' : '1px solid #d0d7de',
+                    'borderRadius' : '6px',
+                    'backgroundColor' : '#ffffff',
+                    'color' : '#2f3437',
+                    'fontSize' : '13px',
+                },
+            ),
+            html.Span('second(s)', style=_LABEL_STYLE),
+        ]),
     ], style=_REFRESH_CONTROL_STYLE)
 
 
 def _layout(log_dir):
     return html.Div([
-        html.H1('Daisy calibration monitor', style=_TITLE_STYLE),
-        html.Div(f'log dir: {log_dir}', style=_PATH_STYLE),
-        html.Div(id='status-message', style=_STATUS_STYLE),
         html.Div([_refresh_controls()], style=_UTILITY_BAR_STYLE),
         dcc.Interval(id='refresh-timer', interval=1000, n_intervals=0, disabled=False),
         dcc.Store(id='samples-view-state'),
@@ -369,6 +401,10 @@ def _layout(log_dir):
             'primary' : '#8c959f',
             'background' : '#f5f6f7',
         }),
+        html.Div([
+            html.Div(id='status-message', style=_STATUS_STYLE),
+            html.Div(f'log dir: {log_dir}', style=_PATH_STYLE),
+        ]),
     ], style=_PAGE_STYLE)
 
 
@@ -591,7 +627,7 @@ def _samples_figure(samples, tag, metric, auto_zoom, auto_zoom_steps):
                 mode='markers',
                 marker={
                     'symbol' : 'cross',
-                    'size' : 10,
+                    'size' : 5,
                     'color' : tagged['step'],
                     'coloraxis' : 'coloraxis',
                 },
@@ -760,9 +796,9 @@ def create_app(log_dir, refresh_interval_ms):
     targets_path = log_dir / 'targets.csv'
 
     app = Dash(__name__, update_title=None)
-    app.title = 'daisypy-optim monitor'
+    app.title = 'Daisy calibration monitor'
     app.layout = _layout(log_dir)
-    app.layout.children[4].interval = refresh_interval_ms
+    app.layout.children[1].interval = refresh_interval_ms
 
     @app.callback(
         Output('refresh-timer', 'interval'),
