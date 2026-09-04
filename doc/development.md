@@ -32,11 +32,20 @@ The current manual visualization test continuously writes `samples.csv` and upda
 
     python manual-tests/test_plot_samples.py
 
+The monitor app also has a manual test that continuously writes `samples.csv`, `outcomes.csv`,
+and `targets.csv` and serves the browser UI:
+
+    python manual-tests/test_monitor_samples.py
+
 Useful options:
 
     python manual-tests/test_plot_samples.py --standardized
     python manual-tests/test_plot_samples.py --write-interval 0.25
     python manual-tests/test_plot_samples.py --duration 10
+    python manual-tests/test_monitor_samples.py --write-interval 0.25
+    python manual-tests/test_monitor_samples.py --standardized
+    python manual-tests/test_monitor_samples.py --verbose
+    python manual-tests/test_monitor_samples.py --no-open-browser
 
 The generated `samples.csv` is written to `manual-tests/out/plot-samples/` by default.
 

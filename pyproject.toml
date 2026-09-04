@@ -20,7 +20,9 @@ dependencies = [
     "numpy",
     "pandas",
     "daisypy-io>=0.2.0",
-    "matplotlib"
+    "matplotlib",
+    "dash",
+    "plotly"
 ]
 
 dynamic = ["version"]
@@ -29,6 +31,7 @@ readme = "README.md"
 [project.scripts]
 daisypy_optim_plot_outcomes = "daisypy.optim.plot_outcomes:main"
 daisypy_optim_plot_samples = "daisypy.optim.plot_samples:main"
+daisypy_optim_monitor = "daisypy.optim.monitor:main"
 
 [project.urls]
 Homepage = "https://daisy.ku.dk/"
