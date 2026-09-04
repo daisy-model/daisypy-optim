@@ -12,6 +12,93 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from waitress import serve
 
+_PAGE_STYLE = {
+    'padding' : '12px 16px',
+    'backgroundColor' : '#f5f6f7',
+    'color' : '#2f3437',
+    'fontFamily' : (
+        '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif'
+    ),
+}
+_TITLE_STYLE = {
+    'margin' : '0 0 8px 0',
+    'fontSize' : '18px',
+    'fontWeight' : '600',
+    'letterSpacing' : '0.01em',
+}
+_STATUS_STYLE = {
+    'marginBottom' : '8px',
+    'fontSize' : '12px',
+    'color' : '#6c737a',
+}
+_TABS_STYLE = {
+    'height' : '36px',
+    'display' : 'flex',
+    'alignItems' : 'end',
+    'gap' : '4px',
+    'borderBottom' : '1px solid #d8dde3',
+}
+_TAB_STYLE = {
+    'padding' : '6px 12px',
+    'height' : '34px',
+    'lineHeight' : '20px',
+    'fontSize' : '13px',
+    'fontWeight' : '500',
+    'backgroundColor' : '#eef0f2',
+    'border' : '1px solid #d8dde3',
+    'borderBottom' : 'none',
+    'color' : '#4d545b',
+    'borderTopLeftRadius' : '8px',
+    'borderTopRightRadius' : '8px',
+    'width' : 'auto',
+    'display' : 'inline-flex',
+    'alignItems' : 'center',
+    'justifyContent' : 'center',
+    'flex' : '0 0 auto',
+}
+_TAB_SELECTED_STYLE = {
+    **_TAB_STYLE,
+    'backgroundColor' : '#ffffff',
+    'color' : '#22272b',
+    'borderTop' : '2px solid #8c959f',
+    'marginBottom' : '-1px',
+}
+_SECTION_STYLE = {
+    'paddingTop' : '10px',
+}
+_CONTROLS_STYLE = {
+    'display' : 'flex',
+    'gap' : '12px',
+    'alignItems' : 'end',
+    'flexWrap' : 'wrap',
+    'marginBottom' : '10px',
+}
+_FIELD_STYLE = {
+    'display' : 'flex',
+    'flexDirection' : 'column',
+    'gap' : '4px',
+}
+_LABEL_STYLE = {
+    'fontSize' : '12px',
+    'fontWeight' : '500',
+    'color' : '#4d545b',
+}
+_BUTTON_STYLE = {
+    'height' : '36px',
+    'padding' : '0 12px',
+    'border' : '1px solid #d0d7de',
+    'backgroundColor' : '#f6f8fa',
+    'color' : '#2f3437',
+    'borderRadius' : '6px',
+    'fontSize' : '13px',
+}
+_GRAPH_STYLE = {
+    'height' : '84vh',
+    'backgroundColor' : '#ffffff',
+    'border' : '1px solid #d8dde3',
+    'borderRadius' : '8px',
+}
+
 
 def _sanitize_name(name):
     return ''.join(c if c.isalnum() or c in ('-', '_') else '-' for c in name)
@@ -26,7 +113,7 @@ def _read_csv(path):
 def _samples_controls():
     return html.Div([
         html.Div([
-            html.Label('Tag'),
+            html.Label('tag', style=_LABEL_STYLE),
             dcc.Dropdown(
                 id='samples-tag',
                 options=[
@@ -35,42 +122,31 @@ def _samples_controls():
                 ],
                 value='raw',
                 clearable=False,
+                style={'fontSize' : '13px'},
             ),
-        ], style={'width' : '220px'}),
+        ], style={**_FIELD_STYLE, 'width' : '180px'}),
         html.Div([
-            html.Label('Metric'),
-            dcc.Dropdown(id='samples-metric', clearable=False),
-        ], style={'width' : '320px'}),
-        html.Button('Reset to current data', id='samples-reset', n_clicks=0),
-    ], style={
-        'display' : 'flex',
-        'gap' : '1rem',
-        'alignItems' : 'end',
-        'flexWrap' : 'wrap',
-        'marginBottom' : '1rem',
-    })
+            html.Label('metric', style=_LABEL_STYLE),
+            dcc.Dropdown(id='samples-metric', clearable=False, style={'fontSize' : '13px'}),
+        ], style={**_FIELD_STYLE, 'width' : '280px'}),
+        html.Button('reset view', id='samples-reset', n_clicks=0, style=_BUTTON_STYLE),
+    ], style=_CONTROLS_STYLE)
 
 
 def _outcomes_controls():
     return html.Div([
         html.Div([
-            html.Label('Outcome'),
-            dcc.Dropdown(id='outcomes-name', clearable=False),
-        ], style={'width' : '320px'}),
-        html.Button('Reset to current data', id='outcomes-reset', n_clicks=0),
-    ], style={
-        'display' : 'flex',
-        'gap' : '1rem',
-        'alignItems' : 'end',
-        'flexWrap' : 'wrap',
-        'marginBottom' : '1rem',
-    })
+            html.Label('outcome', style=_LABEL_STYLE),
+            dcc.Dropdown(id='outcomes-name', clearable=False, style={'fontSize' : '13px'}),
+        ], style={**_FIELD_STYLE, 'width' : '280px'}),
+        html.Button('reset view', id='outcomes-reset', n_clicks=0, style=_BUTTON_STYLE),
+    ], style=_CONTROLS_STYLE)
 
 
 def _layout():
     return html.Div([
-        html.H1('daisypy-optim monitor'),
-        html.Div(id='status-message', style={'marginBottom' : '1rem'}),
+        html.H1('Daisy calibration monitor', style=_TITLE_STYLE),
+        html.Div(id='status-message', style=_STATUS_STYLE),
         dcc.Interval(id='refresh-timer', interval=1000, n_intervals=0),
         dcc.Store(id='samples-view-state'),
         dcc.Store(id='outcomes-view-state'),
@@ -78,31 +154,43 @@ def _layout():
             dcc.Tab(
                 label='Samples',
                 value='samples',
+                style=_TAB_STYLE,
+                selected_style=_TAB_SELECTED_STYLE,
                 children=[
                     html.Div([
                         _samples_controls(),
-                        dcc.Graph(id='samples-graph', style={'height' : '85vh'}),
-                    ], style={'paddingTop' : '1rem'})
+                        dcc.Graph(id='samples-graph', style=_GRAPH_STYLE),
+                    ], style=_SECTION_STYLE)
                 ],
             ),
             dcc.Tab(
                 label='Outcomes',
                 value='outcomes',
+                style=_TAB_STYLE,
+                selected_style=_TAB_SELECTED_STYLE,
                 children=[
                     html.Div([
                         _outcomes_controls(),
-                        dcc.Graph(id='outcomes-graph', style={'height' : '85vh'}),
-                    ], style={'paddingTop' : '1rem'})
+                        dcc.Graph(id='outcomes-graph', style=_GRAPH_STYLE),
+                    ], style=_SECTION_STYLE)
                 ],
             ),
-        ]),
-    ], style={'padding' : '1rem 1.5rem'})
+        ], parent_style={'marginBottom' : '0'}, style=_TABS_STYLE, colors={
+            'border' : '#d8dde3',
+            'primary' : '#8c959f',
+            'background' : '#f5f6f7',
+        }),
+    ], style=_PAGE_STYLE)
 
 
 def _empty_figure(message):
     fig = go.Figure()
     fig.update_layout(
         template='plotly_white',
+        paper_bgcolor='#ffffff',
+        plot_bgcolor='#ffffff',
+        font={'color' : '#2f3437'},
+        margin={'l' : 48, 'r' : 24, 't' : 44, 'b' : 44},
         annotations=[{
             'text' : message,
             'xref' : 'paper',
@@ -234,13 +322,20 @@ def _samples_figure(samples, tag, metric, reset_count):
 
     fig.update_layout(
         template='plotly_white',
-        title=f'Marginal distribution of sampled parameters vs Objective ({metric[7:]})',
+        paper_bgcolor='#ffffff',
+        plot_bgcolor='#ffffff',
+        font={'color' : '#2f3437'},
+        margin={'l' : 56, 'r' : 24, 't' : 52, 'b' : 44},
+        title=f'samples: {metric[7:]}',
         coloraxis={
             'colorscale' : 'Viridis',
             'cmin' : tagged['step'].min(),
             'cmax' : max(tagged['step'].min() + 1, tagged['step'].max()),
             'colorbar' : {
-                'title' : 'run',
+                'title' : {'text' : 'run', 'font' : {'size' : 12}},
+                'tickfont' : {'size' : 11},
+                'thickness' : 14,
+                'len' : 0.82,
                 'tickmode' : 'array',
                 'tickvals' : _integer_ticks(
                     tagged['step'].min(),
@@ -296,7 +391,11 @@ def _outcomes_figure(outcomes, targets, outcome_name, reset_count):
 
     fig.update_layout(
         template='plotly_white',
-        title=f'{outcome_name} outcome curves ({len(grouped)} evaluations)',
+        paper_bgcolor='#ffffff',
+        plot_bgcolor='#ffffff',
+        font={'color' : '#2f3437'},
+        margin={'l' : 56, 'r' : 24, 't' : 52, 'b' : 44},
+        title=f'outcomes: {outcome_name}',
         xaxis_title='time',
         yaxis_title='predicted value',
         uirevision=f'outcomes:{outcome_name}:{reset_count}',
@@ -321,16 +420,11 @@ def create_app(log_dir, refresh_interval_ms):
         Input('refresh-timer', 'n_intervals'),
     )
     def update_status(_):
-        messages = [f'Log directory: {log_dir}']
-        messages.append(
-            f'samples.csv: {"found" if samples_path.exists() else "missing"}'
-        )
-        messages.append(
-            f'outcomes.csv: {"found" if outcomes_path.exists() else "missing"}'
-        )
-        messages.append(
-            f'targets.csv: {"found" if targets_path.exists() else "missing"}'
-        )
+        messages = [
+            f'samples: {"present" if samples_path.exists() else "missing"}',
+            f'outcomes: {"present" if outcomes_path.exists() else "missing"}',
+            f'targets: {"present" if targets_path.exists() else "missing"}',
+        ]
         return ' | '.join(messages)
 
     @app.callback(
