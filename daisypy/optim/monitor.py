@@ -267,6 +267,40 @@ def _apply_relayout(figure, relayout_data):
             continue
         axis_name, attribute = key.split('.', maxsplit=1)
         axes.setdefault(axis_name, {})[attribute] = value
+    shared_xaxes = [
+        axis_name
+        for axis_name in axes
+        if axis_name.startswith('xaxis')
+        and getattr(getattr(figure.layout, axis_name, None), 'matches', None) == 'x'
+    ]
+    if shared_xaxes:
+        xaxis_updates = next(
+            (
+                updates
+                for axis_name, updates in axes.items()
+                if axis_name in shared_xaxes and (
+                    updates.get('autorange')
+                    or (
+                        updates.get('range[0]') is not None
+                        and updates.get('range[1]') is not None
+                    )
+                )
+            ),
+            None,
+        )
+        if xaxis_updates is not None:
+            if xaxis_updates.get('autorange'):
+                figure.update_xaxes(autorange=True, range=None)
+            else:
+                figure.update_xaxes(
+                    range=[
+                        xaxis_updates['range[0]'],
+                        xaxis_updates['range[1]'],
+                    ],
+                    autorange=False,
+                )
+            for axis_name in shared_xaxes:
+                axes.pop(axis_name, None)
     for axis_name, updates in axes.items():
         axis = getattr(figure.layout, axis_name, None)
         if axis is None:
@@ -385,6 +419,8 @@ def _samples_figure(samples, tag, metric):
         fig.update_xaxes(title_text=param[6:], row=row, col=col)
         if col == 1:
             fig.update_yaxes(title_text=metric[7:], row=row, col=col)
+    if tag == 'standardized':
+        fig.update_xaxes(matches='x')
 
     fig.update_layout(
         template='plotly_white',
