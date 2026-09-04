@@ -25,6 +25,9 @@ If there is ambiguity, prefer interaction over inference:
 - Ask brief, concrete questions when the answer changes scope or implementation shape.
 - If the request can be satisfied by a simpler manual artifact or a more integrated solution, ask
   which is wanted instead of choosing the larger one.
+- If you notice an unrelated bug, inconsistency, or unresolved behavior while working on a narrow
+  task, do not ignore it and do not fix it without approval. Pause and ask the user how they want
+  to handle it.
 
 Validation should also be minimal:
 - Use the smallest check that confirms the requested behavior.
