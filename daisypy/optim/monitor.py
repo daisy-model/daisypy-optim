@@ -915,13 +915,13 @@ def create_app(log_dir, refresh_interval_ms):
             return no_update
         samples = _read_csv(samples_path)
         if samples is None:
-            return _empty_figure('no samples')
+            return _empty_figure('no samples').to_plotly_json()
         if 'tag' not in samples.columns:
-            return _empty_figure('invalid samples')
+            return _empty_figure('invalid samples').to_plotly_json()
         metric, _ = _default_samples_metric(samples, tag, metric)
         figure = _samples_figure(samples, tag, metric)
         _apply_relayout(figure, relayout_data)
-        return figure
+        return figure.to_plotly_json()
 
     @app.callback(
         Output('outcomes-name', 'options'),
@@ -959,16 +959,16 @@ def create_app(log_dir, refresh_interval_ms):
             return no_update
         outcomes = _read_csv(outcomes_path)
         if outcomes is None:
-            return _empty_figure('no outcomes')
+            return _empty_figure('no outcomes').to_plotly_json()
         if 'outcome_name' not in outcomes.columns:
-            return _empty_figure('invalid outcomes')
+            return _empty_figure('invalid outcomes').to_plotly_json()
         outcome_name, _ = _default_outcome_name(outcomes, outcome_name)
         if outcome_name is None:
-            return _empty_figure('no outcomes')
+            return _empty_figure('no outcomes').to_plotly_json()
         targets = _read_csv(targets_path)
         figure = _outcomes_figure(outcomes, targets, outcome_name)
         _apply_relayout(figure, relayout_data)
-        return figure
+        return figure.to_plotly_json()
 
     # pylint: disable=line-too-long
     app.clientside_callback(
