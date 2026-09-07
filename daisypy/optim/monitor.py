@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 '''Local web app for monitoring optimization logs.'''
 import argparse
 import logging
@@ -5,7 +6,7 @@ import threading
 import webbrowser
 from pathlib import Path
 
-from dash import Dash, Input, Output, State, dcc, html
+from dash import Dash, Input, Output, State, dcc, html, no_update
 import pandas as pd
 import plotly.colors
 import plotly.graph_objects as go
@@ -167,6 +168,28 @@ def _read_csv(path):
     if not path.exists():
         return None
     return pd.read_csv(path)
+
+
+def _path_state(path):
+    if not path.exists():
+        return {
+            'exists' : False,
+            'mtime_ns' : None,
+            'size' : None,
+        }
+    stat = path.stat()
+    return {
+        'exists' : True,
+        'mtime_ns' : str(stat.st_mtime_ns),
+        'size' : stat.st_size,
+    }
+
+
+def _paths_state(paths):
+    state = {}
+    for path in paths:
+        state[path.name] = _path_state(path)
+    return state
 
 
 def _status_item(name, exists):
@@ -365,9 +388,20 @@ def _refresh_controls():
 
 
 def _layout(log_dir):
+    log_dir = Path(log_dir)
     return html.Div([
         html.Div([_refresh_controls()], style=_UTILITY_BAR_STYLE),
         dcc.Interval(id='refresh-timer', interval=1000, n_intervals=0, disabled=False),
+        dcc.Store(
+            id='samples-files-state',
+            data=_paths_state([log_dir / 'samples.csv']),
+        ),
+        dcc.Store(
+            id='outcomes-files-state',
+            data=_paths_state([log_dir / 'outcomes.csv', log_dir / 'targets.csv']),
+        ),
+        dcc.Store(id='samples-base-figure'),
+        dcc.Store(id='outcomes-base-figure'),
         dcc.Store(id='samples-view-state'),
         dcc.Store(id='outcomes-view-state'),
         dcc.Tabs(id='view-tabs', value='samples', persistence=True, persistence_type='local',
@@ -602,7 +636,7 @@ def _default_outcome_name(outcomes, current_value):
     return outcome_names[0], outcome_names
 
 
-def _samples_figure(samples, tag, metric, auto_zoom, auto_zoom_steps):
+def _samples_figure(samples, tag, metric):
     tagged = samples[samples['tag'] == tag].copy()
     params = [col for col in tagged.columns if col.startswith('param_')]
     if len(tagged) == 0 or metric is None or len(params) == 0:
@@ -620,21 +654,22 @@ def _samples_figure(samples, tag, metric, auto_zoom, auto_zoom_steps):
     for position, param in enumerate(params):
         row = position // cols + 1
         col = position % cols + 1
+        hovertemplate = (
+            f'{param[6:]}=%{{x}}<br>{metric[7:]}=%{{y}}<br>step=%{{marker.color}}<extra></extra>'
+        )
         fig.add_trace(
             go.Scattergl(
-                x=tagged[param],
-                y=tagged[metric],
+                x=tagged[param].tolist(),
+                y=tagged[metric].tolist(),
                 mode='markers',
                 marker={
                     'symbol' : 'cross',
                     'size' : 5,
-                    'color' : tagged['step'],
+                    'color' : tagged['step'].tolist(),
                     'coloraxis' : 'coloraxis',
                 },
                 showlegend=False,
-                hovertemplate=(
-                    f'{param[6:]}=%{{x}}<br>{metric[7:]}=%{{y}}<br>step=%{{marker.color}}<extra></extra>'
-                ),
+                hovertemplate=hovertemplate,
             ),
             row=row,
             col=col,
@@ -644,22 +679,6 @@ def _samples_figure(samples, tag, metric, auto_zoom, auto_zoom_steps):
             fig.update_yaxes(title_text=metric[7:], row=row, col=col)
     if tag == 'standardized':
         fig.update_xaxes(matches='x')
-    if auto_zoom:
-        recent = _select_last_steps(tagged, auto_zoom_steps)
-        y_range = _numeric_range(recent[metric])
-        if y_range is not None:
-            fig.update_yaxes(range=y_range, autorange=False)
-        if tag == 'standardized':
-            x_range = _numeric_range(pd.concat([recent[param] for param in params]))
-            if x_range is not None:
-                fig.update_xaxes(range=x_range, autorange=False)
-        else:
-            for position, param in enumerate(params):
-                row = position // cols + 1
-                col = position % cols + 1
-                x_range = _numeric_range(recent[param])
-                if x_range is not None:
-                    fig.update_xaxes(range=x_range, autorange=False, row=row, col=col)
 
     fig.update_layout(
         template='plotly_white',
@@ -689,7 +708,7 @@ def _samples_figure(samples, tag, metric, auto_zoom, auto_zoom_steps):
     return fig
 
 
-def _outcomes_figure(outcomes, targets, outcome_name, auto_zoom, auto_zoom_steps):
+def _outcomes_figure(outcomes, targets, outcome_name):
     selected = outcomes[outcomes['outcome_name'] == outcome_name].copy()
     if len(selected) == 0:
         return _empty_figure('no outcomes')
@@ -702,14 +721,15 @@ def _outcomes_figure(outcomes, targets, outcome_name, auto_zoom, auto_zoom_steps
 
     fig = go.Figure()
     for (step, index), group in grouped:
-        fig.add_trace(go.Scatter(
-            x=group['time'],
-            y=group['predicted_value'],
+        fig.add_trace(go.Scattergl(
+            x=group['time'].dt.strftime('%Y-%m-%dT%H:%M:%S.%f').tolist(),
+            y=group['predicted_value'].tolist(),
             mode='lines',
             line={
                 'color' : _sample_color(int(step), min_step, max_step),
                 'width' : 1.5,
             },
+            meta={'kind' : 'prediction', 'step' : int(step), 'index' : int(index)},
             name=f'step {step}, index {index}',
             showlegend=False,
             hovertemplate=(
@@ -717,8 +737,8 @@ def _outcomes_figure(outcomes, targets, outcome_name, auto_zoom, auto_zoom_steps
             ),
         ))
     fig.add_trace(go.Scatter(
-        x=[selected['time'].iloc[0]],
-        y=[selected['predicted_value'].iloc[0]],
+        x=[selected['time'].iloc[0].strftime('%Y-%m-%dT%H:%M:%S.%f')],
+        y=[float(selected['predicted_value'].iloc[0])],
         mode='markers',
         marker={
             'size' : 0.1,
@@ -726,6 +746,7 @@ def _outcomes_figure(outcomes, targets, outcome_name, auto_zoom, auto_zoom_steps
             'color' : [min_step],
             'coloraxis' : 'coloraxis',
         },
+        meta={'kind' : 'colorbar'},
         showlegend=False,
         hoverinfo='skip',
     ))
@@ -735,22 +756,15 @@ def _outcomes_figure(outcomes, targets, outcome_name, auto_zoom, auto_zoom_steps
         if len(target_data) > 0:
             target_data['time'] = pd.to_datetime(target_data['time'])
             fig.add_trace(go.Scatter(
-                x=target_data['time'],
-                y=target_data['target_value'],
+                x=target_data['time'].dt.strftime('%Y-%m-%dT%H:%M:%S.%f').tolist(),
+                y=target_data['target_value'].tolist(),
                 mode='markers',
                 marker={'color' : 'red', 'size' : 8},
+                meta={'kind' : 'target'},
                 name='target',
                 showlegend=True,
                 hovertemplate='target<br>time=%{x}<br>value=%{y}<extra></extra>',
             ))
-    if auto_zoom:
-        recent = _select_last_steps(selected, auto_zoom_steps)
-        x_range = _datetime_range(recent['time'])
-        if x_range is not None:
-            fig.update_xaxes(range=x_range, autorange=False)
-        y_range = _numeric_range(recent['predicted_value'])
-        if y_range is not None:
-            fig.update_yaxes(range=y_range, autorange=False)
 
     fig.update_layout(
         template='plotly_white',
@@ -789,6 +803,7 @@ def _outcomes_figure(outcomes, targets, outcome_name, auto_zoom, auto_zoom_steps
 
 
 def create_app(log_dir, refresh_interval_ms):
+    # pylint: disable=too-many-locals
     '''Create the Dash app instance.'''
     log_dir = Path(log_dir)
     samples_path = log_dir / 'samples.csv'
@@ -799,6 +814,21 @@ def create_app(log_dir, refresh_interval_ms):
     app.title = 'Daisy calibration monitor'
     app.layout = _layout(log_dir)
     app.layout.children[1].interval = refresh_interval_ms
+
+    @app.callback(
+        Output('samples-files-state', 'data'),
+        Output('outcomes-files-state', 'data'),
+        Input('refresh-timer', 'n_intervals'),
+        State('samples-files-state', 'data'),
+        State('outcomes-files-state', 'data'),
+    )
+    def update_files_state(_, current_samples_state, current_outcomes_state):
+        samples_state = _paths_state([samples_path])
+        outcomes_state = _paths_state([outcomes_path, targets_path])
+        return (
+            no_update if samples_state == current_samples_state else samples_state,
+            no_update if outcomes_state == current_outcomes_state else outcomes_state,
+        )
 
     @app.callback(
         Output('refresh-timer', 'interval'),
@@ -854,11 +884,14 @@ def create_app(log_dir, refresh_interval_ms):
     @app.callback(
         Output('samples-metric', 'options'),
         Output('samples-metric', 'value'),
-        Input('refresh-timer', 'n_intervals'),
+        Input('view-tabs', 'value'),
+        Input('samples-files-state', 'data'),
         Input('samples-tag', 'value'),
         State('samples-metric', 'value'),
     )
-    def update_samples_metric(_, tag, current_metric):
+    def update_samples_metric(active_tab, _, tag, current_metric):
+        if active_tab != 'samples':
+            return no_update, no_update
         samples = _read_csv(samples_path)
         if samples is None or 'tag' not in samples.columns:
             return [], None
@@ -874,33 +907,36 @@ def create_app(log_dir, refresh_interval_ms):
         return _merge_relayout_state(current_state, relayout_data)
 
     @app.callback(
-        Output('samples-graph', 'figure'),
-        Input('refresh-timer', 'n_intervals'),
+        Output('samples-base-figure', 'data'),
+        Input('view-tabs', 'value'),
+        Input('samples-files-state', 'data'),
         Input('samples-tag', 'value'),
         Input('samples-metric', 'value'),
-        Input('samples-view-state', 'data'),
-        Input('samples-auto-zoom-enabled', 'value'),
-        Input('samples-auto-zoom-steps', 'value'),
+        State('samples-view-state', 'data'),
     )
-    def update_samples_graph(_, tag, metric, relayout_data, auto_zoom, auto_zoom_steps):
+    def update_samples_graph(active_tab, _, tag, metric, relayout_data):
+        if active_tab != 'samples':
+            return no_update
         samples = _read_csv(samples_path)
         if samples is None:
             return _empty_figure('no samples')
         if 'tag' not in samples.columns:
             return _empty_figure('invalid samples')
-        auto_zoom = _auto_zoom_enabled(auto_zoom)
-        figure = _samples_figure(samples, tag, metric, auto_zoom, auto_zoom_steps)
-        if not auto_zoom:
-            _apply_relayout(figure, relayout_data)
+        metric, _ = _default_samples_metric(samples, tag, metric)
+        figure = _samples_figure(samples, tag, metric)
+        _apply_relayout(figure, relayout_data)
         return figure
 
     @app.callback(
         Output('outcomes-name', 'options'),
         Output('outcomes-name', 'value'),
-        Input('refresh-timer', 'n_intervals'),
+        Input('view-tabs', 'value'),
+        Input('outcomes-files-state', 'data'),
         State('outcomes-name', 'value'),
     )
-    def update_outcomes_name(_, current_value):
+    def update_outcomes_name(active_tab, _, current_value):
+        if active_tab != 'outcomes':
+            return no_update, no_update
         outcomes = _read_csv(outcomes_path)
         if outcomes is None or 'outcome_name' not in outcomes.columns:
             return [], None
@@ -916,29 +952,234 @@ def create_app(log_dir, refresh_interval_ms):
         return _merge_relayout_state(current_state, relayout_data)
 
     @app.callback(
-        Output('outcomes-graph', 'figure'),
-        Input('refresh-timer', 'n_intervals'),
+        Output('outcomes-base-figure', 'data'),
+        Input('view-tabs', 'value'),
+        Input('outcomes-files-state', 'data'),
         Input('outcomes-name', 'value'),
-        Input('outcomes-view-state', 'data'),
-        Input('outcomes-auto-zoom-enabled', 'value'),
-        Input('outcomes-auto-zoom-steps', 'value'),
+        State('outcomes-view-state', 'data'),
     )
-    def update_outcomes_graph(_, outcome_name, relayout_data, auto_zoom, auto_zoom_steps):
+    def update_outcomes_graph(active_tab, _, outcome_name, relayout_data):
+        if active_tab != 'outcomes':
+            return no_update
         outcomes = _read_csv(outcomes_path)
         if outcomes is None:
             return _empty_figure('no outcomes')
         if 'outcome_name' not in outcomes.columns:
             return _empty_figure('invalid outcomes')
+        outcome_name, _ = _default_outcome_name(outcomes, outcome_name)
         if outcome_name is None:
             return _empty_figure('no outcomes')
         targets = _read_csv(targets_path)
-        auto_zoom = _auto_zoom_enabled(auto_zoom)
-        figure = _outcomes_figure(
-            outcomes, targets, outcome_name, auto_zoom, auto_zoom_steps
-        )
-        if not auto_zoom:
-            _apply_relayout(figure, relayout_data)
+        figure = _outcomes_figure(outcomes, targets, outcome_name)
+        _apply_relayout(figure, relayout_data)
         return figure
+
+    # pylint: disable=line-too-long
+    app.clientside_callback(
+        '''
+        function(baseFigure, autoZoomValue, autoZoomSteps) {
+            if (!baseFigure) {
+                return window.dash_clientside.no_update;
+            }
+
+            const enabled = Array.isArray(autoZoomValue) && autoZoomValue.includes('enabled');
+            if (!enabled) {
+                return baseFigure;
+            }
+
+            const stepCount = Math.max(parseInt(autoZoomSteps ?? 10, 10) || 10, 1);
+            const figure = JSON.parse(JSON.stringify(baseFigure));
+            const traces = Array.isArray(figure.data) ? figure.data : [];
+            if (traces.length === 0) {
+                return figure;
+            }
+
+            const stepValues = (((traces[0] || {}).marker || {}).color || []).filter(
+                value => value !== null && value !== undefined
+            );
+            const steps = Array.from(new Set(stepValues)).sort((a, b) => a - b);
+            if (steps.length === 0) {
+                return figure;
+            }
+            const selectedSteps = new Set(steps.slice(-stepCount));
+
+            function numericRange(values) {
+                const filtered = values.filter(value => Number.isFinite(value));
+                if (filtered.length === 0) {
+                    return null;
+                }
+                const lower = Math.min(...filtered);
+                const upper = Math.max(...filtered);
+                const padding = lower === upper
+                    ? Math.max(Math.abs(lower) * 0.05, 1e-6)
+                    : (upper - lower) * 0.05;
+                return [lower - padding, upper + padding];
+            }
+
+            function axisKey(axisRef, axisPrefix) {
+                if (!axisRef || axisRef === axisPrefix) {
+                    return axisPrefix + 'axis';
+                }
+                return axisPrefix + 'axis' + axisRef.slice(axisPrefix.length);
+            }
+
+            const yValues = [];
+            const xByAxis = {};
+            for (const trace of traces) {
+                const colors = (((trace || {}).marker || {}).color || []);
+                const xs = trace.x || [];
+                const ys = trace.y || [];
+                const key = axisKey(trace.xaxis || 'x', 'x');
+                if (!(key in xByAxis)) {
+                    xByAxis[key] = [];
+                }
+                for (let index = 0; index < Math.min(colors.length, xs.length, ys.length); index += 1) {
+                    if (!selectedSteps.has(colors[index])) {
+                        continue;
+                    }
+                    if (Number.isFinite(ys[index])) {
+                        yValues.push(ys[index]);
+                    }
+                    if (Number.isFinite(xs[index])) {
+                        xByAxis[key].push(xs[index]);
+                    }
+                }
+            }
+
+            const yRange = numericRange(yValues);
+            if (yRange) {
+                for (const [key, value] of Object.entries(figure.layout || {})) {
+                    if (key.startsWith('yaxis')) {
+                        value.range = yRange;
+                        value.autorange = false;
+                    }
+                }
+            }
+
+            const sharedX = Object.entries(figure.layout || {}).some(
+                ([key, value]) => key.startsWith('xaxis') && value && value.matches === 'x'
+            );
+            if (sharedX) {
+                const sharedValues = Object.values(xByAxis).flat();
+                const xRange = numericRange(sharedValues);
+                if (xRange) {
+                    for (const [key, value] of Object.entries(figure.layout || {})) {
+                        if (key.startsWith('xaxis')) {
+                            value.range = xRange;
+                            value.autorange = false;
+                        }
+                    }
+                }
+            } else {
+                for (const [key, values] of Object.entries(xByAxis)) {
+                    const xRange = numericRange(values);
+                    if (xRange && figure.layout && figure.layout[key]) {
+                        figure.layout[key].range = xRange;
+                        figure.layout[key].autorange = false;
+                    }
+                }
+            }
+
+            return figure;
+        }
+        ''',
+        Output('samples-graph', 'figure'),
+        Input('samples-base-figure', 'data'),
+        Input('samples-auto-zoom-enabled', 'value'),
+        Input('samples-auto-zoom-steps', 'value'),
+    )
+    # pylint: enable=line-too-long
+
+    app.clientside_callback(
+        '''
+        function(baseFigure, autoZoomValue, autoZoomSteps) {
+            if (!baseFigure) {
+                return window.dash_clientside.no_update;
+            }
+
+            const enabled = Array.isArray(autoZoomValue) && autoZoomValue.includes('enabled');
+            if (!enabled) {
+                return baseFigure;
+            }
+
+            const stepCount = Math.max(parseInt(autoZoomSteps ?? 10, 10) || 10, 1);
+            const figure = JSON.parse(JSON.stringify(baseFigure));
+            const traces = Array.isArray(figure.data) ? figure.data : [];
+            const selectedTraces = traces.filter(
+                trace => trace.meta && trace.meta.kind === 'prediction'
+            );
+            if (selectedTraces.length === 0) {
+                return figure;
+            }
+
+            const steps = Array.from(new Set(selectedTraces.map(trace => trace.meta.step))).sort(
+                (a, b) => a - b
+            );
+            const selectedSteps = new Set(steps.slice(-stepCount));
+
+            function numericRange(values) {
+                const filtered = values.filter(value => Number.isFinite(value));
+                if (filtered.length === 0) {
+                    return null;
+                }
+                const lower = Math.min(...filtered);
+                const upper = Math.max(...filtered);
+                const padding = lower === upper
+                    ? Math.max(Math.abs(lower) * 0.05, 1e-6)
+                    : (upper - lower) * 0.05;
+                return [lower - padding, upper + padding];
+            }
+
+            function datetimeRange(values) {
+                const filtered = values
+                    .map(value => Date.parse(value))
+                    .filter(value => Number.isFinite(value));
+                if (filtered.length === 0) {
+                    return null;
+                }
+                const lower = Math.min(...filtered);
+                const upper = Math.max(...filtered);
+                const padding = lower === upper ? 1000 : (upper - lower) / 20;
+                return [
+                    new Date(lower - padding).toISOString(),
+                    new Date(upper + padding).toISOString(),
+                ];
+            }
+
+            const xs = [];
+            const ys = [];
+            for (const trace of selectedTraces) {
+                if (!selectedSteps.has(trace.meta.step)) {
+                    continue;
+                }
+                for (const value of (trace.x || [])) {
+                    xs.push(value);
+                }
+                for (const value of (trace.y || [])) {
+                    ys.push(value);
+                }
+            }
+
+            const xRange = datetimeRange(xs);
+            if (xRange && figure.layout && figure.layout.xaxis) {
+                figure.layout.xaxis.range = xRange;
+                figure.layout.xaxis.autorange = false;
+            }
+
+            const yRange = numericRange(ys);
+            if (yRange && figure.layout && figure.layout.yaxis) {
+                figure.layout.yaxis.range = yRange;
+                figure.layout.yaxis.autorange = false;
+            }
+
+            return figure;
+        }
+        ''',
+        Output('outcomes-graph', 'figure'),
+        Input('outcomes-base-figure', 'data'),
+        Input('outcomes-auto-zoom-enabled', 'value'),
+        Input('outcomes-auto-zoom-steps', 'value'),
+    )
 
     return app
 
