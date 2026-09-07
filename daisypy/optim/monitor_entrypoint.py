@@ -62,7 +62,7 @@ try:
 except ModuleNotFoundError as e:
     ERR_MSG = f'Error: {e}'
     def main():
-        '''Print an error message about missing dependencies and how to install then'''
+        '''Print an error message about missing dependencies and how to install them'''
         print(
             ERR_MSG,
             'A likely cause of this error is that dependencies for the `monitor` program are not '
