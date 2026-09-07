@@ -1,3 +1,4 @@
+# pylint: disable=R0801
 '''Manual interactive test for live sample plotting.'''
 import argparse
 import sys

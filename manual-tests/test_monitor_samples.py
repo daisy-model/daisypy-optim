@@ -1,3 +1,4 @@
+# pylint: disable=R0801
 '''Manual interactive test for the monitor samples view.'''
 import argparse
 import sys
@@ -67,6 +68,7 @@ def _write_targets(log):
 
 
 def _write_live_samples(log_dir, write_interval, ready_event, stop_event):
+    # pylint: disable=too-many-locals
     samples_path = Path(log_dir) / 'samples.csv'
     outcomes_path = Path(log_dir) / 'outcomes.csv'
     targets_path = Path(log_dir) / 'targets.csv'
