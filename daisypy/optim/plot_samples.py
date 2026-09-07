@@ -8,7 +8,10 @@ import matplotlib.pyplot as plt
 
 plt.rcParams["figure.raise_window"]=False
 
-def run(log_dir, standardized=False, output_path=None, poll_interval=1.0):
+def run(log_dir,
+        standardized=False,
+        output_path=None,
+        poll_interval=1.0):
     '''Monitor a samples log and keep the sample plots updated until interrupted.'''
     log_dir = Path(log_dir)
     samples_path = log_dir / 'samples.csv'
@@ -25,7 +28,11 @@ def run(log_dir, standardized=False, output_path=None, poll_interval=1.0):
             if current_state != previous_state:
                 previous_state = current_state
                 df = pd.read_csv(samples_path)
-                figures = plot_samples(df, standardized, figures=figures)
+                figures = plot_samples(
+                    df,
+                    standardized,
+                    figures=figures,
+                )
                 if output_path is not None:
                     save_figures(figures, output_path)
 
@@ -81,7 +88,7 @@ def plot_samples(df, standardized, figures=None):
     nplots = len(params)
     nrows = math.floor(math.sqrt(nplots))
     ncols = math.ceil(nplots / nrows)
-    figsize = (2 + 7 * ncols, 7 * nrows)
+    default_figsize = (2 + 7 * ncols, 7 * nrows)
 
     cmap = plt.colormaps['viridis']
     # pylint: disable=nested-min-max
@@ -100,10 +107,12 @@ def plot_samples(df, standardized, figures=None):
             state['params'] == tuple(params) and
             state['shape'] == (nrows, ncols)
         )
-
         if not reusable:
             if fig is not None:
+                figsize = fig.get_size_inches()
                 plt.close(fig)
+            else:
+                figsize = default_figsize
             fig = plt.figure(figsize=figsize, layout="constrained")
             axs = fig.subplots(
                 nrows,
@@ -151,7 +160,6 @@ def plot_samples(df, standardized, figures=None):
             }
             fig._daisypy_state = state  # pylint: disable=protected-access
         else:
-            fig.set_size_inches(figsize, forward=True)
             state['mappable'].set_norm(norm)
             state['mappable'].set_cmap(cmap)
             state['colorbar'].update_normal(state['mappable'])
@@ -162,7 +170,7 @@ def plot_samples(df, standardized, figures=None):
                 scatter.set_norm(norm)
                 scatter.set_cmap(cmap)
 
-        fig.suptitle(f"Sampled parameters vs {suffix}")
+        fig.suptitle(f"Marginal distribution of sampled parameters vs Objective ({suffix})")
         fig.canvas.draw_idle()
         figures.append((fig, suffix))
     for fig in existing_figures.values():
@@ -192,7 +200,12 @@ def main():
         help='Seconds between checks for updates to samples.csv.',
     )
     args = parser.parse_args()
-    run(args.log_dir, args.standardized, args.output, args.poll_interval)
+    run(
+        args.log_dir,
+        args.standardized,
+        args.output,
+        args.poll_interval,
+    )
 
 
 if __name__ == '__main__':

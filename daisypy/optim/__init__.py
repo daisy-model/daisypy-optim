@@ -1,7 +1,7 @@
 '''Module for Daisy parameter optimization'''
 from daisypy.optim._version import version
 from daisypy.optim.file_generators import *
-from daisypy.optim.logging import *
+from daisypy.optim.loggers import *
 from daisypy.optim.loss_fns import *
 from daisypy.optim.objectives import *
 from daisypy.optim.optimizer import *
