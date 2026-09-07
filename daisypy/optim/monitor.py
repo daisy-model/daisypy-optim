@@ -1195,6 +1195,7 @@ def run_app(app, host, port, *, open_browser=True, verbose=False):
     if not verbose:
         logging.getLogger('waitress').setLevel(logging.ERROR)
         app.server.logger.setLevel(logging.ERROR)
+
     serve(
         app.server,
         host=host,
