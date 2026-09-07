@@ -19,14 +19,27 @@ pip install daisypy-optim
 
 By default this will only install the greedy sequential optimizer. For most problems you will want to use either CMA-ES or a Bayesian optimizer. The CMA-ES optimizer can be installed with
 ```
-pip install daisypy-optim[cma]
+pip install "daisypy-optim[cma]"
 ```
 
 and the Bayesian optimizers with
 ```
-pip install daisypy-optim[ax]
+pip install "daisypy-optim[ax]"
 ```
 Note that the Bayesian optimizers pulls in a lot of dependencies.
+
+
+### Visualization and monitoring
+A local web app is included that monitors simulation logs and visualizes sample distributions and outcomes. To enable it install with
+```
+pip install "daisypy-optim[monitor]"
+```
+
+To use it
+```
+daisypy_optim_monitor <path-to-logs-dir>
+```
+
 
 ## Examples
 There are several examples illustrating how to optimize parameters in various situations. See [doc/examples](doc/examples) for an overview of the examples.
