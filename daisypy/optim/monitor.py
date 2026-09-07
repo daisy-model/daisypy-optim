@@ -382,11 +382,13 @@ def _refresh_controls():
     ], style=_REFRESH_CONTROL_STYLE)
 
 
-def _layout(log_dir):
+def _layout(log_dir, refresh_interval_ms=1000):
     log_dir = Path(log_dir)
     return html.Div([
         html.Div([_refresh_controls()], style=_UTILITY_BAR_STYLE),
-        dcc.Interval(id='refresh-timer', interval=1000, n_intervals=0, disabled=False),
+        dcc.Interval(
+            id='refresh-timer', interval=refresh_interval_ms, n_intervals=0, disabled=False
+        ),
         dcc.Store(
             id='samples-files-state',
             data=_paths_state([log_dir / 'samples.csv']),
@@ -807,8 +809,7 @@ def create_app(log_dir, refresh_interval_ms):
 
     app = Dash(__name__, update_title=None)
     app.title = 'Daisy calibration monitor'
-    app.layout = _layout(log_dir)
-    app.layout.children[1].interval = refresh_interval_ms
+    app.layout = _layout(log_dir, refresh_interval_ms)
 
     @app.callback(
         Output('samples-files-state', 'data'),
