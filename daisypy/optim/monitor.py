@@ -1,6 +1,5 @@
 # pylint: disable=too-many-lines
 '''Local web app for monitoring optimization logs.'''
-import argparse
 import logging
 import threading
 import webbrowser
@@ -1189,7 +1188,13 @@ def run_app(app, host, port, *, open_browser=True, verbose=False):
     url = f'http://{host}:{port}'
     if open_browser:
         threading.Timer(0.5, webbrowser.open, args=(url,)).start()
-    print(f'Monitor available at {url}')
+    print(f'Monitor available at {url}',
+          '',
+          'To stop the monitor:',
+          '    Press Ctrl+C in this terminal.',
+          '',
+          'Leave this terminal window open while using the monitor.',
+          sep='\n')
     if not verbose:
         logging.getLogger('waitress').setLevel(logging.ERROR)
         app.server.logger.setLevel(logging.ERROR)
@@ -1199,59 +1204,3 @@ def run_app(app, host, port, *, open_browser=True, verbose=False):
         port=port,
         _quiet=not verbose,
     )
-
-
-def main():
-    '''Run the local web app.'''
-    parser = argparse.ArgumentParser(
-        description='Run a local web app for monitoring optimization logs'
-    )
-    parser.add_argument(
-        'log_dir',
-        type=Path,
-        help='Directory containing samples.csv and optionally outcomes.csv and targets.csv',
-    )
-    parser.add_argument(
-        '--host',
-        type=str,
-        default='127.0.0.1',
-        help='Host interface to bind.',
-    )
-    parser.add_argument(
-        '--port',
-        type=int,
-        default=8050,
-        help='Port to bind.',
-    )
-    parser.add_argument(
-        '--refresh-seconds',
-        type=float,
-        default=1.0,
-        help='Seconds between file refreshes.',
-    )
-    parser.add_argument(
-        '--no-open-browser',
-        action='store_true',
-        default=False,
-        help='Do not open the browser automatically.',
-    )
-    parser.add_argument(
-        '--verbose',
-        action='store_true',
-        default=False,
-        help='Enable server request logging.',
-    )
-    args = parser.parse_args()
-
-    app = create_app(args.log_dir, int(max(args.refresh_seconds, 0.1) * 1000))
-    run_app(
-        app,
-        args.host,
-        args.port,
-        open_browser=not args.no_open_browser,
-        verbose=args.verbose,
-    )
-
-
-if __name__ == '__main__':
-    main()

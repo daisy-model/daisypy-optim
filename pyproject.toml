@@ -21,9 +21,6 @@ dependencies = [
     "pandas",
     "daisypy-io>=0.2.0",
     "matplotlib",
-    "dash",
-    "plotly",
-    "waitress"
 ]
 
 dynamic = ["version"]
@@ -32,7 +29,7 @@ readme = "README.md"
 [project.scripts]
 daisypy_optim_plot_outcomes = "daisypy.optim.plot_outcomes:main"
 daisypy_optim_plot_samples = "daisypy.optim.plot_samples:main"
-daisypy_optim_monitor = "daisypy.optim.monitor:main"
+daisypy_optim_monitor = "daisypy.optim.monitor_entrypoint:main"
 
 [project.urls]
 Homepage = "https://daisy.ku.dk/"
@@ -41,6 +38,7 @@ Homepage = "https://daisy.ku.dk/"
 cma = ["cma"]
 dev = ["pylint", "pytest"]
 ax = ["ax-platform"]
+monitor = ["dash", "plotly", "waitress"]
 
 [tool.uv.sources]
 daisypy-io = { git = "https://github.com/daisy-model/daisypy-io" }
