@@ -170,7 +170,7 @@ def plot_samples(df, standardized, figures=None):
                 scatter.set_norm(norm)
                 scatter.set_cmap(cmap)
 
-        fig.suptitle(f"Marginal disitribution of sampled parameters vs Objective ({suffix})")
+        fig.suptitle(f"Marginal distribution of sampled parameters vs Objective ({suffix})")
         fig.canvas.draw_idle()
         figures.append((fig, suffix))
     for fig in existing_figures.values():

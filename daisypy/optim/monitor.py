@@ -159,10 +159,6 @@ _INLINE_CONTROL_STYLE = {
 }
 
 
-def _sanitize_name(name):
-    return ''.join(c if c.isalnum() or c in ('-', '_') else '-' for c in name)
-
-
 def _read_csv(path):
     if not path.exists():
         return None
