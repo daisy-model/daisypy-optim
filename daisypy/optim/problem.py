@@ -20,7 +20,8 @@ class DaisyOptimizationProblem:
                  objective_fn,
                  parameters,
                  data_dir=None,
-                 debug=False):
+                 debug=False,
+                 outcome_filters=None):
         """
         Parameters
         ----------
@@ -46,6 +47,10 @@ class DaisyOptimizationProblem:
 
         debug: bool
           If True do not delete the temporary directory where Daisy output is stored
+
+        outcome_filters : [str] or None
+          List of outcomes to keep. If None all outcomes are kept. This is useful to avoid logging
+          intermediate outcomes that have no interest.
         """
         self.runner = runner
         self.simulations = simulations
@@ -75,6 +80,7 @@ class DaisyOptimizationProblem:
         if self.data_dir is not None:
             os.makedirs(self.data_dir, exist_ok=True)
         self.debug = debug
+        self.outcome_filters = outcome_filters
 
     def __call__(self, parameter_values):
         # TODO: Rewrite to accept a dict of parameters. This is too brittle
@@ -126,4 +132,6 @@ class DaisyOptimizationProblem:
         }
         for name, p in self.post_processing.items():
             outcomes[name] = p(outcomes)
+        if self.outcome_filters is not None:
+            outcomes = { k : outcomes[k] for k in self.outcome_filters }
         return self.objective_fn(outcomes), outcomes, errors
