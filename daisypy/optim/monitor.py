@@ -162,7 +162,11 @@ _INLINE_CONTROL_STYLE = {
 def _read_csv(path):
     if not path.exists():
         return None
-    return pd.read_csv(path)
+    try:
+        return pd.read_csv(path)
+    except pd.errors.EmptyDataError:
+        # Nothing written to log yet
+        return None
 
 
 def _path_state(path):
