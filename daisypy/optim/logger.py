@@ -72,10 +72,45 @@ class Logger:
         else:
             self.logs[name].log(*args, **kwargs)
 
+    def log_rows(self, name, rows, **kwargs):
+        '''Log many rows to a specific named log. Fallback to `default` log if the named log does
+        not exist
+
+        Parameters
+        ----------
+        name : str
+          Name of log
+
+        rows : [{}]
+          List of rows. Each row is a dict. It is assume keys are the same for all rows
+
+        Raises
+        ------
+        ValueError if no log with the given name exists AND no default log is defined
+        '''
+        if name not in self.logs:
+            if 'default' in self.logs:
+                log = self.logs['default']
+            else:
+                raise ValueError(f"No log named {name} exists")
+        else:
+            log = self.logs[name]
+        if hasattr(log, 'log_rows'):
+            log.log_rows(rows, **kwargs)
+        else:
+            for row in rows:
+                log.log(**row, **kwargs)
+
     def close(self):
         '''Close all logs for writing'''
         for log in self.logs.values():
             log.close()
+
+    def persist(self):
+        '''Force log data to disk'''
+        for log in self.logs.values():
+            if hasattr(log, 'persist'):
+                log.persist()
 
     def __enter__(self):
         return self

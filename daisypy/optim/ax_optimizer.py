@@ -68,6 +68,7 @@ class DaisyAxOptimizer:
         max_trials_iteration = self.options['max_trials_iteration']
         step = 0
         log_targets(self.logger, self.problem.objective_fn)
+        self.logger.persist()
         with ProcessPoolExecutor(self.number_of_processes) as executor:
             while num_trials < self.options['max_trials']:
                 step += 1
@@ -123,6 +124,7 @@ class DaisyAxOptimizer:
                     )
                     self.client.complete_trial(trial_index=trial_index, raw_data=objective)
                 num_trials += len(trials)
+                self.logger.persist()
 
         if self.multi_objective:
             # Handle multi objective result

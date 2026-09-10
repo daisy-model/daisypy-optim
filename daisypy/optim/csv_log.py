@@ -53,9 +53,41 @@ class CsvLog(Log):
             row.append(formatter(kwargs[col]))
         self._write(','.join(row), flush)
 
+    def log_rows(self, rows, flush=True):
+        '''Log many rows.
+
+        Parameters
+        ----------
+        rows : list of dict
+          List of rows to log. It is assumed each row has the same keys
+
+        flush : Bool
+          If True flush the log after writing.
+        '''
+        if self._log.closed:
+            raise RuntimeError('Writing to closed CsvLog')
+        rows = list(rows)
+        if len(rows) == 0:
+            return
+        if self.columns is None:
+            self._setup_columns(list(rows[0].keys()))
+        lines = []
+        for row in rows:
+            line = []
+            for col, formatter in self.columns.items():
+                line.append(formatter(row[col]))
+            lines.append(','.join(line))
+        self._write('\n'.join(lines), flush)
+
     def close(self):
         '''Close the underlying file'''
-        self._log.close()
+        if not self._log.closed:
+            self.persist()
+            self._log.close()
+
+    def persist(self):
+        '''Force write to disk'''
+        self.flush(True)
 
     def __del__(self):
         self.close()
@@ -71,10 +103,11 @@ class CsvLog(Log):
         if flush:
             self.flush()
 
-    def flush(self):
-        '''Flush the log so it is written to disk'''
+    def flush(self, durable=False):
+        '''Flush buffered data; optionally force it to disk'''
         self._log.flush()
-        os.fsync(self._log.fileno())
+        if durable:
+            os.fsync(self._log.fileno())
 
     def _setup_columns(self, columns, default_formatter=None):
         if default_formatter is None:
