@@ -96,6 +96,7 @@ class DaisySequentialOptimizer:
                     step=step,
                     msg=f"Simulation '{sim}' failed with exit code {error.returncode}"
                 )
+            self.logger.persist()
             raise RuntimeError("Initial simulation failed")
         current_fval = get_single_scalar(objective)
         # Log samples
@@ -113,11 +114,13 @@ class DaisySequentialOptimizer:
         log_outcomes(self.logger, outcomes, step=0, index=0)
         if np.isnan(current_fval):
             self.logger.error('Initial parameters failed, aborting')
+            self.logger.persist()
             raise RuntimeError('Initial parameters failed')
 
         self.logger.info(f'Initial objective = {current_fval}')
         total_f_evals = 1
         self.logger.info('Optimizing')
+        self.logger.persist()
         with ProcessPoolExecutor(self.number_of_processes) as executor:
             while len(floating) > 0:
                 # We fix a parameter in each step, so we will always do as many steps as there are
@@ -181,6 +184,7 @@ class DaisySequentialOptimizer:
                     # Maybe not raise an exception if we have had at least one successful run in a
                     # previous step?
                     self.logger.error('All simulations failed. Aborting')
+                    self.logger.persist()
                     raise RuntimeError('All simulations failed')
 
                 total_f_evals += len(param_sets)
@@ -193,6 +197,7 @@ class DaisySequentialOptimizer:
                     # We could consider setting a random parameter to a random value, or something
                     # similar.
                     self.logger.info('No improvement in objective. Stopping')
+                    self.logger.persist()
                     break
 
                 current_fval = best
@@ -201,6 +206,7 @@ class DaisySequentialOptimizer:
                 current[name] = value
                 fixed.add(name)
                 self.logger.info(f'step={step},Fixing {name} to {value}')
+                self.logger.persist()
 
         result = {}
         for k,v in current.items():

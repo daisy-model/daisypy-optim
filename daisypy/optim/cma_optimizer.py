@@ -90,6 +90,7 @@ class DaisyCMAOptimizer:
         total_f_evals = 0
         log_targets(self.logger, self.problem.objective_fn)
         self._log_termination_criteria()
+        self.logger.persist()
         with EvalParallel2(self.objective, self.number_of_processes) as eval_all:
             step = 0
             while not self.optimizer.stop():
@@ -118,6 +119,7 @@ class DaisyCMAOptimizer:
                                     msg=("Expected single scalar objective, "
                                          f"got {n_fvals} objectives")
                                 )
+                                self.logger.persist()
                                 raise RuntimeError("Only single scalar objectives supported")
                             fvals.append(list(objective_value.values())[0])
 
@@ -163,9 +165,10 @@ class DaisyCMAOptimizer:
 
                 failed = np.isnan(fvals)
                 if np.all(failed):
+                    self.logger.error('All attempts failed. Aborting')
+                    self.logger.persist()
                     if step == 1:
                         raise RuntimeError("All initial simulations failed")
-                    self.logger.error('All attempts failed. Aborting')
                     break
 
                 self.logger.info(step=step, total_function_evaluations=total_f_evals)
@@ -209,6 +212,8 @@ class DaisyCMAOptimizer:
                     **p_mean,
                     **p_covariance
                 )
+                # Force logs to disk
+                self.logger.persist()
 
         status = self.optimizer.result.stop
         self._log_termination_criteria(status)

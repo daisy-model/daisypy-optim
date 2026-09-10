@@ -14,10 +14,10 @@ def log_outcomes(logger, outcomes, **context):
       Extra columns to include in every logged row, for example ``evaluation_id`` or ``step``.
     '''
     for outcome_name, outcome in outcomes.items():
-        for row in outcome.itertuples(index=False):
-            logger.outcome(
-                **context,
-                outcome_name=outcome_name,
-                time=row.time.isoformat(),
-                predicted_value=row.value,
-            )
+        rows = ({
+            **context,
+            'outcome_name' : outcome_name,
+            'time' : time.isoformat(),
+            'predicted_value' : value,
+        } for time, value in outcome[['time', 'value']].itertuples(index=False, name=None))
+        logger.log_rows('outcome', rows)
