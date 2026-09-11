@@ -74,7 +74,7 @@ def test_rebases_static_data_with_parent_relative_destination(tmp_path, monkeypa
     assert referenced_static.read_text(encoding='utf-8') == '(dummy static file)'
 
 
-def test_rebases_output_paths_from_runfile_generator(tmp_path, monkeypatch):
+def test_output_paths_stay_relative_to_root(tmp_path, monkeypatch):
     layout_root = tmp_path / 'layout-root'
     layout_root.mkdir()
     monkeypatch.chdir(layout_root)
@@ -101,32 +101,8 @@ def test_rebases_output_paths_from_runfile_generator(tmp_path, monkeypatch):
     sim.setup(output_dir, {'runfile' : {}})
 
     assert sim.outputs['field'].path() == (
-        output_dir / 'scenarios' / 'site-1' / 'field_water.dlf'
+        output_dir / 'field_water.dlf'
     )
-
-
-def test_rebases_output_paths_without_static_data(tmp_path):
-    sim = Simulation(
-        {
-            'runfile' : DaiFileGenerator(
-                'run.dai',
-                template_text='(run)',
-                sub_dir='scenarios/site-1'
-            )
-        },
-        {
-            'field' : OutputSpec('field_water.dlf', 'water')
-        },
-        []
-    )
-
-    output_dir = tmp_path / 'out'
-    sim.setup(output_dir, {'runfile' : {}})
-
-    assert sim.outputs['field'].path() == (
-        output_dir / 'scenarios' / 'site-1' / 'field_water.dlf'
-    )
-
 
 def test_simulation_raises_when_missing_runfile():
     with pytest.raises(ValueError, match="There must be a generated 'runfile'"):
