@@ -9,7 +9,7 @@ class OutputSpec:
     Attributes
     ----------
     log : Path
-      Path to the log file relative to the simulation file that produces the log.
+      Path to the log file relative to the simulation root directory.
 
     var : str or [str]
       Name of variable or variables in log file
@@ -17,9 +17,9 @@ class OutputSpec:
     log : Path
     var : [str]
 
-    def __init__(self, log, var, sub_dir=None, root=None):
-        """In general, users of this class need not specify sub_dir and root, these are used by the
-        library internally to handle rebasing of the file hierarchy
+    def __init__(self, log, var, root=None):
+        """In general, users of this class need not specify root, it is updated internally to
+        handle rebasing of the file hierarchy
 
         Parameters
         ----------
@@ -27,23 +27,14 @@ class OutputSpec:
 
         var : str OR [str]
 
-        sub_dir : str OR Path OR None
-          Relative path stub that relates the log path to the root
-
         root : str OR Path OR None
           Absolute path to root
         """
         self.log = Path(log)
         self.var = var if isinstance(var, list) else [var]
-        self.sub_dir = Path("." if sub_dir is None else sub_dir)
         self._root = Path("." if root is None else root).resolve()
         if self.log.is_absolute():
             raise ValueError("log MUST be a relative path")
-        if self.sub_dir.is_absolute():
-            raise ValueError("sub_dir MUST be a relative path")
-        # Verify that the sub_dir path is not pointing to a directory above, e.g. a/../../"
-        # In that case Path. relative_to will throw a ValueError when walk_up=False
-        self.sub_dir.resolve().relative_to(Path.cwd(), walk_up=False)
 
     def path(self):
         """Get the absolute path to the log file
@@ -52,7 +43,7 @@ class OutputSpec:
         -------
         Path
         """
-        return self._root / self.sub_dir / self.log
+        return self._root / self.log
 
     def __repr__(self):
         return repr((self.path(), self.var))

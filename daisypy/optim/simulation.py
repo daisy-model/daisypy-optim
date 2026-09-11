@@ -116,7 +116,7 @@ class Simulation:
 
         # Update root dir of outputs
         self.outputs = {
-            k : OutputSpec(o.log, o.var, o.sub_dir, output_directory)
+            k : OutputSpec(o.log, o.var, root=output_directory)
             for k, o in self.outputs.items()
         }
 

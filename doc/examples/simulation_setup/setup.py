@@ -71,7 +71,7 @@ def run(base_dir, sim, daisy_path):
     runner = DaisyRunner(daisy_path)
     result = runner(dai_file, run_dir)
     if result.returncode == 0:
-        print('Simulation completed succesfully')
+        print('Simulation completed successfully')
         output_store = OutputStore({ 'sim' : sim })
         print('Stored these outputs')
         for sim_name, sim_outputs in output_store.items():
