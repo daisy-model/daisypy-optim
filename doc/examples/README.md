@@ -1,5 +1,9 @@
 # Optimization examples
 
+## Simulation setup
+This example shows how to define a simulation and manually generate simulation files, run the simulation and get the output. Use this as a starting point to verify that the paths are correct and the generated simulation can be run.
+* [Setup a simulation](simulation_setup/setup.py)
+
 ## Single objective two parameters
 This example optimizes groundwater parameters `K_aquitard` and `Z_aquitard`
 There are three version using different optimizers.

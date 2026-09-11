@@ -1,0 +1,33 @@
+(path "./common/" "../common"  &old)
+
+; These are all part of Daisy distribution
+(input file "dk-soil.dai")
+(input file "tillage.dai")
+(input file "fertilizer.dai")
+(input file "crop.dai")
+(input file "dk-management.dai")
+(input file "log-std.dai")
+
+(defprogram Base Daisy
+  "This is the stuff all scenarios have in common."
+  (time 1999 1 2)
+  (stop 1999 3 31)
+  (activate_output (after 1999 1 2))
+  (output "Field water" "Field nitrogen"))
+
+
+;; The weather file is in common
+(defweather Normal table (file "weather.dwf"))
+
+;; We test two different soils: Askov, Jyndevad,
+;; These are defined in dk-soil.dai.
+
+(defprogram Askov Base
+  (weather Normal) (column Askov) (manager "SBarley w. catch crop"))
+
+(defprogram Jyndevad Base
+  (weather Normal) (column Jyndevad) (manager "SBarley w. catch crop"))
+
+(defprogram all spawn
+  (program Askov Jyndevad))
+(run all)
