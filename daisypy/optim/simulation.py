@@ -22,7 +22,9 @@ class Simulation:
 
     Relative paths that are at the parent ("../") or further up are handled by computing the full
     file tree and rooting it at the temporary directory. This means that the actual simulation
-    file and the corresponding outputs are not necessarily in the base directory.
+    file is not necessarily in the base directory. The Daisy program is always run from the root
+    of the simulation file tree. Keep this in mind if you generate the simulation file in a subdir,
+    because it will need to include files as if it was located in the root.
 
     Attributes
     ----------
@@ -83,11 +85,6 @@ class Simulation:
             # extracts the path to the parent
             sub_dir = Path(g.relative_out_path()).resolve().relative_to(root).parent
             generators[g_name] = g.copy_and_update(sub_dir=sub_dir)
-            if g_name == "runfile":
-                # Update the outputs so their paths are relative to simulation root
-                self.outputs = {
-                    k : OutputSpec(o.log, o.var, sub_dir) for k, o in self.outputs.items()
-                }
         self._generators = generators
 
 
@@ -115,6 +112,7 @@ class Simulation:
             raise ValueError("Keys in params must match generator names exactly\n\n"
                              f"{list(params.keys())}\n\n{list(self._generators.keys())}")
         output_directory = Path(output_directory)
+        output_directory.mkdir(parents=True, exist_ok=True)
 
         # Update root dir of outputs
         self.outputs = {
