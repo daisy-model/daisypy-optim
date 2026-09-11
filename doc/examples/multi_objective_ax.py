@@ -6,7 +6,6 @@ import pandas as pd
 from daisypy.optim import (
     ContinuousParameter,
     DaiFileGenerator,
-    DaisyAxOptimizer,
     DaisyOptimizationProblem,
     DaisyRunner,
     DefaultLogger,
@@ -15,6 +14,7 @@ from daisypy.optim import (
     ScalarObjective,
     Simulation,
 )
+from daisypy.optim.ax_optimizer import DaisyAxOptimizer
 
 # We use the multiprocessing module, which uses pickle, so we cannot use local functions for loss
 # functions and aggregate functions

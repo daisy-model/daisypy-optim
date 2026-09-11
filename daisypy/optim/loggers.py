@@ -3,11 +3,6 @@ from daisypy.optim.terminal_log import TerminalLog
 from daisypy.optim.csv_log import CsvLog
 from daisypy.optim.logger import Logger
 
-available_logs = {
-    "terminal" : TerminalLog,
-    "csv" : CsvLog
-}
-
 def DefaultLogger(outdir): # pylint: disable=invalid-name # (It should look like a class)
     '''Return a logger instance with the following predefined logs.
 
