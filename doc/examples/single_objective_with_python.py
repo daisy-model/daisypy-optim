@@ -8,14 +8,13 @@ from daisypy.optim import (
     DaisyOptimizationProblem,
     DaisyRunner,
     ScalarObjective,
-    DaisyCMAOptimizer,
     DefaultLogger,
     OutputSpec,
     PyFileGenerator,
     Simulation,
     mse
 )
-
+from daisypy.optim.cma_optimizer import DaisyCMAOptimizer
 
 def run(daisy_path):
     '''Optimize two parameters in a dai file using a single scalar objective and CMA

@@ -5,7 +5,6 @@ from pathlib import Path
 import pandas as pd
 from daisypy.optim import (
     DaiFileGenerator,
-    DaisyCMAOptimizer,
     ScalarObjective,
     DaisyOptimizationProblem,
     ContinuousParameter,
@@ -15,6 +14,7 @@ from daisypy.optim import (
     PostProcessor,
     Simulation,
 )
+from daisypy.optim.cma_optimizer import DaisyCMAOptimizer
 
 # We want to optimize the sum of squared distance.
 # We use the multiprocessing module, which uses pickle, so we cannot use local functions.

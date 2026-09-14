@@ -8,9 +8,9 @@ import numpy as np
 from pytest import approx
 from daisypy.optim import (
     DefaultLogger,
-    DaisyCMAOptimizer,
     ContinuousParameter
 )
+from daisypy.optim.cma_optimizer import DaisyCMAOptimizer
 from .mockup import MockProblem, MockObjective, MockError
 from .test_objectives import beale_function
 

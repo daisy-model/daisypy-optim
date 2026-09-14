@@ -6,7 +6,6 @@ import pandas as pd
 from daisypy.optim import (
     ContinuousParameter,
     DaiFileGenerator,
-    DaisyCMAOptimizer,
     DaisyOptimizationProblem,
     DaisyRunner,
     DefaultLogger,
@@ -16,7 +15,7 @@ from daisypy.optim import (
     Simulation,
     mse
 )
-
+from daisypy.optim.cma_optimizer import DaisyCMAOptimizer
 
 class CombinedOutput(PostProcessor):
     # pylint: disable=too-few-public-methods
