@@ -21,8 +21,8 @@ class MockFileGenerator(FileGenerator):
     def relative_out_path(self):
         return self.path
 
-    def copy_and_update(self, **kwargs):
-        return MockFileGenerator(kwargs.get("path", self.path))
+    def sub_dir(self, path=None):
+        return ''
 
 
 class MockRunner:

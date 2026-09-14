@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from daisypy.optim.dai_file_generator import DaiFileGenerator, SPAWN_PARALLEL_PARAM
 from daisypy.optim.util import copy_into
 from daisypy.optim.static_data import StaticData
 from daisypy.optim.output_spec import OutputSpec
@@ -79,16 +80,14 @@ class Simulation:
             StaticData(s.src, s.dst.resolve().relative_to(root)) for s in self._static_data
         ]
 
-        generators = {}
-        for g_name, g in self._generators.items():
+        for g in self._generators.values():
             # This finds the path to the generated file relative to the shared root and then
             # extracts the path to the parent
             sub_dir = Path(g.relative_out_path()).resolve().relative_to(root).parent
-            generators[g_name] = g.copy_and_update(sub_dir=sub_dir)
-        self._generators = generators
+            g.sub_dir(sub_dir)
 
 
-    def setup(self, output_directory, params):
+    def setup(self, output_directory, params, spawn_parallelism=1):
         """Setup environment by copying static files and instantiating parameterized files
 
         Parameters
@@ -130,6 +129,9 @@ class Simulation:
         # Generate dynamic files
         paths = {}
         for gen_name, gen_params in params.items():
-            paths[gen_name] = self._generators[gen_name](output_directory, gen_params)
+            gen = self._generators[gen_name]
+            if isinstance(gen, DaiFileGenerator) and gen.has_spawn_program:
+                gen_params[SPAWN_PARALLEL_PARAM] = spawn_parallelism
+            paths[gen_name] = gen(output_directory, gen_params)
 
         return paths["runfile"]

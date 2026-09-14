@@ -1,6 +1,7 @@
 # pylint: disable=use-implicit-booleaness-not-comparison
 from daisypy.optim import (
     DaisyOptimizationProblem,
+    DaiFileGenerator,
     ContinuousParameter,
     MultiObjective,
     Simulation,
@@ -67,3 +68,28 @@ def test_multi_objective(tmp_path):
     objective_values = problem([0])[0]
     for obj in objectives:
         assert objective_values[obj.name] == obj.value
+
+def test_spawn_parallel_param_is_set(tmp_path):
+    '''Test that the return value is as expected when the runner succeds'''
+    file_generators = {
+        "runfile" : DaiFileGenerator(
+            'runfile.dai',
+            template_text='(defprogram p spawn (program p1 p2))'
+        )
+    }
+    output_specs = {}
+    simulations = { "mock-sim" : Simulation(file_generators, output_specs) }
+    outcome_specs = {}
+    post_processing = {}
+    runner = MockRunner()
+    parameters = { }
+    out_dir = tmp_path
+    objective = MockObjective('mock', 123)
+
+    problem = DaisyOptimizationProblem(
+        runner, simulations, outcome_specs, post_processing, objective, parameters, out_dir
+    )
+    objective_value, outcomes, errors = problem([])
+    assert objective_value['mock'] == objective.value
+    assert outcomes == {}
+    assert errors == {}
