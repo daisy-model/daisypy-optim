@@ -7,18 +7,18 @@ class OutputStore(dict):
     Outputs are stored as pandas.DataFrame, one DataFrame for each simulation/output combination.
     """
 
-    def __init__(self, simulations=None):
+    def __init__(self, outputs):
         """
         Parameters
         ----------
-        simulations : { str : Simulation } or None
-          Dict of named simulations
+        outputs : { str : { str : OutputSpec } } or None
+          Outer key is simulation name, inner key is output name
         """
-        if simulations is None:
+        if outputs is None:
             super().__init__({})
         else:
             super().__init__({
-                k : extract_from_dlf(sim.outputs) for k, sim in simulations.items()
+                k : extract_from_dlf(output) for k, output in outputs.items()
             })
 
     def extract(self, sim, output, var):

@@ -50,6 +50,7 @@ class DaiFileGenerator(FileGenerator):
         # Parse the text as a Dai object while allowing placeholders, then add
         # (parallel {_spawn-parallel-param}) to all spawn programs.
         self.has_spawn_program = False
+        self.process_cost = 1
         dai = parse_dai(self.template_text, extended=True)
         dai = filter_dai(dai, lambda x : not isinstance(x, Comment))
         # Will update self.has_spawn_program if any are found
@@ -93,16 +94,25 @@ class DaiFileGenerator(FileGenerator):
         return self._sub_dir / self.out_file
 
     def _parameterize_spawn_programs(self, dai):
+        n = 0
         for i, value in enumerate(dai.values):
             if _is_spawn(value):
                 self.has_spawn_program = True
+                n += _count_spawn_programs(value)
                 dai.values[i] = _set_parallel(value, f'{{{SPAWN_PARALLEL_PARAM}}}')
+        self.process_cost = max(1, n)
         return dai
 
 def _is_spawn(dai):
     return (isinstance(dai, Definition) and
             dai.component.value == 'program' and
             dai.parent.value == 'spawn')
+
+def _count_spawn_programs(spawn):
+    for param in spawn.body:
+        if _is_program(param):
+            return len(param) - 1
+    return 0
 
 def _set_parallel(spawn, value):
     for param in spawn.body:
@@ -114,3 +124,6 @@ def _set_parallel(spawn, value):
 
 def _is_parallel(param):
     return isinstance(param, list) and len(param) == 2 and param[0].value == 'parallel'
+
+def _is_program(param):
+    return isinstance(param, list) and len(param) > 0 and param[0].value == 'program'

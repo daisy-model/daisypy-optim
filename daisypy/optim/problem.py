@@ -1,7 +1,9 @@
+import math
 import tempfile
 import os
 import platform
 from pathlib import Path
+import concurrent
 from daisypy.optim.output_store import OutputStore
 
 class DaisyOptimizationProblem:
@@ -82,9 +84,32 @@ class DaisyOptimizationProblem:
         self.debug = debug
         self.outcome_filters = outcome_filters
 
-    def __call__(self, parameter_values):
-        # TODO: Rewrite to accept a dict of parameters. This is too brittle
-        """Run Daisy with the given parameters and evaluate the objective.
+
+    def evaluate(self, parameter_sets, executor):
+        '''Evaluate the problem on a list of parameter sets using a given executor
+
+        Parameters
+        ----------
+        parameter_sets : [[float]]
+          List of list of parameter values. The outer list groups parameters in sets that are
+          evaluated together. The inner lists contain all parameters for one problem evaluation and
+          MUST match `self.parameters` such that parameter_sets[i][j] is the i'th sample of
+          self.parameters[j]
+
+        executor : DaisyProcessExecutor
+
+        Returns
+        -------
+        results, errors.
+          results is { param_set_idx : ( objective, outcomes ) }
+          errors is { param_set_idx : { sim_name : error } }
+        '''
+        named_parameter_sets = [self.wrap_parameters(param_set) for param_set in parameter_sets]
+        with tempfile.TemporaryDirectory(dir=self.data_dir, delete=not self.debug) as base_dir:
+            return self._run(base_dir, named_parameter_sets, executor)
+
+    def wrap_parameters(self, parameter_values):
+        '''Map parameter values to names
 
         Parameters
         ----------
@@ -93,10 +118,9 @@ class DaisyOptimizationProblem:
 
         Returns
         -------
-        ({ str : float }, { str : pandas.DataFrame }, { str : CompletedProcess })
-          Triple of dicts, the first dict holds named objective values, the second dict holds named
-          outcomes, the third dicts holds errors for each simulation
-        """
+        named_parameters : { str : { str : float }}
+          Keys in outer dict are names of file generators. Keys in inner dict are parameter names
+        '''
         named_parameters = { 'runfile' : {} }
         for p, value in zip(self.parameters, parameter_values):
             kind = self.parameter_kind[p.name]
@@ -104,34 +128,144 @@ class DaisyOptimizationProblem:
                 named_parameters[kind] = { p.name : value }
             else:
                 named_parameters[kind][p.name] = value
+        return named_parameters
 
-        # If we debug then we dont want the directory to be deleted after use
-        with tempfile.TemporaryDirectory(dir=self.data_dir, delete=not self.debug) as sim_dir:
-            return self._run(sim_dir, named_parameters)
+    def _prepare(self, base_dir, named_parameter_sets, process_budget):
+        # Setup all simulations and return them in a dict mapping time cost to process cost to sim
+        base_dir = Path(base_dir)
+        time_map = {}
+        # We want the time map to be sorted such that
+        #  - the first outer key is the largest time value, and the last outer key is the smallest
+        #    time value.
+        #  - The first inner key is the largest cost value, and the last inner key is the smallest
+        #    cost value.
+        # This works because iter(dict) maintains insertion order.
+        for time, cost in sorted(process_budget.values(), reverse=True):
+            if not time in time_map:
+                time_map[time] = { cost : [] }
+            elif not cost in time_map[time]:
+                time_map[time][cost] = []
 
-    def _run(self, base_sim_dir, named_parameters):
-        '''Run Daisy in ``base_sim_dir`` and evaluate the objective on the produced files.'''
-        base_sim_dir = Path(base_sim_dir)
-        # We need to run all simulations in the problem before we can evaluate the objective
+        for i, named_parameter_set in enumerate(named_parameter_sets):
+            for name, sim in self.simulations.items():
+                sim_dir = base_dir / f'param-set-{i}' / name
+                sim_dir.mkdir(parents=True)
+                time, cost = process_budget[name]
+                sim_file, outputs = sim.setup(sim_dir, named_parameter_set, spawn_parallelism=cost)
+                time_map[time][cost].append((
+                    cost, i, name, outputs, { 'dai_file' : sim_file, 'output_directory' : sim_dir }
+                ))
 
-        errors = {}
+        return time_map
+
+
+    def _process_budget(self, max_processes):
+        # Adjust process budget such that no simulation requests more processes than are available
+        budget = {}
         for sim_name, sim in self.simulations.items():
-            sim_dir = base_sim_dir / sim_name
-            # This will fail if there already is a dir with `sim_name` in the base dir, something
-            # that should not be possible so we want a failure if it happens
-            sim_dir.mkdir()
-            sim_file = sim.setup(sim_dir, named_parameters)
-            sim_result = self.runner(sim_file, sim_dir)
+            if sim.process_cost > max_processes:
+                budget[sim_name] = _find_best_budget(sim.process_cost, max_processes)
+            else:
+                # Time cost is 1 unit when full process_cost is allocated
+                budget[sim_name] = (1, sim.process_cost)
+        return budget
+
+
+    def _run(self, base_dir, named_parameters, executor):
+        # pylint: disable=too-many-locals
+        '''Run Daisy in ``base_dir`` and evaluate the objective on the produced files.'''
+        # We need to run all simulations in the problem before we can evaluate the objective
+        budget = self._process_budget(executor.max_processes)
+        # Maybe we should do something about the order we submit processes in?
+        time_map = self._prepare(base_dir, named_parameters, budget)
+
+        max_processes = executor.max_processes
+        allocated = 0
+        running = set()
+        run_results = []
+        # Now we need to schedule things
+        while len(time_map) > 0:
+            # Allocate sims in order from most expensive (longest running, most processes) to least
+            # expensive (shortest running, fewest processes)
+            remaining = {}
+            for time, cost_map in time_map.items():
+                for cost, sim_params in cost_map.items():
+                    while allocated + cost <= max_processes and len(sim_params) > 0:
+                        params = sim_params.pop()
+                        running.add(executor.submit(self._run_one, *params))
+                        allocated += cost
+                    # If there are still simulations to run for this time/cost combination, then we
+                    # add it to the remaining time_map
+                    if len(sim_params) > 0:
+                        if time not in remaining:
+                            remaining[time] = { cost : sim_params }
+                        else:
+                            remaining[time][cost] = sim_params
+            time_map = remaining
+
+            if len(time_map) == 0:
+                # All sims have been scheduled, now we just wait
+                wait_on = concurrent.futures.ALL_COMPLETED
+            else:
+                wait_on = concurrent.futures.FIRST_COMPLETED
+            done, running = concurrent.futures.wait(running, return_when=wait_on)
+            for future in done:
+                run_result = future.result()
+                allocated -= run_result[0]
+                run_results.append(run_result[1:])
+
+        assert len(running) == 0, 'List of running processes is not empty'
+        assert allocated == 0, 'Process budget calculation mismatch'
+
+        errors, outputs = self._gather_errors_and_outputs(run_results)
+        results = self._gather_results(errors, outputs)
+
+        return results, errors
+
+    def _run_one(self, cost, idx, sim_name, outputs, params):
+        sim_result = self.runner(**params)
+        return cost, idx, sim_name, outputs, sim_result
+
+    def _gather_errors_and_outputs(self, run_results):
+        errors = {}
+        outputs = {}
+        for run_result in run_results:
+            param_set_idx, sim_name, sim_outputs, sim_result = run_result
             if sim_result.returncode != 0:
-                errors[sim_name] = sim_result
-        if len(errors) > 0:
-            return {}, {}, errors
-        output_store = OutputStore(self.simulations)
-        outcomes = {
-            name : output_store.extract(*spec) for name, spec in self.outcome_specs.items()
-        }
-        for name, p in self.post_processing.items():
-            outcomes[name] = p(outcomes)
-        if self.outcome_filters is not None:
-            outcomes = { k : outcomes[k] for k in self.outcome_filters }
-        return self.objective_fn(outcomes), outcomes, errors
+                if param_set_idx not in errors:
+                    errors[param_set_idx] = {}
+                errors[param_set_idx][sim_name] = sim_result
+            else:
+                if param_set_idx not in outputs:
+                    outputs[param_set_idx] = {}
+                outputs[param_set_idx][sim_name] = sim_outputs
+        return errors, outputs
+
+    def _gather_results(self, errors, outputs):
+        results = {}
+        for param_set_idx, param_set_outputs in outputs.items():
+            if param_set_idx in errors:
+                # We only gather outcomes and compute objectives for parameter sets where all
+                # simulations succeed.
+                continue
+            output_store = OutputStore(param_set_outputs)
+            outcomes = {
+                name : output_store.extract(*spec) for name, spec in self.outcome_specs.items()
+            }
+            for name, p in self.post_processing.items():
+                outcomes[name] = p(outcomes)
+            if self.outcome_filters is not None:
+                outcomes = { k : outcomes[k] for k in self.outcome_filters }
+            results[param_set_idx] = (self.objective_fn(outcomes), outcomes)
+        return results
+
+def _find_best_budget(requested, available):
+    # This will find the smallest of the fastest feasible allocations
+    # For example, reuested 8, available 7 returns 4, because 4 processes will finish the task in
+    # two rounds of processing. Using fewer leads to more rounds of processing, using more will not
+    # lead to fewer rounds of processing
+    alloc = []
+    for i in range(1, available+1):
+        alloc.append((math.ceil(requested/i), i))
+    alloc = sorted(alloc)
+    return alloc[0] # time, allocated

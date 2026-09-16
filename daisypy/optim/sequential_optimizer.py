@@ -1,10 +1,10 @@
 # pylint: disable=too-few-public-methods,R0801
-from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 from daisypy.optim.outcome_logging import log_outcomes
 from daisypy.optim.parameter import CategoricalParameter
 from daisypy.optim.target_logging import log_targets
 from daisypy.optim.util import get_single_scalar
+from daisypy.optim.process_executor import DaisyProcessExecutor
 
 class DaisySequentialOptimizer:
     """Daisy optimizer using a sequential approach
@@ -87,41 +87,49 @@ class DaisySequentialOptimizer:
         self.logger.info(f'Using at least {min_evals} and at most {max_evals} function evaluations')
         log_targets(self.logger, self.problem.objective_fn)
 
-        # Compute the initial loss
-        self.logger.info('Evaluating initial parameters')
-        objective, outcomes, errors = self.problem([current[name] for name in order])
-        if len(errors) > 0:
-            for sim, error in errors.items():
-                self.logger.error(
-                    step=step,
-                    msg=f"Simulation '{sim}' failed with exit code {error.returncode}"
-                )
-            self.logger.persist()
-            raise RuntimeError("Initial simulation failed")
-        current_fval = get_single_scalar(objective)
-        # Log samples
-        objective_value = { f'metric_{k}' : v for k,v in objective.items() }
-        params = {
-            f'param_{name}' : current[name] for name in order
-        }
-        self.logger.samples(
-            step=0,
-            index=0,
-            tag="raw",
-            **objective_value,
-            **params
-        )
-        log_outcomes(self.logger, outcomes, step=0, index=0)
-        if np.isnan(current_fval):
-            self.logger.error('Initial parameters failed, aborting')
-            self.logger.persist()
-            raise RuntimeError('Initial parameters failed')
+        with DaisyProcessExecutor(self.number_of_processes) as executor:
+            # Compute the initial loss
+            self.logger.info('Evaluating initial parameters')
+            results, errors = self.problem.evaluate(
+                [[current[name] for name in order]],
+                executor
+            )
+            if len(errors) > 0:
+                assert len(errors) == 1 and 0 in errors, \
+                    f'Initial errors dict has length {len(errors)} and keys {list(errors.keys())}'
+                for sim_name, error in errors[0].items():
+                    self.logger.error(
+                        step=step,
+                        msg=f"Simulation '{sim_name}' failed with exit code {error.returncode}"
+                    )
+                self.logger.persist()
+                raise RuntimeError("Initial simulation failed")
+            assert len(results) == 1 and 0 in results, \
+                f'Initial results dict has length {len(results)} and keys {list(results.keys())}'
+            objective, outcomes = results[0]
+            current_fval = get_single_scalar(objective)
+            # Log samples
+            objective_value = { f'metric_{k}' : v for k,v in objective.items() }
+            params = {
+                f'param_{name}' : current[name] for name in order
+            }
+            self.logger.samples(
+                step=0,
+                index=0,
+                tag="raw",
+                **objective_value,
+                **params
+            )
+            log_outcomes(self.logger, outcomes, step=0, index=0)
+            if np.isnan(current_fval):
+                self.logger.error('Initial parameters failed, aborting')
+                self.logger.persist()
+                raise RuntimeError('Initial parameters failed')
 
-        self.logger.info(f'Initial objective = {current_fval}')
-        total_f_evals = 1
-        self.logger.info('Optimizing')
-        self.logger.persist()
-        with ProcessPoolExecutor(self.number_of_processes) as executor:
+            self.logger.info(f'Initial objective = {current_fval}')
+            total_f_evals = 1
+            self.logger.info('Optimizing')
+            self.logger.persist()
             while len(floating) > 0:
                 # We fix a parameter in each step, so we will always do as many steps as there are
                 # parameters.
@@ -138,54 +146,53 @@ class DaisySequentialOptimizer:
 
                 param_sets, param_sets_ids = _generate_parameter_sets(floating, current, order)
                 self.logger.info(step=step, n_param_sets=len(param_sets))
-
                 best = np.inf
                 best_idx = None
                 num_failures = 0
-                # executor.map runs the problems in parallel and yields results in order matching
-                # param_sets.
-                for i, (objective, outcomes, errors) in enumerate(
-                        executor.map(self.problem, param_sets)
-                ):
-                    if len(errors) > 0:
-                        # One or more simulations failed, so we cannot trust the objective or the
-                        # outcomes. We log the error, increment the error count and continue with
-                        # the next parameter set
-                        for sim, error in errors.items():
-                            self.logger.warning(
-                                step=step,
-                                msg=f"Simulation '{sim}' failed with exit code {error.returncode}"
-                            )
-                        num_failures += 1
-                        continue
+                results, errors = self.problem.evaluate(param_sets, executor)
+                # If all parameter sets fail we give up
+                if len(results) == 0:
+                    self.logger.error('All parameter sets failed. Aborting')
+                    self.logger.persist()
+                    raise RuntimeError('All parameter sets failed')
+
+                # Log all the errors
+                for param_set_idx, sim_errors in errors.items():
+                    num_failures += 1
+                    for sim_name, error in sim_errors.items():
+                        self.logger.warning(
+                            step=step,
+                            msg=f"Simulation '{sim_name}' failed with exit code {error.returncode}"
+                        )
+
+                # Log all the param sets that worked and find the best one
+                for param_set_idx, (objective, outcomes) in results.items():
                     # We must test what happens when all fails
                     fval = get_single_scalar(objective)
                     objective_value = { f'metric_{k}' : v for k,v in objective.items() }
                     params = {
-                        f'param_{name}' : value for name, value in zip(order, param_sets[i])
+                        f'param_{name}' : value
+                        for name, value in zip(order, param_sets[param_set_idx])
                     }
                     self.logger.samples(
                         step=step,
-                        index=i,
+                        index=param_set_idx,
                         tag="raw",
                         **objective_value,
                         **params
                     )
                     log_outcomes(
-                        self.logger, outcomes, step=step, index=i
+                        self.logger, outcomes, step=step, index=param_set_idx
                     )
-                    if np.isnan(fval):
-                        # There was no error, but the objective is NaN, so we count it as a failure
-                        num_failures += 1
-                    elif fval < best:
+                    if np.isfinite(fval) and fval < best:
                         best = fval
-                        best_idx = i # Index into param_sets
+                        best_idx = param_set_idx
                 if best_idx is None:
-                    # Maybe not raise an exception if we have had at least one successful run in a
-                    # previous step?
-                    self.logger.error('All simulations failed. Aborting')
+                    self.logger.error(
+                        'All successful simulations had non-finite objective values. Aborting'
+                    )
                     self.logger.persist()
-                    raise RuntimeError('All simulations failed')
+                    raise RuntimeError('All successful simulations had non-finite objective values')
 
                 total_f_evals += len(param_sets)
                 self.logger.info(step=step, total_function_evaluations=total_f_evals)

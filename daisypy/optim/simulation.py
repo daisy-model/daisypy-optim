@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 from pathlib import Path
 from daisypy.optim.dai_file_generator import DaiFileGenerator, SPAWN_PARALLEL_PARAM
 from daisypy.optim.util import copy_into
@@ -63,6 +64,11 @@ class Simulation:
         self.outputs = outputs
         self._static_data = [] if static_data is None else static_data
         self._update_paths()
+        # The process cost is the number of processes needed to run all scenarios in parallel
+        # This assumes that any spawn program is defined in 'runfile'. If a spawn program is defined
+        # in a different file, then the process cost will be 1 and only a single process will be
+        # allocated for the simulation.
+        self.process_cost = self._generators['runfile'].process_cost
 
     def _update_paths(self):
         # Compute the path tree by assuming the current working dir is the root of all relative
@@ -113,8 +119,8 @@ class Simulation:
         output_directory = Path(output_directory)
         output_directory.mkdir(parents=True, exist_ok=True)
 
-        # Update root dir of outputs
-        self.outputs = {
+        # Make a copy of outputs with new root directory
+        outputs = {
             k : OutputSpec(o.log, o.var, root=output_directory)
             for k, o in self.outputs.items()
         }
@@ -131,7 +137,8 @@ class Simulation:
         for gen_name, gen_params in params.items():
             gen = self._generators[gen_name]
             if isinstance(gen, DaiFileGenerator) and gen.has_spawn_program:
+                gen_params = deepcopy(gen_params)
                 gen_params[SPAWN_PARALLEL_PARAM] = spawn_parallelism
             paths[gen_name] = gen(output_directory, gen_params)
 
-        return paths["runfile"]
+        return paths["runfile"], outputs
