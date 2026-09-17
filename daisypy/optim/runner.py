@@ -30,9 +30,9 @@ class DaisyRunner:
         # The problem is concurrency related, and can (often?/always?) be resolved by retrying.
         # The emitted eror message from flatpak is
         # error: Extension org.freedesktop.Platform.GL.default has invalid merge-dirs
-        self._retry_errors = set(
+        self._retry_errors = set([
             b'invalid merge-dirs'
-        )
+        ])
 
     def __call__(self, dai_file, output_directory=None):
         """Run daisy
@@ -66,6 +66,7 @@ class DaisyRunner:
                 if result.stderr.find(retry_error) != -1:
                     # This is a known error so retry after a short wait.
                     print(f'Running "{dai_file}" failed ({i+1}/{self.max_tries}). Retrying')
+                    print(result.stderr)
                     retry = True
                     time.sleep(self.backoff)
                     break
