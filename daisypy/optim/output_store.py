@@ -7,7 +7,7 @@ class OutputStore(dict):
     Outputs are stored as pandas.DataFrame, one DataFrame for each simulation/output combination.
     """
 
-    def __init__(self, outputs):
+    def __init__(self, outputs=None):
         """
         Parameters
         ----------
