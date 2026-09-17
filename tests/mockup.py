@@ -57,21 +57,27 @@ class MockProblem:
         self.objective_fn = objective_fn
         self.error = {} if error is None else error
 
-    def __call__(self, parameter_values):
+    def evaluate(self, parameter_sets, _executor):
         '''Evaluate objective and return value and outcomes'''
         if len(self.error):
-            return ( {}, {}, self.error )
-        named_parameters = { p.name : value for p, value in zip(self.parameters, parameter_values) }
-        objective_value = self.objective_fn(**named_parameters)
-        prediction = pd.DataFrame({
-            'time' : pd.to_datetime(['2000-01-01']),
-            'value' : [objective_value]
-        })
-        return (
-            { self.objective_fn.name : objective_value },
-            { self.objective_fn.outcome_name : prediction },
-            { }
-        )
+            return {}, self.error
+        results = {}
+        for i, param_set in enumerate(parameter_sets):
+            named_param_set = {
+                p.name : value for p, value in zip(self.parameters, param_set)
+            }
+            obj = self.objective_fn(**named_param_set)
+            val = list(obj.values())[0]
+            results[i] = (
+                obj,
+                { 'outcome' :
+                  pd.DataFrame({
+                      'time' : pd.to_datetime(['2000-01-01']),
+                      'value' : [val]
+                  })
+                 }
+            )
+        return results, self.error
 
 class MockDataExtractor:
     '''Mock data extractor returning data it was constructed with'''

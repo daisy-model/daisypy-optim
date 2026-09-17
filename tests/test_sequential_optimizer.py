@@ -22,7 +22,7 @@ class Objective(ScalarObjective):
         })
 
     def __call__(self, a, b, c):
-        return - (a + b + c)
+        return { self.name : - (a + b + c) }
 
 class ProblemFailAfterN:
     '''Problem that fails after the initial evaluation
@@ -43,18 +43,19 @@ class ProblemFailAfterN:
             })
         }
 
-    def __call__(self, parameter_values):
+    def evaluate(self, parameter_sets, _executor):
         '''Evaluate objective and return value and outcomes'''
         if self.n >= self.N:
-            result = ( {}, {}, self.error )
+            results = {}
+            errors = self.error
         else:
-            result = (
-                { "ProblemFailAfterN.objective" : -self.n },
-                self.outcome,
-                {}
-            )
+            results = {
+                i : ({'FailAfterN' : -self.n}, self.outcome)
+                for i in range(len(parameter_sets))
+            }
+            errors = {}
         self.n += 1
-        return result
+        return results, errors
 
 
 def test_sequential_optimizer(capsys):
@@ -62,24 +63,21 @@ def test_sequential_optimizer(capsys):
     # pylint: disable=too-many-locals
     expected_samples_log = [
         'step,index,tag,metric_neg_sum,param_a,param_b,param_c',
-        '0,0,"raw",0,0,0,0',
         '1,0,"raw",-1.0,1.0,0.0,0.0',
         '1,1,"raw",-1.0,0.0,1.0,0.0',
         '1,2,"raw",-2.0,0.0,2.0,0.0',
         '1,3,"raw",-1.0,0.0,0.0,1.0',
         '1,4,"raw",-2.0,0.0,0.0,2.0',
         '1,5,"raw",-3.0,0.0,0.0,3.0',
+        '1,6,"raw",-0.0,0.0,0.0,0.0',
         '2,0,"raw",-4.0,1.0,0.0,3.0',
         '2,1,"raw",-4.0,0.0,1.0,3.0',
         '2,2,"raw",-5.0,0.0,2.0,3.0',
         '3,0,"raw",-6.0,1.0,2.0,3.0',
     ]
     expected_out = '\n'.join([
-        'Using at least 11 and at most 15 function evaluations',
-        'Evaluating initial parameters',
-        'Initial objective = 0',
-        'Optimizing',
-        'step=1,n_param_sets=6',
+        'Using at least 7 and at most 15 function evaluations',
+        'step=1,n_param_sets=7',
         'step=1,total_function_evaluations=7',
         'step=1,best_objective=-3.0',
         'step=1,Fixing c to 3',
@@ -110,7 +108,7 @@ def test_sequential_optimizer(capsys):
         with open(os.path.join(out_dir, 'outcomes.csv'), 'r', encoding='utf-8') as in_file:
             outcome_rows = [row.strip() for row in in_file]
         assert outcome_rows[0] == 'step,index,outcome_name,time,predicted_value'
-        assert outcome_rows[1] == '0,0,"outcome","2000-01-01T00:00:00",0'
+        assert outcome_rows[1] == '1,0,"outcome","2000-01-01T00:00:00",-1.0'
         assert outcome_rows[-1] == '3,0,"outcome","2000-01-01T00:00:00",-6.0'
         assert len(outcome_rows) == 12
         with open(os.path.join(out_dir, 'targets.csv'), 'r', encoding='utf-8') as in_file:
@@ -142,7 +140,7 @@ def test_sequential_optimizer_initial_sim_fails():
     with tempfile.TemporaryDirectory() as out_dir:
         with DefaultLogger(out_dir) as logger:
             optimizer = DaisySequentialOptimizer(problem, logger)
-            with pytest.raises(RuntimeError, match="Initial simulation failed"):
+            with pytest.raises(RuntimeError, match="All parameter sets failed"):
                 optimizer.optimize()
 
 def test_sequential_optimizer_all_failing_after_initial():
@@ -158,5 +156,5 @@ def test_sequential_optimizer_all_failing_after_initial():
     with tempfile.TemporaryDirectory() as out_dir:
         with DefaultLogger(out_dir) as logger:
             optimizer = DaisySequentialOptimizer(problem, logger)
-            with pytest.raises(RuntimeError, match="All simulations failed"):
+            with pytest.raises(RuntimeError, match="All parameter sets failed"):
                 optimizer.optimize()
