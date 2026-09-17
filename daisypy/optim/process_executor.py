@@ -9,4 +9,4 @@ class DaisyProcessExecutor(ProcessPoolExecutor):
             self.max_processes = os.process_cpu_count()
         else:
             self.max_processes = max_processes
-        super().__init__(max_processes)
+        super().__init__(self.max_processes)
