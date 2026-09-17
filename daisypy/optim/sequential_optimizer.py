@@ -1,7 +1,6 @@
 # pylint: disable=too-few-public-methods,R0801
 import numpy as np
 from daisypy.optim.outcome_logging import log_outcomes
-from daisypy.optim.parameter import CategoricalParameter
 from daisypy.optim.target_logging import log_targets
 from daisypy.optim.util import get_single_scalar
 from daisypy.optim.process_executor import DaisyProcessExecutor
@@ -33,48 +32,30 @@ class DaisySequentialOptimizer:
         self.logger = logger
         self.number_of_processes = number_of_processes
 
-        # Convert any continuous parameters to categorical parameters by uniform sampling
+        # Standardize parameters such that they are all categorical and the initial value is the
+        # first value in the values list.
         num_samples = options.get("num_samples", 3)
         self.parameters = []
         for param in problem.parameters:
-            # Standardize parameters such that they are all categorical and the initial value is the
-            # first value in the values list.
-            if param.type == "Continuous":
-                # If num_samples == 2, then only the initial and lower end of the valid range is
-                # used.
-                # We can end up with the initial_value being added twice, if for example we have
-                # valid_range = (0, 10)
-                # initial_value = 5
-                # num_samples = 12
-                # It is not clear what is the best solution to this. If we sample the ranges
-                # (low, initial) and (initial, high) separately then we get different spacing in
-                # most cases.
-                # For now we just ignore it and accept that we sometimes try one less parameter than
-                # we would like.
-                values = np.concatenate([
-                    [param.initial_value],
-                    np.linspace(param.valid_range[0], param.valid_range[1], num_samples-1)
-                ])
-                self.parameters.append(CategoricalParameter(param.name, values, 0))
+            if param.type == 'Continuous':
+                self.parameters.append(param.as_categorical(num_samples))
             elif param.type == 'Categorical':
-                if param.initial_value_idx != 0:
-                    values = np.concatenate([
-                        [param.values[param.initial_value_idx]],
-                        param.values[:param.initial_value_idx],
-                        param.values[param.initial_value_idx+1:]
-                    ])
-                    param = CategoricalParameter(param.name, values, 0)
-                self.parameters.append(param)
+                self.parameters.append(param.normal_form())
+            else:
+                raise ValueError(f'Unknown parameter type {param.type}')
 
     def optimize(self):
         '''Run optimization'''
         # pylint: disable=too-many-locals,too-many-statements,too-many-branches
         # Recall that we are working with categorical parameters, so there is no sampling of new
         # parameters.
+        total_f_evals = 0
+        current_fval = np.inf
         step = 0
         fixed = set()   # The parameters that are already fixed
         floating = {}   # The parameters that we need to fix
         current = {}    # The parameter values that we are currently using
+        tried = set()   # The parameter value combinations that have been tried
         order = []      # Order that parameters are passed to the problem.
         num_param_values = [] # Number of possible parameter values for each parameter
         for param in self.parameters:
@@ -88,51 +69,7 @@ class DaisySequentialOptimizer:
         log_targets(self.logger, self.problem.objective_fn)
 
         with DaisyProcessExecutor(self.number_of_processes) as executor:
-            # Compute the initial loss
-            self.logger.info('Evaluating initial parameters')
-            results, errors = self.problem.evaluate(
-                [[current[name] for name in order]],
-                executor
-            )
-            if len(errors) > 0:
-                assert len(errors) == 1 and 0 in errors, \
-                    f'Initial errors dict has length {len(errors)} and keys {list(errors.keys())}'
-                for sim_name, error in errors[0].items():
-                    self.logger.error(
-                        step=step,
-                        msg=f"Simulation '{sim_name}' failed with exit code {error.returncode}"
-                    )
-                self.logger.persist()
-                raise RuntimeError("Initial simulation failed")
-            assert len(results) == 1 and 0 in results, \
-                f'Initial results dict has length {len(results)} and keys {list(results.keys())}'
-            objective, outcomes = results[0]
-            current_fval = get_single_scalar(objective)
-            # Log samples
-            objective_value = { f'metric_{k}' : v for k,v in objective.items() }
-            params = {
-                f'param_{name}' : current[name] for name in order
-            }
-            self.logger.samples(
-                step=0,
-                index=0,
-                tag="raw",
-                **objective_value,
-                **params
-            )
-            log_outcomes(self.logger, outcomes, step=0, index=0)
-            if np.isnan(current_fval):
-                self.logger.error('Initial parameters failed, aborting')
-                self.logger.persist()
-                raise RuntimeError('Initial parameters failed')
-
-            self.logger.info(f'Initial objective = {current_fval}')
-            total_f_evals = 1
-            self.logger.info('Optimizing')
-            self.logger.persist()
             while len(floating) > 0:
-                # We fix a parameter in each step, so we will always do as many steps as there are
-                # parameters.
                 step += 1
 
                 # Log the parameter distribution
@@ -144,12 +81,24 @@ class DaisySequentialOptimizer:
                     params[f'param_{name}_choices'] = str(current[name])
                 self.logger.parameters(distribution='categorical', tag='raw', step=step, **params)
 
-                param_sets, param_sets_ids = _generate_parameter_sets(floating, current, order)
+                param_sets, param_sets_ids = _generate_parameter_sets(
+                    floating, current, order, tried
+                )
+                if step == 1:
+                    # We need to add the initial parameters because they are skipped by the
+                    # generator. None is used to signal that this parameter set is special and we
+                    # should stop if it yields the best objective.
+                    param_sets.append(tuple((float(current[name]) for name in order)))
+                    param_sets_ids.append((None, 0))
                 self.logger.info(step=step, n_param_sets=len(param_sets))
                 best = np.inf
                 best_idx = None
                 num_failures = 0
                 results, errors = self.problem.evaluate(param_sets, executor)
+
+                for param_set in param_sets:
+                    tried.add(param_set)
+
                 # If all parameter sets fail we give up
                 if len(results) == 0:
                     self.logger.error('All parameter sets failed. Aborting')
@@ -157,12 +106,14 @@ class DaisySequentialOptimizer:
                     raise RuntimeError('All parameter sets failed')
 
                 # Log all the errors
-                for param_set_idx, sim_errors in errors.items():
+                for idx, sim_errors in errors.items():
+                    param_id = param_sets_ids[idx]
                     num_failures += 1
-                    for sim_name, error in sim_errors.items():
+                    for name, e in sim_errors.items():
                         self.logger.warning(
                             step=step,
-                            msg=f"Simulation '{sim_name}' failed with exit code {error.returncode}"
+                            msg=f"Simulation '{name}' ({idx}->{param_id}) failed with exit code "
+                            f'{e.returncode}'
                         )
 
                 # Log all the param sets that worked and find the best one
@@ -187,6 +138,7 @@ class DaisySequentialOptimizer:
                     if np.isfinite(fval) and fval < best:
                         best = fval
                         best_idx = param_set_idx
+
                 if best_idx is None:
                     self.logger.error(
                         'All successful simulations had non-finite objective values. Aborting'
@@ -199,16 +151,23 @@ class DaisySequentialOptimizer:
                 if num_failures > 0:
                     self.logger.warning(step=step, n_failed_runs=num_failures)
                 self.logger.info(step=step, best_objective=best)
+
                 if best > current_fval:
                     # Nothing is better than using current values of all parameters, so we stop.
                     # We could consider setting a random parameter to a random value, or something
                     # similar.
-                    self.logger.info('No improvement in objective. Stopping')
+                    self.logger.info('No improvement in objective. Stopping.')
                     self.logger.persist()
                     break
 
-                current_fval = best
                 name, idx = param_sets_ids[best_idx]
+                if name is None:
+                    self.logger.info(
+                        'No improvement in objective over initial parameters. Stopping.'
+                    )
+                    self.logger.persist()
+                    break
+                current_fval = best
                 value = floating.pop(name)[idx]
                 current[name] = value
                 fixed.add(name)
@@ -232,12 +191,11 @@ def _count_min_max_param_evals(num_param_values):
     # Best case is that we always fix the parameter with most values
     min_evals = 1
     num_param_values = num_param_values[::-1]
-    for start in range(len(num_param_values)):
-        for n in num_param_values[start:]:
-            min_evals += n-1
+    for n in num_param_values:
+        min_evals += n-1
     return min_evals, max_evals
 
-def _generate_parameter_sets(floating, current, order):
+def _generate_parameter_sets(floating, current, order, tried):
     # Generate parameter sets where all parameters, exept one, are fixed
     # A parameter set is a dict of (parameter name, parameter value)
     # For a specific parameter p, we keep all other parameters fixed and then generate
@@ -259,6 +217,8 @@ def _generate_parameter_sets(floating, current, order):
                     param_set.append(float(value))
                 else:
                     param_set.append(float(current[param_name]))
-            param_sets.append(param_set)
-            param_sets_ids.append((name, i))
+            param_set = tuple(param_set)
+            if not param_set in tried:
+                param_sets.append(param_set)
+                param_sets_ids.append((name, i))
     return param_sets, param_sets_ids
