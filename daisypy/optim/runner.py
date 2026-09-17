@@ -65,7 +65,7 @@ class DaisyRunner:
             for retry_error in self._retry_errors:
                 if result.stderr.find(retry_error) != -1:
                     # This is a known error so retry after a short wait.
-                    print(f'Running "{dai_file}" failed ({i+1}/self.max_tries). Retrying')
+                    print(f'Running "{dai_file}" failed ({i+1}/{self.max_tries}). Retrying')
                     retry = True
                     time.sleep(self.backoff)
                     break
