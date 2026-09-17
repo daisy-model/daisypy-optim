@@ -4,11 +4,13 @@ import warnings
 import numpy as np
 import cma
 from cma.fitness_transformations import ScaleCoordinates
-from cma.optimization_tools import EvalParallel2
 from daisypy.optim.outcome_logging import log_outcomes
 from daisypy.optim.target_logging import log_targets
+from daisypy.optim.util import get_single_scalar
+from daisypy.optim.process_executor import DaisyProcessExecutor
 
 class DaisyCMAOptimizer:
+    # pylint: disable=too-few-public-methods
     """Daisy optimizer using the CMA-ES method from https://github.com/CMA-ES/pycma
 
      There are many options for cma. The most important for new users is `maxfevals`, which
@@ -44,6 +46,12 @@ class DaisyCMAOptimizer:
             lower.append(param.valid_range[0])
             upper.append(param.valid_range[1])
             x0.append(param.initial_value)
+
+        # Note that this is only used for transforming samples.
+        # problem is not a Callable, but has to be called as
+        #   problem.evaluate(parameter_sets, executor)
+        # It is not an issue because we are not using the EvalParallel2 context, so we never let cma
+        # compute the objective.
         self.objective = ScaleCoordinates(
             problem, lower=lower, upper=upper, from_lower_upper=(-1,1)
         )
@@ -84,137 +92,107 @@ class DaisyCMAOptimizer:
 
     def optimize(self):
         '''Run the optimizer'''
-        # pylint: disable=too-many-locals,too-many-statements
+        # pylint: disable=too-many-locals,too-many-statements,too-many-branches
         max_attempts_to_get_feasible = 3
-        # TODO: Implement logging + checkpointing every n'th step
-        total_f_evals = 0
+        total_failed_evals = 0
+        total_successful_evals = 0
+        total_evals = 0
         log_targets(self.logger, self.problem.objective_fn)
         self._log_termination_criteria()
         self.logger.persist()
-        with EvalParallel2(self.objective, self.number_of_processes) as eval_all:
-            step = 0
+
+        step = 0
+        step_ok = False
+        with DaisyProcessExecutor(self.number_of_processes) as executor:
             while not self.optimizer.stop():
+                step_ok = False
                 step += 1
                 # Try a couple of times if we dont get at least one non nan value
                 for i in range(max_attempts_to_get_feasible):
-                    xs = self.optimizer.ask()
-                    # objective_values is a list of dicts of length one with a single scalar value
-                    fvals = []
-                    outcomes = []
-                    for objective_value, outcome, errors in eval_all(xs):
-                        outcomes.append(outcome)
-                        if len(errors) > 0:
-                            # One or more simulations failed, objective value cannot be trusted
-                            fvals.append(np.nan)
-                            for sim, result in errors.items():
-                                self.logger.warning(
-                                    step=step,
-                                    msg=f"'{sim}' exited with code {result.returncode}"
-                                )
-                        else:
-                            n_fvals = len(objective_value)
-                            if n_fvals != 1:
-                                self.logger.error(
-                                    step=step,
-                                    msg=("Expected single scalar objective, "
-                                         f"got {n_fvals} objectives")
-                                )
-                                self.logger.persist()
-                                raise RuntimeError("Only single scalar objectives supported")
-                            fvals.append(list(objective_value.values())[0])
+                    parameter_sets = self.optimizer.ask()
+                    transformed_parameter_sets = [
+                        self.objective.transform(x)
+                        for x in parameter_sets
+                    ]
+                    results, errors = self.problem.evaluate(transformed_parameter_sets, executor)
+                    total_evals += len(parameter_sets)
+                    total_failed_evals += len(errors)
 
-                    fvals = np.array(fvals)
-                    total_f_evals += len(fvals)
-                    if np.any(np.isfinite(fvals)):
-                        break
+                    # A set of parameters can fail in two ways.
+                    # 1. The simulation fails
+                    # 2. The objective is not finite
+                    # If all parameter sets fail we retry a couple of times before giving up
+                    if len(results) == 0:
+                        self.logger.warning(
+                            step=step,
+                            msg=f'All simulations failed at attempt {i}',
+                        )
+                        continue # Try again
+
+                    fvals = np.full(len(parameter_sets), np.nan)
+                    result_ok = 0
+                    for sample_idx, (objective, _) in results.items():
+                        fval = get_single_scalar(objective)
+                        if not np.isfinite(fval):
+                            total_failed_evals += 1
+                            self.logger.warning(
+                                step=step, attempt=i, sample_idx=sample_idx,
+                                msg="Non finite objective value"
+                            )
+                        else:
+                            fvals[sample_idx] = fval
+                            result_ok += 1
+                    if result_ok > 0:
+                        total_successful_evals += result_ok
+                        step_ok = True
+                        break # We had at least one successful simulation so we move on
                     self.logger.warning(
                         step=step,
-                        msg=f'All are infeasible at attempt {i}',
-                        fvals=fvals
+                        msg=f'No parameter set had a finite objective value at attempt {i}',
                     )
-                for sample_index, (x, fval, outcome) in enumerate(zip(xs, fvals, outcomes)):
-                    raw_params = {
-                        f'param_{p.name}' : value  for p, value in
-                        zip(self.problem.parameters, self.objective.transform(x))
-                    }
-                    standardized_params = {
-                        f'param_{p.name}' : value  for p, value in
-                        zip(self.problem.parameters, x)
-                    }
-                    objective_value = { f'metric_{self.problem.objective_fn.name}' : fval }
-                    self.logger.samples(
-                        step=step,
-                        index=sample_index,
-                        tag="raw",
-                        **objective_value,
-                        **raw_params
-                    )
-                    self.logger.samples(
-                        step=step,
-                        index=sample_index,
-                        tag="standardized",
-                        **objective_value,
-                        **standardized_params
-                    )
-                    log_outcomes(
-                        self.logger,
-                        outcome,
-                        step=step,
-                        index=sample_index,
-                    )
-
-                failed = np.isnan(fvals)
-                if np.all(failed):
+                # Attempts done
+                if not step_ok:
                     self.logger.error('All attempts failed. Aborting')
                     self.logger.persist()
                     if step == 1:
                         raise RuntimeError("All initial simulations failed")
                     break
 
-                self.logger.info(step=step, total_function_evaluations=total_f_evals)
-                self.logger.info(step=step, median_objective=np.median(fvals[~failed]))
+                # Otherwise we log stuff, update CMA and move on
+                self.logger.info(
+                    step=step,
+                    total_successful_simulations=total_successful_evals,
+                    total_failed_simulations=total_failed_evals,
+                    total_simulations=total_evals
+                )
+                failed = np.isnan(fvals)
                 num_failures = failed.sum()
+                self.logger.info(step=step, median_objective=np.median(fvals[~failed]))
                 if num_failures > 0:
                     self.logger.warning(step=step, n_failed_runs=num_failures)
                     # cma sets nans to the median.
                     # We want them to have a bigger negative influence
                     # TODO: This assumes that are we minimizing ...
                     fvals[failed] = 2*np.max(fvals[~failed])
-                self.optimizer.tell(xs, fvals)
 
-                # Log parameter distributions in the standardized space
-                means = self.optimizer.result.xfavorite
-                covariance = self._sampling_covariance()
-                p_mean = self._means_to_columns(means)
-                p_covariance = self._covariance_to_columns(covariance)
-                self.logger.parameters(
-                    distribution="multivariate_normal",
-                    tag="standardized",
-                    step=step,
-                    **p_mean,
-                    **p_covariance
-                )
+                # Log success/errors
+                for sample_idx, x in enumerate(parameter_sets):
+                    if sample_idx in results:
+                        self._log_result(step, sample_idx, x, results[sample_idx])
+                    else:
+                        self._log_error(step, sample_idx, errors[sample_idx])
 
-                # Log parameter distributions in the raw space
-                means = self.objective.transform(means)
-                # The raw parameters are an element-wise linear scaling of the standardized
-                # CMA coordinates. A covariance matrix transforms as A @ C @ A.T. Here A is
-                # diagonal, so this becomes an element-wise multiplication by the outer product
-                # of the scaling factors.
-                raw_scaling = np.outer(self.objective.multiplier, self.objective.multiplier)
-                covariance = raw_scaling * covariance
-                p_mean = self._means_to_columns(means)
-                p_covariance = self._covariance_to_columns(covariance)
-                self.logger.parameters(
-                    distribution="multivariate_normal",
-                    tag="raw",
-                    step=step,
-                    **p_mean,
-                    **p_covariance
-                )
+                # Update CMA
+                self.optimizer.tell(parameter_sets, fvals)
+
+                # Log current parameter distribution
+                self._log_parameter_distributions(step)
+
                 # Force logs to disk
                 self.logger.persist()
 
+            # After optimization loop
+        # After executor context
         status = self.optimizer.result.stop
         self._log_termination_criteria(status)
         best = self.objective.transform(self.optimizer.result.xbest)
@@ -356,25 +334,78 @@ class DaisyCMAOptimizer:
                 )
         return columns
 
-    def checkpoint(self, path):
-        '''Save the state to disk to we can resume
+    def _log_result(self, step, sample_idx, x, result):
+        raw_params = {
+            f'param_{p.name}' : value  for p, value in
+            zip(self.problem.parameters, self.objective.transform(x))
+        }
+        standardized_params = {
+            f'param_{p.name}' : value  for p, value in
+            zip(self.problem.parameters, x)
+        }
 
-        Parameters
-        ----------
-        path : str
-          Path to store checkpoint in
-        '''
-        # TODO: Save state to disk
-        raise NotImplementedError("Checkpointing is not yet implemented")
+        objective, outcome = result
+        objective = { f'metric_{k}' : v for k,v in objective.items() }
+        self.logger.samples(
+            step=step,
+            index=sample_idx,
+            tag="raw",
+            **objective,
+            **raw_params
+        )
+        self.logger.samples(
+            step=step,
+            index=sample_idx,
+            tag="standardized",
+            **objective,
+            **standardized_params
+        )
+        log_outcomes(
+            self.logger,
+            outcome,
+            step=step,
+            index=sample_idx,
+        )
 
-    @staticmethod
-    def from_checkpoint(path):
-        '''Read state from disk to we can resume
+    def _log_error(self, step, sample_idx, error):
+        # error is { sim_name : CompletedProcess }
+        for name, e in error.items():
+            self.logger.warning(
+                step=step,
+                sample_idx=sample_idx,
+                sim_name=name,
+                msg=f"Simulation failed with exit code '{e.returncode}'"
+            )
 
-        Parameters
-        ----------
-        path : str
-          Path to read checkpoint from
-        '''
-        # TODO: Read the state from disk
-        raise NotImplementedError("Resuming from checkpoint is not yet implemented")
+
+    def _log_parameter_distributions(self, step):
+        # Log parameter distributions in the standardized space
+        means = self.optimizer.result.xfavorite
+        covariance = self._sampling_covariance()
+        p_mean = self._means_to_columns(means)
+        p_covariance = self._covariance_to_columns(covariance)
+        self.logger.parameters(
+            distribution="multivariate_normal",
+            tag="standardized",
+            step=step,
+            **p_mean,
+            **p_covariance
+        )
+
+        # Log parameter distributions in the raw space
+        means = self.objective.transform(means)
+        # The raw parameters are an element-wise linear scaling of the standardized
+        # CMA coordinates. A covariance matrix transforms as A @ C @ A.T. Here A is
+        # diagonal, so this becomes an element-wise multiplication by the outer product
+        # of the scaling factors.
+        raw_scaling = np.outer(self.objective.multiplier, self.objective.multiplier)
+        covariance = raw_scaling * covariance
+        p_mean = self._means_to_columns(means)
+        p_covariance = self._covariance_to_columns(covariance)
+        self.logger.parameters(
+            distribution="multivariate_normal",
+            tag="raw",
+            step=step,
+            **p_mean,
+            **p_covariance
+        )
