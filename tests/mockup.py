@@ -12,8 +12,9 @@ class MockError:
 
 class MockFileGenerator(FileGenerator):
     '''Mock file generator that always generates the paths it was constructed with'''
-    def __init__(self, path):
+    def __init__(self, path, cost=1):
         self.path = path
+        self.process_cost = cost
 
     def __call__(self, output_directory, params):
         return self.path

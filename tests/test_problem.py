@@ -6,6 +6,7 @@ from daisypy.optim import (
     MultiObjective,
     Simulation,
 )
+from daisypy.optim.process_executor import DaisyProcessExecutor
 from .mockup import (MockRunner, MockFileGenerator, MockObjective)
 
 
@@ -24,10 +25,13 @@ def test_runner_succeds(tmp_path):
     problem = DaisyOptimizationProblem(
         runner, simulations, outcome_specs, post_processing, objective, parameters, out_dir
     )
-    objective_value, outcomes, errors = problem([-1])
-    assert objective_value['mock'] == objective.value
-    assert outcomes == {}
+    results_by_param_set_idx, errors = problem.evaluate([[-1]], DaisyProcessExecutor(1))
+    assert len(results_by_param_set_idx) == 1
+    assert 0 in results_by_param_set_idx
     assert errors == {}
+    objectives, outcomes = results_by_param_set_idx[0]
+    assert objectives['mock'] == objective.value
+    assert outcomes == {}
 
 
 def test_runner_fails(tmp_path):
@@ -46,7 +50,11 @@ def test_runner_fails(tmp_path):
         runner, simulations, outcome_specs, post_processing, objective, parameters, out_dir
     )
 
-    errors = problem([-1])[2]
+    results, errors_by_param_set_idx = problem.evaluate([[-1]], DaisyProcessExecutor(1))
+    assert results == {}
+    assert len(errors_by_param_set_idx) == 1
+    assert 0 in errors_by_param_set_idx
+    errors = errors_by_param_set_idx[0]
     assert "mock-sim" in errors and errors["mock-sim"].returncode == 1
 
 def test_multi_objective(tmp_path):
@@ -58,14 +66,17 @@ def test_multi_objective(tmp_path):
     post_processing = {}
     runner = MockRunner()
     parameters = { 'runfile' : [ContinuousParameter('p', 0, (-1, 1))] }
-    out_dir = tmp_path
     objectives = [ MockObjective(f'mock-{i}', i*123) for i in range(3) ]
     objective = MultiObjective('multi', objectives)
 
     problem = DaisyOptimizationProblem(
-        runner, simulations, outcome_specs, post_processing, objective, parameters, out_dir
+        runner, simulations, outcome_specs, post_processing, objective, parameters, tmp_path
     )
-    objective_values = problem([0])[0]
+    results_by_param_set_idx, errors = problem.evaluate([[0]], DaisyProcessExecutor(1))
+    assert len(results_by_param_set_idx) == 1
+    assert 0 in results_by_param_set_idx
+    assert errors == {}
+    objective_values = results_by_param_set_idx[0][0]
     for obj in objectives:
         assert objective_values[obj.name] == obj.value
 
@@ -89,7 +100,10 @@ def test_spawn_parallel_param_is_set(tmp_path):
     problem = DaisyOptimizationProblem(
         runner, simulations, outcome_specs, post_processing, objective, parameters, out_dir
     )
-    objective_value, outcomes, errors = problem([])
+    results_by_param_set_idx, errors = problem.evaluate([[]], DaisyProcessExecutor(1))
+    assert len(results_by_param_set_idx) == 1
+    assert 0 in results_by_param_set_idx
+    assert errors == {}
+    objective_value, outcomes = results_by_param_set_idx[0]
     assert objective_value['mock'] == objective.value
     assert outcomes == {}
-    assert errors == {}
