@@ -7,7 +7,7 @@ import concurrent
 from daisypy.optim.output_store import OutputStore
 
 class DaisyOptimizationProblem:
-    # pylint: disable=too-many-arguments,too-many-positional-arguments,too-few-public-methods,too-many-instance-attributes
+    # pylint: disable=too-many-instance-attributes
     '''A DaisyOptimizationProblem maps parameters to objectives, and is defined by
       - a list of simulations that should be "run as one"
       - a runner that knows how to run Daisy
@@ -24,6 +24,7 @@ class DaisyOptimizationProblem:
                  data_dir=None,
                  debug=False,
                  outcome_filters=None):
+        # pylint: disable=too-many-arguments,too-many-positional-arguments
         """
         Parameters
         ----------
@@ -223,6 +224,7 @@ class DaisyOptimizationProblem:
         return results, errors
 
     def _run_one(self, cost, idx, sim_name, outputs, params):
+        # pylint: disable=too-many-arguments,too-many-positional-arguments
         sim_result = self.runner(**params)
         return cost, idx, sim_name, outputs, sim_result
 
