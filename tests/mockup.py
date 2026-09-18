@@ -58,10 +58,14 @@ class MockProblem:
         self.objective_fn = objective_fn
         self.error = {} if error is None else error
 
+    def process_demand(self, max_processes):
+        # pylint: disable=unused-argument,missing-function-docstring
+        return 1
+
     def evaluate(self, parameter_sets, _executor):
         '''Evaluate objective and return value and outcomes'''
         if len(self.error):
-            return {}, self.error
+            return {}, { i : self.error for i in range(len(parameter_sets)) }
         results = {}
         for i, param_set in enumerate(parameter_sets):
             named_param_set = {

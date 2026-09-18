@@ -160,10 +160,21 @@ def run(daisy_path):
     result = optimizer.optimize()
 
     # 8. Look at the results
-    for param, value in result.parameters.items():
-        print(param, value)
-    for metric, value in result.metrics.items():
-        print(metric, value)
+    print('Best sample')
+    print('  Parameters')
+    for param, value in result['sample'].parameters.items():
+        print(f'    {param} : {value:.5}')
+    print('  Metrics')
+    for metric, value in result['sample'].metrics.items():
+        print(f'    {metric} : {value[0]:.5}')
+
+    print('Ax model predicted')
+    print('  Parameters')
+    for param, value in result['pred'].parameters.items():
+        print(f'    {param}: {value:.5}')
+    print('  Metrics')
+    for metric, value in result['pred'].metrics.items():
+        print(f'    {metric} : {value[0]:.5} ({value[1]:.7})')
 
 
 if __name__ == '__main__':

@@ -85,6 +85,26 @@ class DaisyOptimizationProblem:
         self.debug = debug
         self.outcome_filters = outcome_filters
 
+    def process_demand(self, max_processes):
+        '''Compute the combined process demand for all simulations in this problem. If the raw total
+        demand increase max processes, then it is adjusted such that it fits. This adjustment is
+        done per simulation to minimize expected overall runtime while also avoiding demanding
+        processes that are not needed to achieve that expected runtime.
+
+        Parameters
+        ----------
+        max_processes : int > 0
+          Soft cap on the process demand. The demand is at least equal to the number of simulations
+          in the problem.
+
+        Returns
+        -------
+        total_process_demand : int >= 0
+        '''
+        total_demand = 0
+        for _, demand in self._process_budget(max_processes).values():
+            total_demand += demand
+        return total_demand
 
     def evaluate(self, parameter_sets, executor):
         '''Evaluate the problem on a list of parameter sets using a given executor
