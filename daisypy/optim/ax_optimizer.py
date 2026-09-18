@@ -1,13 +1,11 @@
 # pylint: disable=R0801
-import multiprocessing
-from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from ax.api.client import Client
 from daisypy.optim.ax import daisy_param_to_ax_param
 from daisypy.optim.multi_objective import MultiObjective
 from daisypy.optim.outcome_logging import log_outcomes
 from daisypy.optim.target_logging import log_targets
-from daisypy.optim.util import get_single_scalar
+from daisypy.optim.process_executor import DaisyProcessExecutor
 
 @dataclass
 class AxResult:
@@ -28,10 +26,7 @@ class DaisyAxOptimizer:
         """
         self.problem = problem
         self.logger = logger
-        if number_of_processes is None:
-            self.number_of_processes = multiprocessing.cpu_count()
-        else:
-            self.number_of_processes = number_of_processes
+        self.number_of_processes = number_of_processes
 
         if options is None:
             options = {}
@@ -69,7 +64,7 @@ class DaisyAxOptimizer:
         step = 0
         log_targets(self.logger, self.problem.objective_fn)
         self.logger.persist()
-        with ProcessPoolExecutor(self.number_of_processes) as executor:
+        with DaisyProcessExecutor(self.number_of_processes) as executor:
             while num_trials < self.options['max_trials']:
                 step += 1
                 max_trials_this_iteration = min(max_trials_iteration, max_trials - num_trials)
@@ -86,43 +81,18 @@ class DaisyAxOptimizer:
                     params = [sampled_parameters[p.name] for p in self.problem.parameters]
                     parameter_sets.append(params)
 
-                # Run simulations in parallel
-                for i, (objective, outcomes, errors) in enumerate(
-                        executor.map(self.problem, parameter_sets)):
-                    trial_index = trial_indices[i]
-                    if len(errors) > 0:
-                        for sim, error in errors.items():
-                            self.logger.warning(
-                                step=step,
-                                trial=trial_index,
-                                msg=f"Simulation '{sim}' failed with exit code {error.returncode}"
-                            )
-                        self.client.mark_trial_failed(trial_index=trial_index)
-                        continue
+                results, errors = self.problem.evaluate(parameter_sets, executor)
 
-                    if not self.multi_objective:
-                        # Verify that we have a single scalar objective
-                        _ = get_single_scalar(objective)
+                for sample_idx, result in results.items():
+                    trial_idx = trial_indices[sample_idx]
+                    param_set = named_parameter_sets[sample_idx]
+                    self._log_result(step, sample_idx, trial_idx, param_set, result)
+                    self.client.complete_trial(trial_index=trial_idx, raw_data=result[0])
+                for sample_idx, error in errors.items():
+                    trial_idx = trial_indices[sample_idx]
+                    self._log_error(step, sample_idx, trial_idx, error)
+                    self.client.mark_trial_failed(trial_index=trial_idx)
 
-                    log = {
-                        'step' : step,
-                        'index' : i,
-                        'tag' : 'raw',
-                        'trial' : trial_index
-                    }
-                    for name, value in named_parameter_sets[i].items():
-                        log[f'param_{name}'] = value
-                    for name, value in objective.items():
-                        log[f'metric_{name}'] = value
-                    self.logger.samples(**log)
-                    log_outcomes(
-                        self.logger,
-                        outcomes,
-                        step=step,
-                        index=i,
-                        trial=trial_index,
-                    )
-                    self.client.complete_trial(trial_index=trial_index, raw_data=objective)
                 num_trials += len(trials)
                 self.logger.persist()
 
@@ -137,3 +107,37 @@ class DaisyAxOptimizer:
             parameters, metrics, _, _ = self.client.get_best_parameterization()
             result = AxResult(parameters, metrics)
         return result
+
+    def _log_result(self, step, sample_idx, trial_idx, param_set, result):
+        # pylint: disable=too-many-arguments,too-many-positional-arguments
+        params = {
+            f'param_{name}' : value  for name, value in param_set.items()
+        }
+        objective, outcome = result
+        objective = { f'metric_{k}' : v for k,v in objective.items() }
+        self.logger.samples(
+            step=step,
+            index=sample_idx,
+            tag="raw",
+            trial=trial_idx,
+            **objective,
+            **params
+        )
+        log_outcomes(
+            self.logger,
+            outcome,
+            step=step,
+            index=sample_idx,
+            trial=trial_idx,
+        )
+
+    def _log_error(self, step, sample_idx, trial_idx, error):
+        # error is { sim_name : CompletedProcess }
+        for name, e in error.items():
+            self.logger.warning(
+                step=step,
+                index=sample_idx,
+                trial_idx=trial_idx,
+                sim_name=name,
+                msg=f"Simulation failed with exit code '{e.returncode}'"
+            )
