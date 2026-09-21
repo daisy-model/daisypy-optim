@@ -58,6 +58,9 @@ class DaisyRunner:
             str(dai_file)
         ]
         for i in range(max(1, self.max_tries)):
+            if i > 0:
+                print('Retrying simulation')
+                time.sleep(self.backoff)
             result = subprocess.run(args, capture_output=True, check=False)
             if result.returncode == 0:
                 break
@@ -65,11 +68,10 @@ class DaisyRunner:
             for retry_error in self._retry_errors:
                 if result.stderr.find(retry_error) != -1:
                     # This is a known error so retry after a short wait.
-                    print(f'Running "{dai_file}" failed ({i+1}/{self.max_tries}). Retrying')
+                    print(f'Running "{dai_file}" failed ({i+1}/{self.max_tries})')
                     print(result.stderr)
                     retry = True
-                    time.sleep(self.backoff)
-                    break
+                    break # No need to check other strings, because we know we should retry
             if not retry:
                 break
         return result
