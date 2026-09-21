@@ -67,7 +67,7 @@ class DaisyAxOptimizer:
 
         Returns
         -------
-        { 'sample' : AxResult, 'pred' : AxResult } OR a list with a dict for each objective
+        AxResult OR a list with an AxResult for each objective
         '''
         # TODO: Log parameter distributions
         num_trials = 0
@@ -165,22 +165,13 @@ class DaisyAxOptimizer:
 
         if self.multi_objective:
             # Handle multi objective result
-            result = {
-                'pred' : [
-                    AxResult(parameters, metrics)
-                    for parameters, metrics, _, _ in self.client.get_pareto_frontier(True)
-                ],
-                'sample' : [
-                    AxResult(parameters, metrics)
-                    for parameters, metrics, _, _ in self.client.get_pareto_frontier(False)
-                ],
-            }
+            result = [
+                AxResult(parameters, metrics)
+                for parameters, metrics, _, _ in self.client.get_pareto_frontier(False)
+            ]
         else:
             # Handle scalar objective result
-            result = {
-                'pred' : AxResult(*self.client.get_best_parameterization(True)[:2]),
-                'sample' : AxResult(*self.client.get_best_parameterization(False)[:2]),
-            }
+            result = AxResult(*self.client.get_best_parameterization(False)[:2])
         return result
 
     def _log_result(self, step, sample_idx, trial_idx, param_set, result):

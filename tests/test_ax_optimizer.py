@@ -81,5 +81,5 @@ def test_ax_optimizer():
             )
             result = optimizer.optimize()
 
-    for k, v in result['sample'].parameters.items():
+    for k, v in result.parameters.items():
         assert v == pytest.approx(beale_function.amin[k], abs=0.1)

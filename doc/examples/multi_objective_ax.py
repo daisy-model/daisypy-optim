@@ -116,7 +116,7 @@ def run(daisy_path):
 
     # 8. Look at the results
     print('Best sample')
-    for name, result in zip(scenarios, results['sample']):
+    for name, result in zip(scenarios, results):
         print(f'  {name}')
         print('    Parameters')
         for param, value in result.parameters.items():
@@ -125,18 +125,6 @@ def run(daisy_path):
         print('    Metrics')
         for metric, value in result.metrics.items():
             print(f'      {metric} : {value[0]:.5}')
-
-    print('Ax model predicted')
-    for name, result in zip(scenarios, results['pred']):
-        print(f'  {name}')
-        print('    Parameters')
-        for param, value in result.parameters.items():
-            print(f'      {param} : {value:.5}')
-
-        print('    Metrics')
-        for metric, value in result.metrics.items():
-            print(f'      {metric} : {value[0]:.5} ({value[1]:.7})')
-
 
 
 if __name__ == '__main__':
