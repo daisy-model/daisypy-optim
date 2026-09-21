@@ -15,9 +15,6 @@ from daisypy.optim.outcome_logging import log_outcomes
 from daisypy.optim.target_logging import log_targets
 from daisypy.optim.process_executor import DaisyProcessExecutor
 
-# Silence Ax info logging
-logging.disable(logging.INFO)
-
 @dataclass
 class AxResult:
     '''Class holding Ax optimization result'''
@@ -103,7 +100,9 @@ class DaisyAxOptimizer:
                     break
                 step += 1
                 max_trials_this_iteration = min(num_trials_iteration, max_trials - num_trials)
+                logging.disable(logging.INFO) # Silence the Ax info logger
                 trials = self.client.get_next_trials(max_trials=max_trials_this_iteration)
+                logging.disable(logging.NOTSET) # Enable info logging again
                 trial_indices = []
                 parameter_sets = []
                 named_parameter_sets = []
@@ -130,7 +129,9 @@ class DaisyAxOptimizer:
                                 step=step, sample_idx=sample_idx,
                                 msg="Non finite objective value"
                             )
+                            logging.disable(logging.INFO) # Silence the Ax info logger
                             self.client.mark_trial_failed(trial_index=trial_idx)
+                            logging.disable(logging.NOTSET) # Enable info logging again
                             num_failed_trials += 1
                         else:
                             if name not in best_trial:
@@ -140,12 +141,15 @@ class DaisyAxOptimizer:
                     if all_objectives_finite:
                         param_set = named_parameter_sets[sample_idx]
                         self._log_result(step, sample_idx, trial_idx, param_set, result)
+                        logging.disable(logging.INFO) # Silence the Ax info logger
                         self.client.complete_trial(trial_index=trial_idx, raw_data=result[0])
+                        logging.disable(logging.NOTSET) # Enable info logging again
                 for sample_idx, error in errors.items():
                     trial_idx = trial_indices[sample_idx]
                     self._log_error(step, sample_idx, trial_idx, error)
+                    logging.disable(logging.INFO) # Silence the Ax info logger
                     self.client.mark_trial_failed(trial_index=trial_idx)
-
+                    logging.disable(logging.NOTSET) # Enable info logging again
                 for k,v in best_trial.items():
                     self.logger.info(step=step,metric=k,best_trial_value=v)
                     if not k in best_objective_values:
