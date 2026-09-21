@@ -18,4 +18,4 @@ def _process_cpu_count():
         return os.process_cpu_count()
     if hasattr(os, 'sched_getaffinity'):
         return len(os.sched_getaffinity(0))
-    return os.cpu_count()
+    return os.cpu_count() or 1

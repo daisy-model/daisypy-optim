@@ -1,5 +1,4 @@
 # pylint: disable=R0801
-import multiprocessing
 import warnings
 import numpy as np
 import cma
