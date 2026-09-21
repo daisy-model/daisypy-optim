@@ -28,7 +28,7 @@ def test_rebases_environment_for_parent_relative_include(tmp_path, monkeypatch):
         [StaticData(static_src, Path('common'))]
     )
 
-    run_path = sim.setup(output_dir, {'runfile' : {}})
+    run_path, _ = sim.setup(output_dir, {'runfile' : {}})
     copied_static = output_dir / 'common' / 'my-log.dai'
     referenced_static = run_path.parent / include_path
 
@@ -63,7 +63,7 @@ def test_rebases_static_data_with_parent_relative_destination(tmp_path, monkeypa
         [StaticData(static_src, Path('../common'))]
     )
 
-    run_path = sim.setup(output_dir, {'runfile' : {}})
+    run_path, _ = sim.setup(output_dir, {'runfile' : {}})
     copied_static = output_dir / 'common' / 'my-log.dai'
     referenced_static = run_path.parent / include_path
 
@@ -98,9 +98,9 @@ def test_output_paths_stay_relative_to_root_with_static_data(tmp_path, monkeypat
     )
 
     output_dir = tmp_path / 'out'
-    sim.setup(output_dir, {'runfile' : {}})
+    _, outputs = sim.setup(output_dir, {'runfile' : {}})
 
-    assert sim.outputs['field'].path() == (
+    assert outputs['field'].path() == (
         output_dir / 'field_water.dlf'
     )
 
@@ -120,9 +120,9 @@ def test_output_paths_stay_relative_to_root_without_static_data(tmp_path):
     )
 
     output_dir = tmp_path / 'out'
-    sim.setup(output_dir, {'runfile' : {}})
+    _, outputs = sim.setup(output_dir, {'runfile' : {}})
 
-    assert sim.outputs['field'].path() == (
+    assert outputs['field'].path() == (
         output_dir / 'field_water.dlf'
     )
 

@@ -17,7 +17,7 @@ def daisy_param_to_ax_param(param):
             name=param.name, parameter_type='float', bounds=param.valid_range
         )
     if isinstance(param, CategoricalParameter):
-        init_value = param.values[param.initial_valud_idx]
+        init_value = param.values[param.initial_value_idx]
         if isinstance(init_value, int):
             p_type = 'int'
         elif isinstance(init_value, float):

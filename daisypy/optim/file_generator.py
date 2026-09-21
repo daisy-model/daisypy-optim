@@ -29,11 +29,15 @@ class FileGenerator(ABC):
         """
 
     @abstractmethod
-    def copy_and_update(self, **kwargs):
-        """Make a copy of the file generator with any values in kwargs substituted for existing
-        values
+    def sub_dir(self, path=None):
+        """Sub directory to use when generating the file.
+
+        Parameters
+        ----------
+        path : Path-like or None
+          Relative path.
 
         Returns
         -------
-        The new FileGenerator
+        current_sub_dir : Path
         """

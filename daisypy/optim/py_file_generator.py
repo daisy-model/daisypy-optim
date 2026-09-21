@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from daisypy.optim.file_generator import FileGenerator
 from daisypy.optim.util import StrictFormatter
@@ -36,9 +35,10 @@ class PyFileGenerator(FileGenerator):
         """
         self._formatter = StrictFormatter()
         self.out_file = out_file
-        self.sub_dir = Path("." if sub_dir is None else sub_dir)
-        # Verify that it is an actual sub dir. Will throw ValueError if not
-        self.sub_dir.resolve().relative_to(Path.cwd(), walk_up=False)
+
+        # Validate and set sub_dir, will throw if not a relative path
+        self.sub_dir(Path("." if sub_dir is None else sub_dir))
+
         if template_file_path is not None:
             with open(template_file_path, 'r', encoding='utf-8') as infile:
                 # Skip python line comments
@@ -64,7 +64,7 @@ class PyFileGenerator(FileGenerator):
         -------
         out_path
         """
-        output_directory = (Path(output_directory) / self.sub_dir).resolve()
+        output_directory = (Path(output_directory) / self._sub_dir).resolve()
         output_directory.mkdir(parents=True, exist_ok=True)
         out_path = output_directory / self.out_file
         py_string = self._formatter.format(self.template_text, **params)
@@ -74,12 +74,14 @@ class PyFileGenerator(FileGenerator):
 
     def relative_out_path(self):
         """Return the relative path the generated py files will be written to"""
-        return os.path.join(self.sub_dir, self.out_file)
+        return self._sub_dir / self.out_file
 
-    def copy_and_update(self, **kwargs):
-        return PyFileGenerator(
-            kwargs.get("out_file", self.out_file),
-            kwargs.get("template_text", self.template_text),
-            kwargs.get("template_file_path", None),
-            kwargs.get("sub_dir", self.sub_dir)
-        )
+    def sub_dir(self, path=None):
+        """Get/set the sub dir"""
+        if path is not None:
+            path = Path(path)
+            try:
+                self._sub_dir = path.resolve().relative_to(Path.cwd(), walk_up=False)
+            except ValueError as e:
+                raise ValueError(f'"{path}" is not relative') from e
+        return self._sub_dir

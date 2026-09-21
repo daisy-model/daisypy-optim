@@ -65,14 +65,14 @@ def run(base_dir, sim, daisy_path):
     '''Run the simulation'''
     # We can test the simulation setup by generating the files and then running daisy
     run_dir = base_dir / 'tmp'
-    dai_file = sim.setup(run_dir, {"runfile": {}})
+    dai_file, outputs = sim.setup(run_dir, {"runfile": {}})
 
     # You need to substitute the path to your Daisy executable
     runner = DaisyRunner(daisy_path)
     result = runner(dai_file, run_dir)
     if result.returncode == 0:
         print('Simulation completed successfully')
-        output_store = OutputStore({ 'sim' : sim })
+        output_store = OutputStore({'sim' : outputs})
         print('Stored these outputs')
         for sim_name, sim_outputs in output_store.items():
             print(f'# {sim_name} #')

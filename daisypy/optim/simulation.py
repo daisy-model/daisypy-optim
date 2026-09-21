@@ -1,5 +1,7 @@
 import os
+from copy import copy, deepcopy
 from pathlib import Path
+from daisypy.optim.dai_file_generator import DaiFileGenerator, SPAWN_PARALLEL_PARAM
 from daisypy.optim.util import copy_into
 from daisypy.optim.static_data import StaticData
 from daisypy.optim.output_spec import OutputSpec
@@ -58,10 +60,17 @@ class Simulation:
         # static data.
         if "runfile" not in file_generators:
             raise ValueError("There must be a generated 'runfile'")
+        if not hasattr(file_generators['runfile'], 'process_cost'):
+            raise ValueError("'runfile' generator must have a process_cost attribute")
         self._generators = file_generators
         self.outputs = outputs
         self._static_data = [] if static_data is None else static_data
         self._update_paths()
+        # The process cost is the number of processes needed to run all scenarios in parallel
+        # This assumes that any spawn program is defined in 'runfile'. If a spawn program is defined
+        # in a different file, then the process cost will be 1 and only a single process will be
+        # allocated for the simulation.
+        self.process_cost = self._generators['runfile'].process_cost
 
     def _update_paths(self):
         # Compute the path tree by assuming the current working dir is the root of all relative
@@ -79,16 +88,18 @@ class Simulation:
             StaticData(s.src, s.dst.resolve().relative_to(root)) for s in self._static_data
         ]
 
-        generators = {}
-        for g_name, g in self._generators.items():
+        for k, g in self._generators.items():
             # This finds the path to the generated file relative to the shared root and then
             # extracts the path to the parent
             sub_dir = Path(g.relative_out_path()).resolve().relative_to(root).parent
-            generators[g_name] = g.copy_and_update(sub_dir=sub_dir)
-        self._generators = generators
+            if sub_dir != g.sub_dir():
+                # Make a copy of the generator and update the sub dir of that
+                new = copy(g)
+                new.sub_dir(sub_dir)
+                self._generators[k] = new
 
 
-    def setup(self, output_directory, params):
+    def setup(self, output_directory, params, spawn_parallelism=1):
         """Setup environment by copying static files and instantiating parameterized files
 
         Parameters
@@ -106,7 +117,7 @@ class Simulation:
 
         Returns
         -------
-        path to simulation file
+        path to simulation file, dict of OutputSpec
         """
         if not params.keys() == self._generators.keys():
             raise ValueError("Keys in params must match generator names exactly\n\n"
@@ -114,8 +125,8 @@ class Simulation:
         output_directory = Path(output_directory)
         output_directory.mkdir(parents=True, exist_ok=True)
 
-        # Update root dir of outputs
-        self.outputs = {
+        # Make a copy of outputs with new root directory
+        outputs = {
             k : OutputSpec(o.log, o.var, root=output_directory)
             for k, o in self.outputs.items()
         }
@@ -130,6 +141,10 @@ class Simulation:
         # Generate dynamic files
         paths = {}
         for gen_name, gen_params in params.items():
-            paths[gen_name] = self._generators[gen_name](output_directory, gen_params)
+            gen = self._generators[gen_name]
+            if isinstance(gen, DaiFileGenerator) and gen.has_spawn_program:
+                gen_params = deepcopy(gen_params)
+                gen_params[SPAWN_PARALLEL_PARAM] = spawn_parallelism
+            paths[gen_name] = gen(output_directory, gen_params)
 
-        return paths["runfile"]
+        return paths["runfile"], outputs

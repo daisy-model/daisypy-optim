@@ -12,8 +12,9 @@ class MockError:
 
 class MockFileGenerator(FileGenerator):
     '''Mock file generator that always generates the paths it was constructed with'''
-    def __init__(self, path):
+    def __init__(self, path, cost=1):
         self.path = path
+        self.process_cost = cost
 
     def __call__(self, output_directory, params):
         return self.path
@@ -21,8 +22,8 @@ class MockFileGenerator(FileGenerator):
     def relative_out_path(self):
         return self.path
 
-    def copy_and_update(self, **kwargs):
-        return MockFileGenerator(kwargs.get("path", self.path))
+    def sub_dir(self, path=None):
+        return ''
 
 
 class MockRunner:
@@ -46,7 +47,7 @@ class MockObjective(ScalarObjective):
         })
         self.value = value
 
-    def __call__(self, daisy_output_directory):
+    def __call__(self, *args, **kwargs):
         return { self.name : self.value }
 
 
@@ -57,21 +58,31 @@ class MockProblem:
         self.objective_fn = objective_fn
         self.error = {} if error is None else error
 
-    def __call__(self, parameter_values):
+    def process_demand(self, max_processes):
+        # pylint: disable=unused-argument,missing-function-docstring
+        return 1
+
+    def evaluate(self, parameter_sets, _executor):
         '''Evaluate objective and return value and outcomes'''
         if len(self.error):
-            return ( {}, {}, self.error )
-        named_parameters = { p.name : value for p, value in zip(self.parameters, parameter_values) }
-        objective_value = self.objective_fn(**named_parameters)
-        prediction = pd.DataFrame({
-            'time' : pd.to_datetime(['2000-01-01']),
-            'value' : [objective_value]
-        })
-        return (
-            { self.objective_fn.name : objective_value },
-            { self.objective_fn.outcome_name : prediction },
-            { }
-        )
+            return {}, { i : self.error for i in range(len(parameter_sets)) }
+        results = {}
+        for i, param_set in enumerate(parameter_sets):
+            named_param_set = {
+                p.name : value for p, value in zip(self.parameters, param_set)
+            }
+            obj = self.objective_fn(**named_param_set)
+            val = list(obj.values())[0]
+            results[i] = (
+                obj,
+                { 'outcome' :
+                  pd.DataFrame({
+                      'time' : pd.to_datetime(['2000-01-01']),
+                      'value' : [val]
+                  })
+                 }
+            )
+        return results, self.error
 
 class MockDataExtractor:
     '''Mock data extractor returning data it was constructed with'''

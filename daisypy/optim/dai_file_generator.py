@@ -1,11 +1,11 @@
 # pylint: disable=R0801
-import os
-import warnings
 from pathlib import Path
 from daisypy.io import parse_dai, format_dai, filter_dai
 from daisypy.io.dai import Definition, Comment, Identifier
 from daisypy.optim.file_generator import FileGenerator
 from daisypy.optim.util import StrictFormatter
+
+SPAWN_PARALLEL_PARAM = '_spawn-parallel-param'
 
 class DaiFileGenerator(FileGenerator):
     """Template based generation of dai files using string replacement
@@ -38,31 +38,26 @@ class DaiFileGenerator(FileGenerator):
         """
         self._formatter = StrictFormatter()
         self.out_file = out_file
-        self.sub_dir = Path("." if sub_dir is None else sub_dir)
-        # Verify that it is an actual sub dir. Will throw ValueError if not
-        self.sub_dir.resolve().relative_to(Path.cwd(), walk_up=False)
-        if template_file_path is not None:
-            template_text = Path(template_file_path).read_text(encoding='utf-8')
-        # Parse the text as a Dai object while allowing placeholders
-        dai = parse_dai(template_text, extended=True)
-        dai = filter_dai(dai, lambda x : not isinstance(x, Comment))
 
-        # Force all programs that inherits from spawn to run with 1 process
-        for value in dai.values:
-            if isinstance(value, Definition) and value.parent.value == 'spawn':
-                has_parallel = False
-                for param in value.body:
-                    if isinstance(param, list) and param[0].value == 'parallel':
-                        has_parallel = True
-                        if param[1] != 1:
-                            warnings.warn("parallel parameter for spawn forced to 1")
-                            param[1] = 1
-                if not has_parallel:
-                    warnings.warn("parallel parameter for spawn forced to 1")
-                    value.body.append([Identifier('parallel'), 1])
+        # Validate and set sub_dir, will throw if not a relative path
+        self.sub_dir(Path("." if sub_dir is None else sub_dir))
+
+        if template_file_path is not None:
+            self.template_text = Path(template_file_path).read_text(encoding='utf-8')
+        else:
+            self.template_text = template_text
+
+        # Parse the text as a Dai object while allowing placeholders, then add
+        # (parallel {_spawn-parallel-param}) to all spawn programs.
+        self.has_spawn_program = False
+        self.process_cost = 1
+        dai = parse_dai(self.template_text, extended=True)
+        dai = filter_dai(dai, lambda x : not isinstance(x, Comment))
+        # Will update self.has_spawn_program if any are found
+        dai = self._parameterize_spawn_programs(dai)
         self.template_text = format_dai(dai)
 
-    def __call__(self, output_directory, params, tagged=True):
+    def __call__(self, output_directory, params):
         """Generate a dai file from the template using the given params and write it to a directory
 
         Parameters
@@ -77,7 +72,7 @@ class DaiFileGenerator(FileGenerator):
         -------
         out_path
         """
-        output_directory = (Path(output_directory) / self.sub_dir).resolve()
+        output_directory = (Path(output_directory) / self._sub_dir).resolve()
         output_directory.mkdir(parents=True, exist_ok=True)
         out_path = output_directory / self.out_file
         dai_string = self._formatter.format(self.template_text, **params)
@@ -85,14 +80,58 @@ class DaiFileGenerator(FileGenerator):
             f.write(dai_string)
         return out_path
 
+    def __copy__(self):
+        # Custom copy function to skip dai parsing and formatting
+        other = DaiFileGenerator(self.out_file, '(run all)')
+        other.template_text = self.template_text
+        other.has_spawn_program = self.has_spawn_program
+        other.process_cost = self.process_cost
+        return other
+
+    def sub_dir(self, path=None):
+        if path is not None:
+            path = Path(path)
+            try:
+                self._sub_dir = path.resolve().relative_to(Path.cwd(), walk_up=False)
+            except ValueError as e:
+                raise ValueError(f'"{path}" is not relative') from e
+        return self._sub_dir
+
     def relative_out_path(self):
         """Return the relative path the generated dai files will be written to"""
-        return os.path.join(self.sub_dir, self.out_file)
+        return self._sub_dir / self.out_file
 
-    def copy_and_update(self, **kwargs):
-        return DaiFileGenerator(
-            kwargs.get("out_file", self.out_file),
-            kwargs.get("template_text", self.template_text),
-            kwargs.get("template_file_path", None),
-            kwargs.get("sub_dir", self.sub_dir)
-        )
+    def _parameterize_spawn_programs(self, dai):
+        n = 0
+        for i, value in enumerate(dai.values):
+            if _is_spawn(value):
+                self.has_spawn_program = True
+                n += _count_spawn_programs(value)
+                dai.values[i] = _set_parallel(value, f'{{{SPAWN_PARALLEL_PARAM}}}')
+        self.process_cost = max(1, n)
+        return dai
+
+def _is_spawn(dai):
+    return (isinstance(dai, Definition) and
+            dai.component.value == 'program' and
+            dai.parent.value == 'spawn')
+
+def _count_spawn_programs(spawn):
+    for param in spawn.body:
+        if _is_program(param):
+            return len(param) - 1
+    return 0
+
+def _set_parallel(spawn, value):
+    for param in spawn.body:
+        if _is_parallel(param):
+            param[1] = value
+            return spawn
+    spawn.body.append([Identifier('parallel'), value])
+    return spawn
+
+def _is_parallel(param):
+    return isinstance(param, list) and len(param) == 2 and param[0].value == 'parallel'
+
+def _is_program(param):
+    return isinstance(param, list) and len(param) > 0 and param[0].value == 'program'
