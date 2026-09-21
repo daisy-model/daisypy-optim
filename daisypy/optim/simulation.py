@@ -60,6 +60,8 @@ class Simulation:
         # static data.
         if "runfile" not in file_generators:
             raise ValueError("There must be a generated 'runfile'")
+        if not hasattr(file_generators['runfile'], 'process_cost'):
+            raise ValueError("'runfile' generator must have a process_cost attribute")
         self._generators = file_generators
         self.outputs = outputs
         self._static_data = [] if static_data is None else static_data
