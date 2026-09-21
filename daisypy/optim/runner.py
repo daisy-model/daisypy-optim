@@ -61,7 +61,7 @@ class DaisyRunner:
             if i > 0:
                 print('Retrying simulation')
                 time.sleep(self.backoff)
-            result = subprocess.run(args, capture_output=True, check=False)
+            result = subprocess.run(args, stderr=subprocess.PIPE, check=False)
             if result.returncode == 0:
                 break
             retry = False
@@ -73,5 +73,7 @@ class DaisyRunner:
                     retry = True
                     break # No need to check other strings, because we know we should retry
             if not retry:
+                # Always print the error output from Daisy when we have a failure
+                print(result.stderr)
                 break
         return result
