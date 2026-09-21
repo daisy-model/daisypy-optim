@@ -6,7 +6,11 @@ class DaisyProcessExecutor(ProcessPoolExecutor):
     '''
     def __init__(self, max_processes=None):
         if max_processes is None:
-            self.max_processes = os.process_cpu_count()
+            self.max_processes = _process_cpu_count()
         else:
             self.max_processes = max_processes
         super().__init__(self.max_processes)
+
+def _process_cpu_count():
+    # os.process_cpu_count is available from python 3.13
+    return len(os.sched_getaffinity(0))
