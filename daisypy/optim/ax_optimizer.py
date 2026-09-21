@@ -123,38 +123,46 @@ class DaisyAxOptimizer:
                     trial_idx = trial_indices[sample_idx]
                     all_objectives_finite = True
                     for name, value in result[0].items():
+                        # First check that all objectives are finite
                         if not math.isfinite(value):
                             all_objectives_finite = False
                             self.logger.warning(
-                                step=step, sample_idx=sample_idx,
+                                step=step, sample_idx=sample_idx, objective=name,
                                 msg="Non finite objective value"
                             )
-                            logging.disable(logging.INFO) # Silence the Ax info logger
-                            self.client.mark_trial_failed(trial_index=trial_idx)
-                            logging.disable(logging.NOTSET) # Enable info logging again
-                            num_failed_trials += 1
-                        else:
+                    if not all_objectives_finite:
+                        # At least one objective was not finite
+                        logging.disable(logging.INFO) # Silence the Ax info logger
+                        self.client.mark_trial_failed(trial_index=trial_idx)
+                        logging.disable(logging.NOTSET) # Enable info logging again
+                        num_failed_trials += 1
+                    else:
+                        # All objective values are finite, so now we update the best, log results
+                        # and complete the trial
+                        for name, value in result[0].items():
                             if name not in best_trial:
                                 best_trial[name] = value
                             else:
                                 best_trial[name] = min(value, best_trial[name])
-                    if all_objectives_finite:
                         param_set = named_parameter_sets[sample_idx]
                         self._log_result(step, sample_idx, trial_idx, param_set, result)
                         logging.disable(logging.INFO) # Silence the Ax info logger
                         self.client.complete_trial(trial_index=trial_idx, raw_data=result[0])
                         logging.disable(logging.NOTSET) # Enable info logging again
+
                 for sample_idx, error in errors.items():
                     trial_idx = trial_indices[sample_idx]
                     self._log_error(step, sample_idx, trial_idx, error)
                     logging.disable(logging.INFO) # Silence the Ax info logger
                     self.client.mark_trial_failed(trial_index=trial_idx)
                     logging.disable(logging.NOTSET) # Enable info logging again
+
                 for k,v in best_trial.items():
                     self.logger.info(step=step,metric=k,best_trial_value=v)
                     if not k in best_objective_values:
                         best_objective_values[k] = []
                     best_objective_values[k].append(v)
+
                 num_trials += len(trials)
                 self.logger.persist()
 
