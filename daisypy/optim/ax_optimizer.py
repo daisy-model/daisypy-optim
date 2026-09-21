@@ -6,6 +6,7 @@
 #          - Convergence in objective value
 #          - Convergence in sampling distribution
 import logging
+import math
 from dataclasses import dataclass
 from ax.api.client import Client
 from daisypy.optim.ax import daisy_param_to_ax_param
@@ -120,16 +121,26 @@ class DaisyAxOptimizer:
 
                 best_trial = {}
                 for sample_idx, result in results.items():
-                    # Keep track of all objective values that have been seen so far
-                    for name, value in result[0].items():
-                        if name not in best_trial:
-                            best_trial[name] = value
-                        else:
-                            best_trial[name] = min(value, best_trial[name])
                     trial_idx = trial_indices[sample_idx]
-                    param_set = named_parameter_sets[sample_idx]
-                    self._log_result(step, sample_idx, trial_idx, param_set, result)
-                    self.client.complete_trial(trial_index=trial_idx, raw_data=result[0])
+                    all_objectives_finite = True
+                    for name, value in result[0].items():
+                        if not math.isfinite(value):
+                            all_objectives_finite = False
+                            self.logger.warning(
+                                step=step, sample_idx=sample_idx,
+                                msg="Non finite objective value"
+                            )
+                            self.client.mark_trial_failed(trial_index=trial_idx)
+                            num_failed_trials += 1
+                        else:
+                            if name not in best_trial:
+                                best_trial[name] = value
+                            else:
+                                best_trial[name] = min(value, best_trial[name])
+                    if all_objectives_finite:
+                        param_set = named_parameter_sets[sample_idx]
+                        self._log_result(step, sample_idx, trial_idx, param_set, result)
+                        self.client.complete_trial(trial_index=trial_idx, raw_data=result[0])
                 for sample_idx, error in errors.items():
                     trial_idx = trial_indices[sample_idx]
                     self._log_error(step, sample_idx, trial_idx, error)

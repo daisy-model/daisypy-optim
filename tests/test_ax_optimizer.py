@@ -39,6 +39,24 @@ def test_ax_optimizer_all_fails():
             with pytest.raises(RuntimeError, match='All simulations failed'):
                 optimizer.optimize()
 
+def test_ax_optimizer_all_nans():
+    '''Test that ax throws when all simulations fail'''
+    parameters = [
+        ContinuousParameter('a', 0, (-1, 1)),
+        ContinuousParameter('b', 0, (-1, 1)),
+        ContinuousParameter('c', 0, (-1, 1)),
+    ]
+
+    problem = MockProblem(parameters, MockObjective(value=math.nan))
+    with tempfile.TemporaryDirectory() as out_dir:
+        with DefaultLogger(out_dir) as logger:
+            optimizer = DaisyAxOptimizer(
+                problem, logger, { 'max_trials' : 10, 'max_trials_iteration' : 3 }
+            )
+            with pytest.raises(RuntimeError, match='All simulations failed'):
+                optimizer.optimize()
+
+
 def test_mixed_params_type():
     '''Test that ax throws when all simulations fail'''
     parameters = beale_function.parameters.copy()

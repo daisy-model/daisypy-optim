@@ -47,7 +47,7 @@ class MockObjective(ScalarObjective):
         })
         self.value = value
 
-    def __call__(self, daisy_output_directory):
+    def __call__(self, *args, **kwargs):
         return { self.name : self.value }
 
 
