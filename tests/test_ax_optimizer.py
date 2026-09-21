@@ -61,7 +61,7 @@ def test_mixed_params_type():
     '''Test that ax throws when all simulations fail'''
     parameters = beale_function.parameters.copy()
     parameters[0] = parameters[0].as_categorical(10)
-    problem = MockProblem(beale_function.parameters, LogScale(beale_function))
+    problem = MockProblem(parameters, LogScale(beale_function))
     with tempfile.TemporaryDirectory() as out_dir:
         with DefaultLogger(out_dir) as logger:
             optimizer = DaisyAxOptimizer(
