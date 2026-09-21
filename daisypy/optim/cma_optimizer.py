@@ -35,10 +35,7 @@ class DaisyCMAOptimizer:
         """
         self.problem = problem
         self.logger = logger
-        if number_of_processes is None:
-            self.number_of_processes = multiprocessing.cpu_count()
-        else:
-            self.number_of_processes = number_of_processes
+        self.number_of_processes = number_of_processes
         lower = []
         upper = []
         x0 = []
