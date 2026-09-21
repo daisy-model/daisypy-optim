@@ -14,8 +14,9 @@ class DaisyProcessExecutor(ProcessPoolExecutor):
 def _process_cpu_count():
     # pylint: disable=no-member
     # os.process_cpu_count is available from python 3.13
+    count = None
     if hasattr(os, 'process_cpu_count'):
-        return os.process_cpu_count()
-    if hasattr(os, 'sched_getaffinity'):
-        return len(os.sched_getaffinity(0))
-    return os.cpu_count() or 1
+        count = os.process_cpu_count()
+    elif hasattr(os, 'sched_getaffinity'):
+        count = len(os.sched_getaffinity(0))
+    return count or os.cpu_count() or 1

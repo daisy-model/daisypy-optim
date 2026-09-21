@@ -47,7 +47,7 @@ class ProblemFailAfterN:
         '''Evaluate objective and return value and outcomes'''
         if self.n >= self.N:
             results = {}
-            errors = self.error
+            errors = { i : self.error for i in range(len(parameter_sets)) }
         else:
             results = {
                 i : ({'FailAfterN' : -self.n}, self.outcome)
