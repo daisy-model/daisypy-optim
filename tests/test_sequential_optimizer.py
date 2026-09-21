@@ -63,31 +63,31 @@ def test_sequential_optimizer(capsys):
     # pylint: disable=too-many-locals
     expected_samples_log = [
         'step,index,tag,metric_neg_sum,param_a,param_b,param_c',
-        '1,0,"raw",-1.0,1.0,0.0,0.0',
-        '1,1,"raw",-1.0,0.0,1.0,0.0',
-        '1,2,"raw",-2.0,0.0,2.0,0.0',
-        '1,3,"raw",-1.0,0.0,0.0,1.0',
-        '1,4,"raw",-2.0,0.0,0.0,2.0',
-        '1,5,"raw",-3.0,0.0,0.0,3.0',
-        '1,6,"raw",-0.0,0.0,0.0,0.0',
-        '2,0,"raw",-4.0,1.0,0.0,3.0',
-        '2,1,"raw",-4.0,0.0,1.0,3.0',
-        '2,2,"raw",-5.0,0.0,2.0,3.0',
-        '3,0,"raw",-6.0,1.0,2.0,3.0',
+        '1,0,"raw",-1,1,0,0',
+        '1,1,"raw",-1,0,1,0',
+        '1,2,"raw",-2,0,2,0',
+        '1,3,"raw",-1,0,0,1',
+        '1,4,"raw",-2,0,0,2',
+        '1,5,"raw",-3,0,0,3',
+        '1,6,"raw",0,0,0,0',
+        '2,0,"raw",-4,1,0,3',
+        '2,1,"raw",-4,0,1,3',
+        '2,2,"raw",-5,0,2,3',
+        '3,0,"raw",-6,1,2,3',
     ]
     expected_out = '\n'.join([
         'Using at least 7 and at most 15 function evaluations',
         'step=1,n_param_sets=7',
         'step=1,total_function_evaluations=7',
-        'step=1,best_objective=-3.0',
+        'step=1,best_objective=-3',
         'step=1,Fixing c to 3',
         'step=2,n_param_sets=3',
         'step=2,total_function_evaluations=10',
-        'step=2,best_objective=-5.0',
+        'step=2,best_objective=-5',
         'step=2,Fixing b to 2',
         'step=3,n_param_sets=1',
         'step=3,total_function_evaluations=11',
-        'step=3,best_objective=-6.0',
+        'step=3,best_objective=-6',
         'step=3,Fixing a to 1',
     ])
     expected_err = ''
@@ -108,8 +108,8 @@ def test_sequential_optimizer(capsys):
         with open(os.path.join(out_dir, 'outcomes.csv'), 'r', encoding='utf-8') as in_file:
             outcome_rows = [row.strip() for row in in_file]
         assert outcome_rows[0] == 'step,index,outcome_name,time,predicted_value'
-        assert outcome_rows[1] == '1,0,"outcome","2000-01-01T00:00:00",-1.0'
-        assert outcome_rows[-1] == '3,0,"outcome","2000-01-01T00:00:00",-6.0'
+        assert outcome_rows[1] == '1,0,"outcome","2000-01-01T00:00:00",-1'
+        assert outcome_rows[-1] == '3,0,"outcome","2000-01-01T00:00:00",-6'
         assert len(outcome_rows) == 12
         with open(os.path.join(out_dir, 'targets.csv'), 'r', encoding='utf-8') as in_file:
             target_rows = [row.strip() for row in in_file]
@@ -168,4 +168,4 @@ def test_empty_params():
     with tempfile.TemporaryDirectory() as out_dir:
         with DefaultLogger(out_dir) as logger:
             with pytest.raises(ValueError, match='Optimization problem has no parameters'):
-                optimizer = DaisySequentialOptimizer(problem, logger)
+                DaisySequentialOptimizer(problem, logger)

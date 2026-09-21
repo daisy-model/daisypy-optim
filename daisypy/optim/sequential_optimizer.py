@@ -91,7 +91,7 @@ class DaisySequentialOptimizer:
                     # We need to add the initial parameters because they are skipped by the
                     # generator. None is used to signal that this parameter set is special and we
                     # should stop if it yields the best objective.
-                    param_sets.append(tuple((float(current[name]) for name in order)))
+                    param_sets.append(tuple((current[name] for name in order)))
                     param_sets_ids.append((None, 0))
                 self.logger.info(step=step, n_param_sets=len(param_sets))
                 best = np.inf
@@ -217,9 +217,9 @@ def _generate_parameter_sets(floating, current, order, tried):
             param_set = []
             for param_name in order: # We must maintain the order of parameters
                 if param_name == name:
-                    param_set.append(float(value))
+                    param_set.append(value)
                 else:
-                    param_set.append(float(current[param_name]))
+                    param_set.append(current[param_name])
             param_set = tuple(param_set)
             if not param_set in tried:
                 param_sets.append(param_set)
