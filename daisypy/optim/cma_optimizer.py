@@ -107,7 +107,7 @@ class DaisyCMAOptimizer:
             while not self.optimizer.stop():
                 step_ok = False
                 step += 1
-                # Try a couple of times if we dont get at least one non nan value
+                # Try a couple of times if we don't get at least one non nan value
                 for i in range(max_attempts_to_get_feasible):
                     parameter_sets = self.optimizer.ask()
                     transformed_parameter_sets = [

@@ -10,8 +10,8 @@ from daisypy.optim.process_executor import DaisyProcessExecutor
 from .mockup import (MockRunner, MockFileGenerator, MockObjective)
 
 
-def test_runner_succeds(tmp_path):
-    '''Test that the return value is as expected when the runner succeds'''
+def test_runner_succeeds(tmp_path):
+    '''Test that the return value is as expected when the runner succeeds'''
     file_generators = { "runfile" : MockFileGenerator('') }
     output_specs = {}
     simulations = { "mock-sim" : Simulation(file_generators, output_specs) }
@@ -81,7 +81,7 @@ def test_multi_objective(tmp_path):
         assert objective_values[obj.name] == obj.value
 
 def test_spawn_parallel_param_is_set(tmp_path):
-    '''Test that the return value is as expected when the runner succeds'''
+    '''Test that the return value is as expected when the runner succeeds'''
     file_generators = {
         "runfile" : DaiFileGenerator(
             'runfile.dai',

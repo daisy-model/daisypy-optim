@@ -39,7 +39,7 @@ class DaiFileGenerator(FileGenerator):
         self._formatter = StrictFormatter()
         self.out_file = out_file
 
-        # Validate and set sub_dir, will trow if not a relative path
+        # Validate and set sub_dir, will throw if not a relative path
         self.sub_dir(Path("." if sub_dir is None else sub_dir))
 
         if template_file_path is not None:

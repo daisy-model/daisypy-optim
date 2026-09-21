@@ -87,7 +87,7 @@ class DaisyOptimizationProblem:
 
     def process_demand(self, max_processes):
         '''Compute the combined process demand for all simulations in this problem. If the raw total
-        demand increase max processes, then it is adjusted such that it fits. This adjustment is
+        demand increases max processes, then it is adjusted such that it fits. This adjustment is
         done per simulation to minimize expected overall runtime while also avoiding demanding
         processes that are not needed to achieve that expected runtime.
 
@@ -283,7 +283,7 @@ class DaisyOptimizationProblem:
 
 def _find_best_budget(requested, available):
     # This will find the smallest of the fastest feasible allocations
-    # For example, reuested 8, available 7 returns 4, because 4 processes will finish the task in
+    # For example, requested 8, available 7 returns 4, because 4 processes will finish the task in
     # two rounds of processing. Using fewer leads to more rounds of processing, using more will not
     # lead to fewer rounds of processing
     alloc = []

@@ -21,7 +21,7 @@ class ContinuousParameter:
 
     def sample(self, num_samples):
         '''Sample the continuous parameter range. This tries to sample the range evenly while also
-        ensuring the initial value and valid range endpoitns are sampled.
+        ensuring the initial value and valid range endpoints are sampled.
 
         Parameters
         ----------

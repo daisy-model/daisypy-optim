@@ -28,7 +28,7 @@ class DaisyRunner:
         # The flatpak version of Daisy can fail due to a flatpak startup issue where the run is
         # aborted when openat2(...) returns -1 EAGAIN (Resource temporarily unavailable)
         # The problem is concurrency related, and can (often?/always?) be resolved by retrying.
-        # The emitted eror message from flatpak is
+        # The emitted error message from flatpak is
         # error: Extension org.freedesktop.Platform.GL.default has invalid merge-dirs
         self._retry_errors = set([
             b'invalid merge-dirs'
