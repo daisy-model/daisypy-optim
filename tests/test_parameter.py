@@ -23,6 +23,14 @@ def test_continuous_parameter_sample_three():
     p1 = ContinuousParameter('p1', 0.01, (0, 1))
     assert p1.sample(3) == [0.01, 0, 1]
 
+def test_continuous_parameter_sample_init_is_left_endpoint():
+    p1 = ContinuousParameter('p1', 0, (0, 1))
+    assert p1.sample(3) == [0, 0.5, 1]
+
+def test_continuous_parameter_sample_init_is_right_endpoint():
+    p1 = ContinuousParameter('p1', 1, (0, 1))
+    assert p1.sample(5) == [0, 0.25, 0.5, 0.75, 1]
+
 def test_continuous_parameter_sample_init_at_center():
     p1 = ContinuousParameter('p1', 0.5, (0, 1))
     samples = p1.sample(11)
