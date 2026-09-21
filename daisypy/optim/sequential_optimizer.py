@@ -26,6 +26,9 @@ class DaisySequentialOptimizer:
           The maximum number of processes to use when running Daisy. Defaults to
           os.process_cpu_count()
         """
+        if len(problem.parameters) == 0:
+            raise ValueError('Optimization problem has no parameters to optimize')
+
         if options is None:
             options = {}
         self.problem = problem

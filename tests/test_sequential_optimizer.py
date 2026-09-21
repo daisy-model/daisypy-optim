@@ -9,7 +9,7 @@ from daisypy.optim import (
     DaisySequentialOptimizer,
     ScalarObjective
 )
-from .mockup import MockProblem, MockError
+from .mockup import MockProblem, MockError, MockObjective
 
 class Objective(ScalarObjective):
     '''Negative value of outcome'''
@@ -158,3 +158,14 @@ def test_sequential_optimizer_all_failing_after_initial():
             optimizer = DaisySequentialOptimizer(problem, logger)
             with pytest.raises(RuntimeError, match="All parameter sets failed"):
                 optimizer.optimize()
+
+def test_empty_params():
+    '''Test that sequential optimizer handles initial sim failing'''
+    # pylint: disable=too-many-locals
+    parameters = []
+
+    problem = MockProblem(parameters, MockObjective("neg_sum", value=1))
+    with tempfile.TemporaryDirectory() as out_dir:
+        with DefaultLogger(out_dir) as logger:
+            with pytest.raises(ValueError, match='Optimization problem has no parameters'):
+                optimizer = DaisySequentialOptimizer(problem, logger)
