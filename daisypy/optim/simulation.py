@@ -113,7 +113,7 @@ class Simulation:
 
         Returns
         -------
-        path to simulation file
+        path to simulation file, dict of OutputSpec
         """
         if not params.keys() == self._generators.keys():
             raise ValueError("Keys in params must match generator names exactly\n\n"

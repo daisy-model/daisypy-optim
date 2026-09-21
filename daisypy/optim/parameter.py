@@ -44,7 +44,7 @@ class ContinuousParameter:
 
         a, b = self.valid_range
         x = self.initial_value
-        if a == x or b == x:
+        if x in self.valid_range:
             return [ float(v) for v in np.linspace(a, b, num_samples) ]
 
         before_range = x - a
