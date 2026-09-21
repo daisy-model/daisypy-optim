@@ -80,6 +80,14 @@ class DaiFileGenerator(FileGenerator):
             f.write(dai_string)
         return out_path
 
+    def __copy__(self):
+        # Custom copy function to skip dai parsing and formatting
+        other = DaiFileGenerator(self.out_file, '(run all)')
+        other.template_text = self.template_text
+        other.has_spawn_program = self.has_spawn_program
+        other.process_cost = self.process_cost
+        return other
+
     def sub_dir(self, path=None):
         if path is not None:
             path = Path(path)

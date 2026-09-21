@@ -1,5 +1,5 @@
 import os
-from copy import deepcopy
+from copy import copy, deepcopy
 from pathlib import Path
 from daisypy.optim.dai_file_generator import DaiFileGenerator, SPAWN_PARALLEL_PARAM
 from daisypy.optim.util import copy_into
@@ -88,11 +88,15 @@ class Simulation:
             StaticData(s.src, s.dst.resolve().relative_to(root)) for s in self._static_data
         ]
 
-        for g in self._generators.values():
+        for k, g in self._generators.items():
             # This finds the path to the generated file relative to the shared root and then
             # extracts the path to the parent
             sub_dir = Path(g.relative_out_path()).resolve().relative_to(root).parent
-            g.sub_dir(sub_dir)
+            if sub_dir != g.sub_dir():
+                # Make a copy of the generator and update the sub dir of that
+                new = copy(g)
+                new.sub_dir(sub_dir)
+                self._generators[k] = new
 
 
     def setup(self, output_directory, params, spawn_parallelism=1):
